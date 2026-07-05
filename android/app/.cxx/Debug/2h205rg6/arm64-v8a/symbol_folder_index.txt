@@ -1,0 +1,1 @@
+/Users/akshaypanchal/AtharvCare/android/app/build/intermediates/cxx/Debug/2h205rg6/obj/arm64-v8a

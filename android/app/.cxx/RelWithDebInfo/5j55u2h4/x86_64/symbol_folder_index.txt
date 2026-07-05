@@ -1,0 +1,1 @@
+/Users/akshaypanchal/Freenace_Projects/Pharmacy_App/android/app/build/intermediates/cxx/RelWithDebInfo/5j55u2h4/obj/x86_64

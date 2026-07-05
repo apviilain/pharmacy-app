@@ -1,0 +1,147 @@
+{
+  "buildFiles": [
+    "/Users/akshaypanchal/Freenace_Projects/AtharvCare/node_modules/@react-native-async-storage/async-storage/android/build/generated/source/codegen/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/Freenace_Projects/AtharvCare/node_modules/@react-native-documents/picker/android/build/generated/source/codegen/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/Freenace_Projects/AtharvCare/node_modules/react-native-blob-util/android/build/generated/source/codegen/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/Freenace_Projects/AtharvCare/node_modules/react-native-date-picker/android/build/generated/source/codegen/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/Freenace_Projects/AtharvCare/node_modules/react-native-gesture-handler/android/build/generated/source/codegen/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/Freenace_Projects/AtharvCare/node_modules/react-native-image-picker/android/build/generated/source/codegen/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/Freenace_Projects/AtharvCare/node_modules/react-native-maps/android/src/main/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/Freenace_Projects/AtharvCare/node_modules/react-native-pdf/android/build/generated/source/codegen/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/Freenace_Projects/AtharvCare/node_modules/react-native-reanimated/android/build/generated/source/codegen/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/Freenace_Projects/AtharvCare/node_modules/react-native-safe-area-context/android/src/main/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/Freenace_Projects/AtharvCare/node_modules/react-native-screens/android/src/main/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/Freenace_Projects/AtharvCare/node_modules/react-native-svg/android/src/main/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/Freenace_Projects/AtharvCare/node_modules/react-native-webview/android/build/generated/source/codegen/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/Freenace_Projects/AtharvCare/node_modules/react-native-worklets/android/build/generated/source/codegen/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/Freenace_Projects/AtharvCare/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/Users/akshaypanchal/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/Users/akshaypanchal/Freenace_Projects/AtharvCare/android/app/.cxx/Debug/x503o6k1/x86",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/Users/akshaypanchal/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/Users/akshaypanchal/Freenace_Projects/AtharvCare/android/app/.cxx/Debug/x503o6k1/x86",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "appmodules::@6890427a1f51a3e7e1df": {
+      "toolchain": "toolchain",
+      "abi": "x86",
+      "artifactName": "appmodules",
+      "output": "/Users/akshaypanchal/Freenace_Projects/AtharvCare/android/app/build/intermediates/cxx/Debug/x503o6k1/obj/x86/libappmodules.so",
+      "runtimeFiles": [
+        "/Users/akshaypanchal/Freenace_Projects/AtharvCare/android/app/build/intermediates/cxx/Debug/x503o6k1/obj/x86/libreact_codegen_safeareacontext.so",
+        "/Users/akshaypanchal/Freenace_Projects/AtharvCare/android/app/build/intermediates/cxx/Debug/x503o6k1/obj/x86/libreact_codegen_rnscreens.so",
+        "/Users/akshaypanchal/Freenace_Projects/AtharvCare/android/app/build/intermediates/cxx/Debug/x503o6k1/obj/x86/libreact_codegen_rnsvg.so",
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/6be7d8c2dd47ecc2d64b5424b50ecb09/transformed/fbjni-0.7.0/prefab/modules/fbjni/libs/android.x86/libfbjni.so",
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/d3741630e4f7cf2c14ac0974a2726acc/transformed/react-android-0.84.1-debug/prefab/modules/jsi/libs/android.x86/libjsi.so",
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/d3741630e4f7cf2c14ac0974a2726acc/transformed/react-android-0.84.1-debug/prefab/modules/reactnative/libs/android.x86/libreactnative.so"
+      ]
+    },
+    "react_codegen_AsyncStorageSpec::@15af80695a6281ecf900": {
+      "toolchain": "toolchain",
+      "abi": "x86",
+      "artifactName": "react_codegen_AsyncStorageSpec"
+    },
+    "react_codegen_RNCWebViewSpec::@eb48929f9f7453740a6c": {
+      "toolchain": "toolchain",
+      "abi": "x86",
+      "artifactName": "react_codegen_RNCWebViewSpec"
+    },
+    "react_codegen_RNDatePickerSpecs::@c00f981c6e74346c63d4": {
+      "toolchain": "toolchain",
+      "abi": "x86",
+      "artifactName": "react_codegen_RNDatePickerSpecs"
+    },
+    "react_codegen_RNImagePickerSpec::@f66ee9a2efecfb28bee4": {
+      "toolchain": "toolchain",
+      "abi": "x86",
+      "artifactName": "react_codegen_RNImagePickerSpec"
+    },
+    "react_codegen_RNMapsSpecs::@5748abef1962d24942ec": {
+      "toolchain": "toolchain",
+      "abi": "x86",
+      "artifactName": "react_codegen_RNMapsSpecs"
+    },
+    "react_codegen_ReactNativeBlobUtilSpec::@7d3cc6108106e04bb830": {
+      "toolchain": "toolchain",
+      "abi": "x86",
+      "artifactName": "react_codegen_ReactNativeBlobUtilSpec"
+    },
+    "react_codegen_rndocumentpickerCGen::@aac1846a245ca418eb66": {
+      "toolchain": "toolchain",
+      "abi": "x86",
+      "artifactName": "react_codegen_rndocumentpickerCGen"
+    },
+    "react_codegen_rngesturehandler_codegen::@39f233abcd2c728bc6ec": {
+      "toolchain": "toolchain",
+      "abi": "x86",
+      "artifactName": "react_codegen_rngesturehandler_codegen"
+    },
+    "react_codegen_rnpdf::@7ef4ba29a735fbf48be7": {
+      "toolchain": "toolchain",
+      "abi": "x86",
+      "artifactName": "react_codegen_rnpdf"
+    },
+    "react_codegen_rnreanimated::@8afabad14bfffa3f8b9a": {
+      "toolchain": "toolchain",
+      "abi": "x86",
+      "artifactName": "react_codegen_rnreanimated"
+    },
+    "react_codegen_rnscreens::@25bcbd507e98d3a854ad": {
+      "toolchain": "toolchain",
+      "abi": "x86",
+      "artifactName": "react_codegen_rnscreens",
+      "output": "/Users/akshaypanchal/Freenace_Projects/AtharvCare/android/app/build/intermediates/cxx/Debug/x503o6k1/obj/x86/libreact_codegen_rnscreens.so",
+      "runtimeFiles": [
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/d3741630e4f7cf2c14ac0974a2726acc/transformed/react-android-0.84.1-debug/prefab/modules/reactnative/libs/android.x86/libreactnative.so",
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/d3741630e4f7cf2c14ac0974a2726acc/transformed/react-android-0.84.1-debug/prefab/modules/jsi/libs/android.x86/libjsi.so",
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/6be7d8c2dd47ecc2d64b5424b50ecb09/transformed/fbjni-0.7.0/prefab/modules/fbjni/libs/android.x86/libfbjni.so"
+      ]
+    },
+    "react_codegen_rnsvg::@4f40eb209d0c0b4a3b65": {
+      "toolchain": "toolchain",
+      "abi": "x86",
+      "artifactName": "react_codegen_rnsvg",
+      "output": "/Users/akshaypanchal/Freenace_Projects/AtharvCare/android/app/build/intermediates/cxx/Debug/x503o6k1/obj/x86/libreact_codegen_rnsvg.so",
+      "runtimeFiles": [
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/d3741630e4f7cf2c14ac0974a2726acc/transformed/react-android-0.84.1-debug/prefab/modules/reactnative/libs/android.x86/libreactnative.so",
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/d3741630e4f7cf2c14ac0974a2726acc/transformed/react-android-0.84.1-debug/prefab/modules/jsi/libs/android.x86/libjsi.so",
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/6be7d8c2dd47ecc2d64b5424b50ecb09/transformed/fbjni-0.7.0/prefab/modules/fbjni/libs/android.x86/libfbjni.so"
+      ]
+    },
+    "react_codegen_rnworklets::@68f58d84d4754f193387": {
+      "toolchain": "toolchain",
+      "abi": "x86",
+      "artifactName": "react_codegen_rnworklets"
+    },
+    "react_codegen_safeareacontext::@7984cd80db47aa7b952a": {
+      "toolchain": "toolchain",
+      "abi": "x86",
+      "artifactName": "react_codegen_safeareacontext",
+      "output": "/Users/akshaypanchal/Freenace_Projects/AtharvCare/android/app/build/intermediates/cxx/Debug/x503o6k1/obj/x86/libreact_codegen_safeareacontext.so",
+      "runtimeFiles": [
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/6be7d8c2dd47ecc2d64b5424b50ecb09/transformed/fbjni-0.7.0/prefab/modules/fbjni/libs/android.x86/libfbjni.so",
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/d3741630e4f7cf2c14ac0974a2726acc/transformed/react-android-0.84.1-debug/prefab/modules/jsi/libs/android.x86/libjsi.so",
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/d3741630e4f7cf2c14ac0974a2726acc/transformed/react-android-0.84.1-debug/prefab/modules/reactnative/libs/android.x86/libreactnative.so"
+      ]
+    }
+  },
+  "toolchains": {
+    "toolchain": {
+      "cCompilerExecutable": "/Users/akshaypanchal/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang.lld",
+      "cppCompilerExecutable": "/Users/akshaypanchal/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++.lld"
+    }
+  },
+  "cFileExtensions": [],
+  "cppFileExtensions": [
+    "cpp"
+  ]
+}

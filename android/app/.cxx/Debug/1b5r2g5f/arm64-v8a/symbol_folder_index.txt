@@ -1,0 +1,1 @@
+/Users/akshaypanchal/Freenace_Projects/Pharmacy_App/android/app/build/intermediates/cxx/Debug/1b5r2g5f/obj/arm64-v8a

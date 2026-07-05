@@ -1,0 +1,1 @@
+/Users/akshaypanchal/Freenace_Projects/AtharvCare/android/app/build/intermediates/cxx/RelWithDebInfo/q1z6zw1j/obj/arm64-v8a

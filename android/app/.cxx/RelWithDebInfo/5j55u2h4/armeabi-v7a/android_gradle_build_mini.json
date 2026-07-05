@@ -1,0 +1,127 @@
+{
+  "buildFiles": [
+    "/Users/akshaypanchal/Freenace_Projects/Pharmacy_App/node_modules/@react-native-async-storage/async-storage/android/build/generated/source/codegen/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/Freenace_Projects/Pharmacy_App/node_modules/@react-native-documents/picker/android/build/generated/source/codegen/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/Freenace_Projects/Pharmacy_App/node_modules/react-native-blob-util/android/build/generated/source/codegen/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/Freenace_Projects/Pharmacy_App/node_modules/react-native-date-picker/android/build/generated/source/codegen/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/Freenace_Projects/Pharmacy_App/node_modules/react-native-gesture-handler/android/build/generated/source/codegen/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/Freenace_Projects/Pharmacy_App/node_modules/react-native-image-picker/android/build/generated/source/codegen/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/Freenace_Projects/Pharmacy_App/node_modules/react-native-pdf/android/build/generated/source/codegen/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/Freenace_Projects/Pharmacy_App/node_modules/react-native-reanimated/android/build/generated/source/codegen/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/Freenace_Projects/Pharmacy_App/node_modules/react-native-safe-area-context/android/src/main/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/Freenace_Projects/Pharmacy_App/node_modules/react-native-screens/android/src/main/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/Freenace_Projects/Pharmacy_App/node_modules/react-native-svg/android/src/main/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/Freenace_Projects/Pharmacy_App/node_modules/react-native-webview/android/build/generated/source/codegen/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/Freenace_Projects/Pharmacy_App/node_modules/react-native-worklets/android/build/generated/source/codegen/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/Freenace_Projects/Pharmacy_App/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/Users/akshaypanchal/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/Users/akshaypanchal/Freenace_Projects/Pharmacy_App/android/app/.cxx/RelWithDebInfo/5j55u2h4/armeabi-v7a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/Users/akshaypanchal/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/Users/akshaypanchal/Freenace_Projects/Pharmacy_App/android/app/.cxx/RelWithDebInfo/5j55u2h4/armeabi-v7a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "react_codegen_safeareacontext::@7984cd80db47aa7b952a": {
+      "artifactName": "react_codegen_safeareacontext",
+      "abi": "armeabi-v7a",
+      "output": "/Users/akshaypanchal/Freenace_Projects/Pharmacy_App/android/app/build/intermediates/cxx/RelWithDebInfo/5j55u2h4/obj/armeabi-v7a/libreact_codegen_safeareacontext.so",
+      "runtimeFiles": [
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/6be7d8c2dd47ecc2d64b5424b50ecb09/transformed/fbjni-0.7.0/prefab/modules/fbjni/libs/android.armeabi-v7a/libfbjni.so",
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/d87b89ec0bac980044254d6f3dc6fd89/transformed/react-android-0.84.1-release/prefab/modules/jsi/libs/android.armeabi-v7a/libjsi.so",
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/d87b89ec0bac980044254d6f3dc6fd89/transformed/react-android-0.84.1-release/prefab/modules/reactnative/libs/android.armeabi-v7a/libreactnative.so"
+      ]
+    },
+    "react_codegen_rngesturehandler_codegen::@39f233abcd2c728bc6ec": {
+      "artifactName": "react_codegen_rngesturehandler_codegen",
+      "abi": "armeabi-v7a",
+      "runtimeFiles": []
+    },
+    "react_codegen_RNCWebViewSpec::@eb48929f9f7453740a6c": {
+      "artifactName": "react_codegen_RNCWebViewSpec",
+      "abi": "armeabi-v7a",
+      "runtimeFiles": []
+    },
+    "react_codegen_rndocumentpickerCGen::@aac1846a245ca418eb66": {
+      "artifactName": "react_codegen_rndocumentpickerCGen",
+      "abi": "armeabi-v7a",
+      "runtimeFiles": []
+    },
+    "appmodules::@6890427a1f51a3e7e1df": {
+      "artifactName": "appmodules",
+      "abi": "armeabi-v7a",
+      "output": "/Users/akshaypanchal/Freenace_Projects/Pharmacy_App/android/app/build/intermediates/cxx/RelWithDebInfo/5j55u2h4/obj/armeabi-v7a/libappmodules.so",
+      "runtimeFiles": [
+        "/Users/akshaypanchal/Freenace_Projects/Pharmacy_App/android/app/build/intermediates/cxx/RelWithDebInfo/5j55u2h4/obj/armeabi-v7a/libreact_codegen_safeareacontext.so",
+        "/Users/akshaypanchal/Freenace_Projects/Pharmacy_App/android/app/build/intermediates/cxx/RelWithDebInfo/5j55u2h4/obj/armeabi-v7a/libreact_codegen_rnscreens.so",
+        "/Users/akshaypanchal/Freenace_Projects/Pharmacy_App/android/app/build/intermediates/cxx/RelWithDebInfo/5j55u2h4/obj/armeabi-v7a/libreact_codegen_rnsvg.so",
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/6be7d8c2dd47ecc2d64b5424b50ecb09/transformed/fbjni-0.7.0/prefab/modules/fbjni/libs/android.armeabi-v7a/libfbjni.so",
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/d87b89ec0bac980044254d6f3dc6fd89/transformed/react-android-0.84.1-release/prefab/modules/jsi/libs/android.armeabi-v7a/libjsi.so",
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/d87b89ec0bac980044254d6f3dc6fd89/transformed/react-android-0.84.1-release/prefab/modules/reactnative/libs/android.armeabi-v7a/libreactnative.so"
+      ]
+    },
+    "react_codegen_ReactNativeBlobUtilSpec::@7d3cc6108106e04bb830": {
+      "artifactName": "react_codegen_ReactNativeBlobUtilSpec",
+      "abi": "armeabi-v7a",
+      "runtimeFiles": []
+    },
+    "react_codegen_rnsvg::@4f40eb209d0c0b4a3b65": {
+      "artifactName": "react_codegen_rnsvg",
+      "abi": "armeabi-v7a",
+      "output": "/Users/akshaypanchal/Freenace_Projects/Pharmacy_App/android/app/build/intermediates/cxx/RelWithDebInfo/5j55u2h4/obj/armeabi-v7a/libreact_codegen_rnsvg.so",
+      "runtimeFiles": [
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/d87b89ec0bac980044254d6f3dc6fd89/transformed/react-android-0.84.1-release/prefab/modules/reactnative/libs/android.armeabi-v7a/libreactnative.so",
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/d87b89ec0bac980044254d6f3dc6fd89/transformed/react-android-0.84.1-release/prefab/modules/jsi/libs/android.armeabi-v7a/libjsi.so",
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/6be7d8c2dd47ecc2d64b5424b50ecb09/transformed/fbjni-0.7.0/prefab/modules/fbjni/libs/android.armeabi-v7a/libfbjni.so"
+      ]
+    },
+    "react_codegen_rnworklets::@68f58d84d4754f193387": {
+      "artifactName": "react_codegen_rnworklets",
+      "abi": "armeabi-v7a",
+      "runtimeFiles": []
+    },
+    "react_codegen_rnreanimated::@8afabad14bfffa3f8b9a": {
+      "artifactName": "react_codegen_rnreanimated",
+      "abi": "armeabi-v7a",
+      "runtimeFiles": []
+    },
+    "react_codegen_rnpdf::@7ef4ba29a735fbf48be7": {
+      "artifactName": "react_codegen_rnpdf",
+      "abi": "armeabi-v7a",
+      "runtimeFiles": []
+    },
+    "react_codegen_RNImagePickerSpec::@f66ee9a2efecfb28bee4": {
+      "artifactName": "react_codegen_RNImagePickerSpec",
+      "abi": "armeabi-v7a",
+      "runtimeFiles": []
+    },
+    "react_codegen_rnscreens::@25bcbd507e98d3a854ad": {
+      "artifactName": "react_codegen_rnscreens",
+      "abi": "armeabi-v7a",
+      "output": "/Users/akshaypanchal/Freenace_Projects/Pharmacy_App/android/app/build/intermediates/cxx/RelWithDebInfo/5j55u2h4/obj/armeabi-v7a/libreact_codegen_rnscreens.so",
+      "runtimeFiles": [
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/d87b89ec0bac980044254d6f3dc6fd89/transformed/react-android-0.84.1-release/prefab/modules/reactnative/libs/android.armeabi-v7a/libreactnative.so",
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/d87b89ec0bac980044254d6f3dc6fd89/transformed/react-android-0.84.1-release/prefab/modules/jsi/libs/android.armeabi-v7a/libjsi.so",
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/6be7d8c2dd47ecc2d64b5424b50ecb09/transformed/fbjni-0.7.0/prefab/modules/fbjni/libs/android.armeabi-v7a/libfbjni.so"
+      ]
+    },
+    "react_codegen_AsyncStorageSpec::@15af80695a6281ecf900": {
+      "artifactName": "react_codegen_AsyncStorageSpec",
+      "abi": "armeabi-v7a",
+      "runtimeFiles": []
+    },
+    "react_codegen_RNDatePickerSpecs::@c00f981c6e74346c63d4": {
+      "artifactName": "react_codegen_RNDatePickerSpecs",
+      "abi": "armeabi-v7a",
+      "runtimeFiles": []
+    }
+  }
+}

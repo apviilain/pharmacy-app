@@ -1,0 +1,61 @@
+{
+  "buildFiles": [
+    "/Users/akshaypanchal/AtharvCare/node_modules/react-native-safe-area-context/android/src/main/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/AtharvCare/node_modules/react-native-screens/android/src/main/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/AtharvCare/node_modules/react-native-webview/android/build/generated/source/codegen/jni/CMakeLists.txt",
+    "/Users/akshaypanchal/AtharvCare/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/Users/akshaypanchal/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/Users/akshaypanchal/AtharvCare/android/app/.cxx/RelWithDebInfo/1eq6l125/arm64-v8a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/Users/akshaypanchal/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/Users/akshaypanchal/AtharvCare/android/app/.cxx/RelWithDebInfo/1eq6l125/arm64-v8a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "react_codegen_safeareacontext::@7984cd80db47aa7b952a": {
+      "artifactName": "react_codegen_safeareacontext",
+      "abi": "arm64-v8a",
+      "output": "/Users/akshaypanchal/AtharvCare/android/app/build/intermediates/cxx/RelWithDebInfo/1eq6l125/obj/arm64-v8a/libreact_codegen_safeareacontext.so",
+      "runtimeFiles": [
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/6be7d8c2dd47ecc2d64b5424b50ecb09/transformed/fbjni-0.7.0/prefab/modules/fbjni/libs/android.arm64-v8a/libfbjni.so",
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/d87b89ec0bac980044254d6f3dc6fd89/transformed/react-android-0.84.1-release/prefab/modules/jsi/libs/android.arm64-v8a/libjsi.so",
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/d87b89ec0bac980044254d6f3dc6fd89/transformed/react-android-0.84.1-release/prefab/modules/reactnative/libs/android.arm64-v8a/libreactnative.so"
+      ]
+    },
+    "react_codegen_RNCWebViewSpec::@eb48929f9f7453740a6c": {
+      "artifactName": "react_codegen_RNCWebViewSpec",
+      "abi": "arm64-v8a",
+      "runtimeFiles": []
+    },
+    "react_codegen_rnscreens::@25bcbd507e98d3a854ad": {
+      "artifactName": "react_codegen_rnscreens",
+      "abi": "arm64-v8a",
+      "output": "/Users/akshaypanchal/AtharvCare/android/app/build/intermediates/cxx/RelWithDebInfo/1eq6l125/obj/arm64-v8a/libreact_codegen_rnscreens.so",
+      "runtimeFiles": [
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/d87b89ec0bac980044254d6f3dc6fd89/transformed/react-android-0.84.1-release/prefab/modules/reactnative/libs/android.arm64-v8a/libreactnative.so",
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/d87b89ec0bac980044254d6f3dc6fd89/transformed/react-android-0.84.1-release/prefab/modules/jsi/libs/android.arm64-v8a/libjsi.so",
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/6be7d8c2dd47ecc2d64b5424b50ecb09/transformed/fbjni-0.7.0/prefab/modules/fbjni/libs/android.arm64-v8a/libfbjni.so"
+      ]
+    },
+    "appmodules::@6890427a1f51a3e7e1df": {
+      "artifactName": "appmodules",
+      "abi": "arm64-v8a",
+      "output": "/Users/akshaypanchal/AtharvCare/android/app/build/intermediates/cxx/RelWithDebInfo/1eq6l125/obj/arm64-v8a/libappmodules.so",
+      "runtimeFiles": [
+        "/Users/akshaypanchal/AtharvCare/android/app/build/intermediates/cxx/RelWithDebInfo/1eq6l125/obj/arm64-v8a/libreact_codegen_safeareacontext.so",
+        "/Users/akshaypanchal/AtharvCare/android/app/build/intermediates/cxx/RelWithDebInfo/1eq6l125/obj/arm64-v8a/libreact_codegen_rnscreens.so",
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/6be7d8c2dd47ecc2d64b5424b50ecb09/transformed/fbjni-0.7.0/prefab/modules/fbjni/libs/android.arm64-v8a/libfbjni.so",
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/d87b89ec0bac980044254d6f3dc6fd89/transformed/react-android-0.84.1-release/prefab/modules/jsi/libs/android.arm64-v8a/libjsi.so",
+        "/Users/akshaypanchal/.gradle/caches/9.0.0/transforms/d87b89ec0bac980044254d6f3dc6fd89/transformed/react-android-0.84.1-release/prefab/modules/reactnative/libs/android.arm64-v8a/libreactnative.so"
+      ]
+    }
+  }
+}

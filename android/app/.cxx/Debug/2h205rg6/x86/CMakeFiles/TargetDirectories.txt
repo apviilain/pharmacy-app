@@ -1,0 +1,15 @@
+/Users/akshaypanchal/AtharvCare/android/app/.cxx/Debug/2h205rg6/x86/CMakeFiles/appmodules.dir
+/Users/akshaypanchal/AtharvCare/android/app/.cxx/Debug/2h205rg6/x86/CMakeFiles/edit_cache.dir
+/Users/akshaypanchal/AtharvCare/android/app/.cxx/Debug/2h205rg6/x86/CMakeFiles/rebuild_cache.dir
+/Users/akshaypanchal/AtharvCare/android/app/.cxx/Debug/2h205rg6/x86/safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir
+/Users/akshaypanchal/AtharvCare/android/app/.cxx/Debug/2h205rg6/x86/safeareacontext_autolinked_build/CMakeFiles/edit_cache.dir
+/Users/akshaypanchal/AtharvCare/android/app/.cxx/Debug/2h205rg6/x86/safeareacontext_autolinked_build/CMakeFiles/rebuild_cache.dir
+/Users/akshaypanchal/AtharvCare/android/app/.cxx/Debug/2h205rg6/x86/rnscreens_autolinked_build/CMakeFiles/react_codegen_rnscreens.dir
+/Users/akshaypanchal/AtharvCare/android/app/.cxx/Debug/2h205rg6/x86/rnscreens_autolinked_build/CMakeFiles/edit_cache.dir
+/Users/akshaypanchal/AtharvCare/android/app/.cxx/Debug/2h205rg6/x86/rnscreens_autolinked_build/CMakeFiles/rebuild_cache.dir
+/Users/akshaypanchal/AtharvCare/android/app/.cxx/Debug/2h205rg6/x86/rnsvg_autolinked_build/CMakeFiles/react_codegen_rnsvg.dir
+/Users/akshaypanchal/AtharvCare/android/app/.cxx/Debug/2h205rg6/x86/rnsvg_autolinked_build/CMakeFiles/edit_cache.dir
+/Users/akshaypanchal/AtharvCare/android/app/.cxx/Debug/2h205rg6/x86/rnsvg_autolinked_build/CMakeFiles/rebuild_cache.dir
+/Users/akshaypanchal/AtharvCare/android/app/.cxx/Debug/2h205rg6/x86/RNCWebViewSpec_autolinked_build/CMakeFiles/react_codegen_RNCWebViewSpec.dir
+/Users/akshaypanchal/AtharvCare/android/app/.cxx/Debug/2h205rg6/x86/RNCWebViewSpec_autolinked_build/CMakeFiles/edit_cache.dir
+/Users/akshaypanchal/AtharvCare/android/app/.cxx/Debug/2h205rg6/x86/RNCWebViewSpec_autolinked_build/CMakeFiles/rebuild_cache.dir
