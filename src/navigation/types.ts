@@ -94,6 +94,4 @@ export type RootStackParamList = {
   SignUp: undefined;
   OtpVerification: { phone: string };
   CompleteProfile: undefined;
-  MpinSetup: { fromSettings?: boolean } | undefined;
-  MpinUnlock: undefined;
 };

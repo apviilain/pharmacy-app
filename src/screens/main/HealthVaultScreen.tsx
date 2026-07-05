@@ -22,7 +22,7 @@ import { typography } from '../../theme/typography';
 import { scale, verticalScale } from '../../theme/responsive';
 import { appointmentService } from '../../api/appointmentService';
 import { ListSkeleton } from '../../components/ListSkeleton';
-import { BASE_URL } from '@env';
+import { env } from '../../config/env';
 
 const FILTERS = ['All', 'Reports', 'Prescriptions', 'Documents'] as const;
 type FilterType = (typeof FILTERS)[number];
@@ -61,7 +61,9 @@ type VaultItem = {
 const buildFullUrl = (path: string) => {
   if (!path) return '';
   if (path.startsWith('http')) return path;
-  const base = BASE_URL?.endsWith('/') ? BASE_URL.slice(0, -1) : BASE_URL;
+  const base = env.BASE_URL?.endsWith('/')
+    ? env.BASE_URL.slice(0, -1)
+    : env.BASE_URL;
   return `${base}${path.startsWith('/') ? path : '/' + path}`;
 };
 

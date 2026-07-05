@@ -9,7 +9,7 @@ import type {
 export const pharmacyService = {
   getMyProfile: async (): Promise<PharmyxPharmacyProfile | null> => {
     const response: any = await apiClient.get(
-      endpoints.pharmacies.me,
+      endpoints.auth.profile,
     );
     return response || null;
   },

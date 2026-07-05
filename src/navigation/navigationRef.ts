@@ -10,11 +10,3 @@ export const resetToAuth = () => {
     routes: [{ name: 'SignIn' }],
   });
 };
-
-export const resetToMpinUnlock = () => {
-  if (!navigationRef.isReady()) return;
-  navigationRef.resetRoot({
-    index: 0,
-    routes: [{ name: 'MpinUnlock' }],
-  });
-};

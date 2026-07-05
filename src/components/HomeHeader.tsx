@@ -86,8 +86,14 @@ export default function HomeHeader({ scrollY }: HomeHeaderProps) {
       try {
         const response = await pharmacyService.getMyProfile();
         const data = mapPharmacyProfileToUser(response);
+        const existingUser = useAuthStore.getState().user;
         if (data) {
-          setUser(data);
+          setUser({
+            ...existingUser,
+            ...data,
+            phone: data.phone || existingUser?.phone || '',
+            mobile: data.mobile || existingUser?.mobile || existingUser?.phone || '',
+          });
         }
       } catch (error) {
         console.error('Failed to fetch user details', error);

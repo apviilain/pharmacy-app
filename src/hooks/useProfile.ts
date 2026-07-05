@@ -66,7 +66,12 @@ export const useProfile = () => {
       const data = mapPharmacyProfileToUser(response);
 
       if (data) {
-        setUser(data);
+        setUser({
+          ...user,
+          ...data,
+          phone: data.phone || user?.phone || '',
+          mobile: data.mobile || user?.mobile || user?.phone || '',
+        });
         populateForm(data);
       }
     } catch (error) {
@@ -115,7 +120,12 @@ export const useProfile = () => {
       const createdProfile = await pharmacyService.createProfile(payload);
       const mappedUser = mapPharmacyProfileToUser(createdProfile);
       if (mappedUser) {
-        setUser({ ...user, ...mappedUser });
+        setUser({
+          ...user,
+          ...mappedUser,
+          phone: mappedUser.phone || user?.phone || '',
+          mobile: mappedUser.mobile || user?.mobile || user?.phone || '',
+        });
       }
       await useAuthStore.getState().setProfileComplete(true);
       await fetchProfile();

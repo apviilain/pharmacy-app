@@ -7,7 +7,6 @@ import { typography } from '../../theme/typography';
 import { scale, verticalScale } from '../../theme/responsive';
 import { useAuthStore } from '../../state/authStore';
 import { useSettingsStore } from '../../state/settingsStore';
-import { useSecurityStore } from '../../state/securityStore';
 
 // Replace 'any' with actual root stack param list when linking
 type AuthNavigationProp = NativeStackNavigationProp<any, 'Splash'>;
@@ -15,7 +14,6 @@ type AuthNavigationProp = NativeStackNavigationProp<any, 'Splash'>;
 export const SplashScreen = () => {
   const navigation = useNavigation<AuthNavigationProp>();
   const bootstrapAuth = useAuthStore(s => s.bootstrapAuth);
-  const bootstrapSecurity = useSecurityStore(s => s.bootstrapSecurity);
 
   // Animation values
   const scaleValue = useRef(new Animated.Value(0.5)).current;
@@ -45,7 +43,6 @@ export const SplashScreen = () => {
       await Promise.all([
         bootstrapAuth(),
         useSettingsStore.getState().bootstrapSettings(),
-        bootstrapSecurity(),
       ]);
 
       // Keep the animation visible for at least 2.5s.
@@ -65,27 +62,12 @@ export const SplashScreen = () => {
           return;
         }
 
-        const securityState = useSecurityStore.getState();
-        const settingsState = useSettingsStore.getState();
-        if (!securityState.hasMpin && !settingsState.mpinSetupSkipped) {
-          navigation.replace('MpinSetup');
-          return;
-        }
-
-        if (!securityState.hasMpin) {
-          const { isProfileComplete } = authState;
-          navigation.replace(isProfileComplete === false ? 'CompleteProfile' : 'MainTabs');
-          return;
-        }
-
         const { isProfileComplete } = authState;
         if (isProfileComplete === false) {
           navigation.replace('CompleteProfile');
           return;
         }
-
-        await securityState.lockApp();
-        navigation.replace('MpinUnlock');
+        navigation.replace('MainTabs');
       } else {
         navigation.replace('SignIn');
       }
@@ -98,7 +80,7 @@ export const SplashScreen = () => {
     return () => {
       cancelled = true;
     };
-  }, [navigation, opacityValue, scaleValue, bootstrapAuth, bootstrapSecurity]);
+  }, [navigation, opacityValue, scaleValue, bootstrapAuth]);
 
   return (
     <View style={styles.container}>

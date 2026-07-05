@@ -26,7 +26,6 @@ import { scale, verticalScale } from '../../theme/responsive';
 
 import type { RootStackParamList } from '../../navigation/types';
 import { profileMenu, profileStats } from '../profile/mockProfileData';
-import { BASE_URL } from '@env';
 import { walletApi } from '../../api/walletApi';
 import { useQuery } from '@tanstack/react-query';
 import { appointmentService } from '../../api/appointmentService';
@@ -179,9 +178,9 @@ export const ProfileScreen = () => {
                           return rawUrl;
                         }
 
-                        const baseUrlTrimmed = BASE_URL.endsWith('/')
-                          ? BASE_URL.slice(0, -1)
-                          : BASE_URL;
+                        const baseUrlTrimmed = env.BASE_URL.endsWith('/')
+                          ? env.BASE_URL.slice(0, -1)
+                          : env.BASE_URL;
                         const relativePath = rawUrl.startsWith('/')
                           ? rawUrl
                           : '/' + rawUrl;

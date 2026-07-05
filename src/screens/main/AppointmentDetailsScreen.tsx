@@ -35,7 +35,7 @@ import {
   Pill,
   Stethoscope,
 } from 'lucide-react-native';
-import { BASE_URL } from '@env';
+import { env } from '../../config/env';
 import LinearGradient from 'react-native-linear-gradient';
 import Pdf from 'react-native-pdf';
 import ReactNativeBlobUtil from 'react-native-blob-util';
@@ -46,7 +46,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { appointmentService } from '../../api/appointmentService';
 import { walletApi } from '../../api/walletApi';
 import { telehealthService } from '../../api/telehealthService';
-import { env } from '../../config/env';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { scale, verticalScale } from '../../theme/responsive';

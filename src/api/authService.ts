@@ -55,10 +55,16 @@ export const authService = {
 
     await useAuthStore.getState().setTokens({ accessToken, refreshToken, isProfileComplete });
     useAuthStore.getState().setUser(
-      mappedUser || {
-        phone: input.phone,
-        mobile: input.phone,
-      },
+      mappedUser
+        ? {
+            ...mappedUser,
+            phone: mappedUser.phone || input.phone,
+            mobile: mappedUser.mobile || input.phone,
+          }
+        : {
+            phone: input.phone,
+            mobile: input.phone,
+          },
     );
 
     return data;

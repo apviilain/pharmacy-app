@@ -9,8 +9,6 @@ import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { scale, verticalScale } from '../../theme/responsive';
 import { useSettingsStore } from '../../state/settingsStore';
-import { biometricAuth } from '../../services/biometricAuth';
-import { useSecurityStore } from '../../state/securityStore';
 import { RootStackParamList } from '../../navigation/types';
 
 const APP_VERSION = require('../../../package.json').version;
@@ -47,65 +45,15 @@ export const SettingsScreen = () => {
   const insets = useSafeAreaInsets();
   const { 
     pushEnabled, 
-    biometricEnabled, 
     twoFactorEnabled, 
-    setBiometricEnabled,
     togglePush, 
     toggleTwoFactor,
     bootstrapSettings
   } = useSettingsStore();
-  const hasMpin = useSecurityStore(state => state.hasMpin);
 
   useEffect(() => {
     bootstrapSettings();
   }, [bootstrapSettings]);
-
-  const handleBiometricToggle = async (newValue: boolean) => {
-    if (newValue && !hasMpin) {
-      Toast.show({
-        type: 'info',
-        text1: 'Set MPIN First',
-        text2: 'Create your MPIN before enabling biometric login.',
-      });
-      return;
-    }
-
-    try {
-      const availability = await biometricAuth.getAvailability();
-      
-      if (!availability.available) {
-        if (newValue) {
-          Toast.show({
-            type: 'error',
-            text1: 'Not Supported',
-            text2:
-              availability.reason ||
-              'Biometric authentication is not available.',
-          });
-          return;
-        } else {
-          await setBiometricEnabled(false);
-          return;
-        }
-      }
-
-      const result = await biometricAuth.prompt(
-        newValue
-          ? 'Verify identity to enable biometric login'
-          : 'Verify identity to disable biometric login',
-      );
-      
-      if (result.success) {
-        await setBiometricEnabled(newValue);
-      }
-    } catch {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Biometric verification failed.',
-      });
-    }
-  };
 
   const handlePushToggle = async (newValue: boolean) => {
     if (newValue) {
@@ -184,16 +132,6 @@ export const SettingsScreen = () => {
 
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>SECURITY</Text>
-        <Row
-          title={hasMpin ? 'Change MPIN' : 'Set MPIN'}
-          subtitle={hasMpin ? 'Update your app unlock code' : 'Create a secure code for app unlock'}
-          onPress={() => navigation.navigate('MpinSetup', { fromSettings: true })}
-        />
-        <Row
-          title="Biometric Login"
-          subtitle={hasMpin ? 'Face ID / Fingerprint' : 'Create MPIN to enable'}
-          right={<Switch value={biometricEnabled} onValueChange={handleBiometricToggle} />}
-        />
         <Row
           title="Two-Factor Auth"
           subtitle="OTP on every login"

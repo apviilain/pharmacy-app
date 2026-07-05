@@ -23,8 +23,6 @@ import type { ApiError } from '../../api/errorHandler';
 import { useAuthStore } from '../../state/authStore';
 import { hasCompletedPharmacyProfile, mapPharmacyProfileToUser } from '../../api/pharmyx';
 import { pharmacyService } from '../../api/pharmacyService';
-import { useSecurityStore } from '../../state/securityStore';
-import { useSettingsStore } from '../../state/settingsStore';
 
 type ParamList = {
   OtpVerification: { phone: string };
@@ -61,28 +59,27 @@ export const OtpVerificationScreen = () => {
 
       try {
         const profileRes = await pharmacyService.getMyProfile();
+        const existingUser = useAuthStore.getState().user;
         const user = mapPharmacyProfileToUser(profileRes);
         const hasName = hasCompletedPharmacyProfile(profileRes);
 
         if (user) {
-          useAuthStore.getState().setUser(user);
+          useAuthStore.getState().setUser({
+            ...existingUser,
+            ...user,
+            phone: user.phone || existingUser?.phone || phone,
+            mobile: user.mobile || existingUser?.mobile || phone,
+          });
         }
 
         // Update profile completion flag
         await useAuthStore.getState().setProfileComplete(hasName);
 
         setTimeout(() => {
-          const { hasMpin } = useSecurityStore.getState();
-          const { mpinSetupSkipped } = useSettingsStore.getState();
-
-          if (hasMpin || mpinSetupSkipped) {
-            navigation.reset({
-              index: 0,
-              routes: [{ name: hasName ? 'MainTabs' : 'CompleteProfile' }],
-            });
-          } else {
-            navigation.reset({ index: 0, routes: [{ name: 'MpinSetup' }] });
-          }
+          navigation.reset({
+            index: 0,
+            routes: [{ name: hasName ? 'MainTabs' : 'CompleteProfile' }],
+          });
         }, 800);
       } catch (profileError) {
         console.error('Failed to fetch profile after login:', profileError);

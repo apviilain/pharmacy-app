@@ -2,9 +2,9 @@ export const endpoints = {
   auth: {
     sendOtp: '/api/v1/auth/pharmacy/send',
     verifyOtp: '/api/v1/auth/pharmacy/verify',
+    profile: '/api/v1/auth/profile',
   },
   pharmacies: {
-    me: '/api/v1/pharmacies/me/profile',
     create: '/api/v1/pharmacies',
     list: '/api/v1/pharmacies',
     details: (id: string) => `/api/v1/pharmacies/${id}`,

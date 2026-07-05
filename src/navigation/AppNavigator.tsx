@@ -35,8 +35,6 @@ import { SignInScreen } from '../screens/auth/SignInScreen';
 import { SignUpScreen } from '../screens/auth/SignUpScreen';
 import { OtpVerificationScreen } from '../screens/auth/OtpVerificationScreen';
 import { CompleteProfileScreen } from '../screens/auth/CompleteProfileScreen';
-import { MpinSetupScreen } from '../screens/auth/MpinSetupScreen';
-import { MpinUnlockScreen } from '../screens/auth/MpinUnlockScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -75,8 +73,6 @@ export function AppNavigator() {
             case 'SignUp': title = 'Sign Up'; break;
             case 'OtpVerification': title = 'Verification'; break;
             case 'CompleteProfile': title = 'Complete Profile'; break;
-            case 'MpinSetup': title = 'Set MPIN'; break;
-            case 'MpinUnlock': title = 'Unlock'; break;
             default: break;
           }
 
@@ -85,12 +81,8 @@ export function AppNavigator() {
             'MainTabs', 
             'GlobalSearch', 
             'BookingSuccess',
-            'MpinUnlock',
           ];
-          const isSettingsMpinSetup =
-            route.name === 'MpinSetup' &&
-            !!(route.params as { fromSettings?: boolean } | undefined)?.fromSettings;
-          const isHeaderShown = isSettingsMpinSetup || !noHeaderScreens.includes(route.name);
+          const isHeaderShown = !noHeaderScreens.includes(route.name);
 
           return {
             headerShown: isHeaderShown,
@@ -116,8 +108,6 @@ export function AppNavigator() {
         <Stack.Screen name="SignUp" component={SignUpScreen} />
         <Stack.Screen name="OtpVerification" component={OtpVerificationScreen} />
         <Stack.Screen name="CompleteProfile" component={CompleteProfileScreen} />
-        <Stack.Screen name="MpinSetup" component={MpinSetupScreen} />
-        <Stack.Screen name="MpinUnlock" component={MpinUnlockScreen} />
 
         {/* Main App with Tabs */}
         <Stack.Screen name="MainTabs" component={MainTabs} />

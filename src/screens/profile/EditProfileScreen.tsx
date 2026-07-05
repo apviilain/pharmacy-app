@@ -36,7 +36,6 @@ import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { scale, verticalScale } from '../../theme/responsive';
 import type { RootStackParamList } from '../../navigation/types';
-import { BASE_URL } from '@env';
 import LinearGradient from 'react-native-linear-gradient';
 
 // Selection Component for Dropdowns
@@ -317,7 +316,7 @@ export const EditProfileScreen = () => {
                 <ActivityIndicator color={colors.primaryBlue} />
               ) : formData.profilePictureUrl ? (
                 <Image
-                  source={{ uri: `${BASE_URL}${formData.profilePictureUrl}` }}
+                  source={{ uri: `${env.BASE_URL}${formData.profilePictureUrl}` }}
                   style={styles.avatar}
                 />
               ) : (
