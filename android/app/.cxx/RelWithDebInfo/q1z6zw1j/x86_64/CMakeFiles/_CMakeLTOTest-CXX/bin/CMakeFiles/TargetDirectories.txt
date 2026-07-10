@@ -1,4 +1,0 @@
-/Users/akshaypanchal/Freenace_Projects/AtharvCare/android/app/.cxx/RelWithDebInfo/q1z6zw1j/x86_64/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/foo.dir
-/Users/akshaypanchal/Freenace_Projects/AtharvCare/android/app/.cxx/RelWithDebInfo/q1z6zw1j/x86_64/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/boo.dir
-/Users/akshaypanchal/Freenace_Projects/AtharvCare/android/app/.cxx/RelWithDebInfo/q1z6zw1j/x86_64/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/edit_cache.dir
-/Users/akshaypanchal/Freenace_Projects/AtharvCare/android/app/.cxx/RelWithDebInfo/q1z6zw1j/x86_64/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/rebuild_cache.dir
