@@ -16,6 +16,7 @@ import {
   ActivityIndicator,
   Share,
 } from 'react-native';
+import { useFocusEffect, useRoute } from '@react-navigation/native';
 import {
   ChevronLeft,
   MoreHorizontal,
@@ -36,29 +37,51 @@ import { ListSkeleton } from '../../components/ListSkeleton';
 import RazorpayCheckout from 'react-native-razorpay';
 import Toast from 'react-native-toast-message';
 import { env } from '../../config/env';
+import { pharmacyWalletService } from '../../api/pharmacyWalletService';
+import type { RootStackParamList } from '../../navigation/types';
+import type { WalletTopupRequest } from '../../api/pharmyx';
 
 export const WalletScreen = () => {
   const user = useAuthStore(state => state.user);
   const userId = user?.id || user?._id;
   const queryClient = useQueryClient();
+  const route = useRoute<any>();
+  const routeParams = (route.params || {}) as RootStackParamList['Wallet'];
+  const isPharmacyWallet = routeParams?.mode !== 'general';
+  const pharmacyId = String(user?.pharmacyId || user?._id || user?.id || '');
 
   const [showRecharge, setShowRecharge] = useState(false);
   const [rechargeAmt, setRechargeAmt] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
   const { data: walletData, isLoading: isLoadingWallet } = useQuery({
-    queryKey: ['walletDetails', userId],
-    queryFn: () => walletApi.getWalletDetails(userId),
-    enabled: !!userId,
+    queryKey: isPharmacyWallet
+      ? ['pharmacyWalletSummary']
+      : ['walletDetails', userId],
+    queryFn: () =>
+      isPharmacyWallet
+        ? pharmacyWalletService.getSummary()
+        : walletApi.getWalletDetails(userId),
+    enabled: isPharmacyWallet ? !!pharmacyId : !!userId,
   });
 
   const { data: transactionsData, isLoading: isLoadingTxns } = useQuery({
-    queryKey: ['walletTransactions', userId],
-    queryFn: () => walletApi.getWalletTransactions(userId),
-    enabled: !!userId,
+    queryKey: isPharmacyWallet
+      ? ['pharmacyWalletTransactions']
+      : ['walletTransactions', userId],
+    queryFn: () =>
+      isPharmacyWallet
+        ? pharmacyWalletService.getTransactions({ page: 1, limit: 50 })
+        : walletApi.getWalletTransactions(userId),
+    enabled: isPharmacyWallet ? !!pharmacyId : !!userId,
   });
 
-  const balance = walletData?.data?.balance ?? walletData?.balance ?? 0;
+  const balance = isPharmacyWallet
+    ? (walletData as any)?.availableBalance ??
+      (walletData as any)?.balance ??
+      (walletData as any)?.totalBalance ??
+      0
+    : (walletData as any)?.data?.balance ?? (walletData as any)?.balance ?? 0;
   const transactions: any[] = Array.isArray(transactionsData)
     ? transactionsData
     : (transactionsData as any)?.data || [];
@@ -101,15 +124,21 @@ Download now and enjoy the benefits 🚀`;
     }
   };
 
-  const { useFocusEffect } = require('@react-navigation/native');
-
   useFocusEffect(
     useCallback(() => {
+      if (isPharmacyWallet) {
+        queryClient.invalidateQueries({ queryKey: ['pharmacyWalletSummary'] });
+        queryClient.invalidateQueries({
+          queryKey: ['pharmacyWalletTransactions'],
+        });
+        return;
+      }
+
       queryClient.invalidateQueries({ queryKey: ['walletDetails', userId] });
       queryClient.invalidateQueries({
         queryKey: ['walletTransactions', userId],
       });
-    }, [queryClient, userId]),
+    }, [isPharmacyWallet, queryClient, userId]),
   );
 
   const handleAddMoney = async () => {
@@ -125,6 +154,28 @@ Download now and enjoy the benefits 🚀`;
 
     setIsProcessing(true);
     try {
+      if (isPharmacyWallet) {
+        const payload: WalletTopupRequest = {
+          pharmacyId,
+          amount: amountNum,
+          notes: 'Top up from profile wallet screen',
+        };
+
+        await pharmacyWalletService.topup(payload);
+        Toast.show({
+          type: 'success',
+          text1: 'Success',
+          text2: `₹${amountNum} added to pharmacy wallet successfully!`,
+        });
+        setShowRecharge(false);
+        setRechargeAmt('');
+        queryClient.invalidateQueries({ queryKey: ['pharmacyWalletSummary'] });
+        queryClient.invalidateQueries({
+          queryKey: ['pharmacyWalletTransactions'],
+        });
+        return;
+      }
+
       // 1. Get Order ID from backend
       const initRes = await walletApi.initiateRecharge({ amount: amountNum });
       console.log('Wallet Recharge Response:', initRes);
@@ -230,7 +281,9 @@ Download now and enjoy the benefits 🚀`;
           locations={[0, 0.5, 1]}
           style={styles.balanceCard}
         >
-          <Text style={styles.balanceLabel}>Available Balance</Text>
+          <Text style={styles.balanceLabel}>
+            {isPharmacyWallet ? 'Pharmacy Wallet Balance' : 'Available Balance'}
+          </Text>
           {isLoadingWallet ? (
             <Skeleton
               width={scale(150)}
@@ -249,14 +302,30 @@ Download now and enjoy the benefits 🚀`;
               style={styles.lightBtn}
               onPress={() => setShowRecharge(true)}
             >
-              <Text style={styles.lightBtnText}>+ Add Money</Text>
+              <Text style={styles.lightBtnText}>
+                {isPharmacyWallet ? '+ Top Up Wallet' : '+ Add Money'}
+              </Text>
             </TouchableOpacity>
-             <TouchableOpacity
+            <TouchableOpacity
               activeOpacity={0.85}
               style={styles.darkBtn}
-              onPress={handleShareReferral}
+              onPress={() => {
+                if (isPharmacyWallet) {
+                  queryClient.invalidateQueries({
+                    queryKey: ['pharmacyWalletSummary'],
+                  });
+                  queryClient.invalidateQueries({
+                    queryKey: ['pharmacyWalletTransactions'],
+                  });
+                  return;
+                }
+
+                handleShareReferral();
+              }}
             >
-              <Text style={styles.darkBtnText}>Refer & Earn</Text>
+              <Text style={styles.darkBtnText}>
+                {isPharmacyWallet ? 'Refresh Wallet' : 'Refer & Earn'}
+              </Text>
             </TouchableOpacity>
           </View>
         </LinearGradient>
@@ -269,11 +338,9 @@ Download now and enjoy the benefits 🚀`;
           transactions.map((t: any, idx: number) => {
             // Determine credit vs debit properly
             const amountVal = Number(t.amount || 0);
-            const titleText = (
-              t.description ||
-              t.title ||
-              'Transaction'
-            ).toLowerCase();
+            const rawTitle =
+              t.description || t.notes || t.title || t.status || 'Transaction';
+            const titleText = rawTitle.toLowerCase();
             const typeValue = (t.transactionType || t.type || '').toLowerCase();
 
             // If explicit type exists
@@ -308,7 +375,7 @@ Download now and enjoy the benefits 🚀`;
             }
 
             const amountText = `${isCredit ? '+' : '-'}₹${Math.abs(amountVal)}`;
-            const displayTitle = t.description || t.title || 'Transaction';
+            const displayTitle = rawTitle;
             const dateText = t.createdAt
               ? new Date(t.createdAt).toLocaleDateString()
               : 'Recent';
@@ -363,7 +430,9 @@ Download now and enjoy the benefits 🚀`;
               >
                 <ChevronLeft color="#333" size={24} />
               </TouchableOpacity>
-              <Text style={styles.dmHeaderTitle}>Add Money</Text>
+              <Text style={styles.dmHeaderTitle}>
+                {isPharmacyWallet ? 'Top Up Wallet' : 'Add Money'}
+              </Text>
               <TouchableOpacity onPress={() => {}} hitSlop={10}>
                 <MoreHorizontal color="#333" size={24} />
               </TouchableOpacity>
@@ -371,7 +440,9 @@ Download now and enjoy the benefits 🚀`;
 
             {/* Current Balance */}
             <View style={styles.dmBalanceWrap}>
-              <Text style={styles.dmBalanceLabel}>Current Balance</Text>
+              <Text style={styles.dmBalanceLabel}>
+                {isPharmacyWallet ? 'Current Pharmacy Balance' : 'Current Balance'}
+              </Text>
               <Text style={styles.dmBalanceValue}>
                 ₹{balance.toLocaleString('en-IN')}
               </Text>
@@ -449,7 +520,9 @@ Download now and enjoy the benefits 🚀`;
                   <ActivityIndicator color="#fff" />
                 ) : (
                   <>
-                    <Text style={styles.dmProceedBtnText}>Proceed to Pay</Text>
+                    <Text style={styles.dmProceedBtnText}>
+                      {isPharmacyWallet ? 'Confirm Top Up' : 'Proceed to Pay'}
+                    </Text>
                     <ArrowRight color="#fff" size={20} />
                   </>
                 )}

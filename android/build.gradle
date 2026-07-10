@@ -26,4 +26,42 @@ allprojects {
             url "$rootDir/../node_modules/@react-native-async-storage/async-storage/android/local_repo"
         }
     }
+
+    // Force specific dependency versions with 16KB support
+    configurations.all {
+        resolutionStrategy {
+            // Force 16KB compatible version of pdfiumandroid
+            force 'io.legere:pdfiumandroid:1.0.35'
+        }
+    }
+
+    // Inject 16KB page size linker flags for all C/C++ builds
+    plugins.withId("com.android.application") {
+        android {
+            defaultConfig {
+                externalNativeBuild {
+                    cmake {
+                        arguments "-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384"
+                    }
+                    ndkBuild {
+                        arguments "APP_LDFLAGS=-Wl,-z,max-page-size=16384"
+                    }
+                }
+            }
+        }
+    }
+    plugins.withId("com.android.library") {
+        android {
+            defaultConfig {
+                externalNativeBuild {
+                    cmake {
+                        arguments "-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384"
+                    }
+                    ndkBuild {
+                        arguments "APP_LDFLAGS=-Wl,-z,max-page-size=16384"
+                    }
+                }
+            }
+        }
+    }
 }

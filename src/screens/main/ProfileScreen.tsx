@@ -6,18 +6,11 @@ import {
   Text,
   TouchableOpacity,
   View,
-  TextInput,
-  ActivityIndicator,
-  Modal,
-  Pressable,
 } from 'react-native';
 import { ChevronRight, Edit2, User } from 'lucide-react-native';
-import Toast from 'react-native-toast-message';
-import { fileApi } from '../../api/fileApi';
 import { env } from '../../config/env';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useProfile } from '../../hooks/useProfile';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
@@ -26,13 +19,13 @@ import { scale, verticalScale } from '../../theme/responsive';
 
 import type { RootStackParamList } from '../../navigation/types';
 import { profileMenu, profileStats } from '../profile/mockProfileData';
-import { walletApi } from '../../api/walletApi';
 import { useQuery } from '@tanstack/react-query';
 import { appointmentService } from '../../api/appointmentService';
 import { CustomLogoutModal } from '../../components/profile/CustomLogoutModal';
 import { DetailsSkeleton } from '../../components/DetailsSkeleton';
 import LinearGradient from 'react-native-linear-gradient';
 import { referralApi } from '../../api/referralApi';
+import { pharmacyWalletService } from '../../api/pharmacyWalletService';
 
 const menuIconBgColors = [
   '#EAF4FF',
@@ -46,35 +39,25 @@ const menuIconBgColors = [
 export const ProfileScreen = () => {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const insets = useSafeAreaInsets();
 
   const { user, loading } = useProfile();
 
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
-  const [walletBalance, setWalletBalance] = useState<number | null>(null);
 
   const handleEditProfile = React.useCallback(() => {
     navigation.navigate('EditProfile');
   }, [navigation]);
 
+  const pharmacyWalletSummaryQuery = useQuery({
+    queryKey: ['pharmacyWalletSummary'],
+    queryFn: () => pharmacyWalletService.getSummary(),
+    enabled: !!user,
+  });
+
   useFocusEffect(
     React.useCallback(() => {
-      const fetchWallet = async () => {
-        const userId = user?._id || user?.id;
-        if (!userId) return;
-        try {
-          const response = await walletApi.getWalletDetails(userId);
-          const amount = response?.data?.balance ?? response?.balance ?? 0;
-          setWalletBalance(amount);
-        } catch (err) {
-          console.error('Wallet fetch failed in Profile:', err);
-        }
-      };
-
-      if (user) {
-        fetchWallet();
-      }
-    }, [user]),
+      pharmacyWalletSummaryQuery.refetch();
+    }, [pharmacyWalletSummaryQuery]),
   );
 
   const { data: appointments } = useQuery({
@@ -115,8 +98,35 @@ export const ProfileScreen = () => {
         (referralEarnings as any)?.totalEarnings,
     ) || 0;
 
-  const genderOptions = ['Male', 'Female', 'Other'];
-  const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
+  const pharmacyWalletBalance =
+    pharmacyWalletSummaryQuery.data?.availableBalance ??
+    pharmacyWalletSummaryQuery.data?.balance ??
+    pharmacyWalletSummaryQuery.data?.totalBalance;
+
+  const menuSections = React.useMemo(
+    () => [
+      {
+        id: 'care',
+        title: 'Care & Consultations',
+        description: 'Wallet, appointments, records, and doctor access.',
+        items: profileMenu.filter(item => item.section === 'care'),
+      },
+      {
+        id: 'pharmacy',
+        title: 'Pharmacy Workspace',
+        description:
+          'All pharmacy hub modules are now separated into dedicated responsive screens.',
+        items: profileMenu.filter(item => item.section === 'pharmacy'),
+      },
+      {
+        id: 'account',
+        title: 'Account',
+        description: 'Referrals and preferences.',
+        items: profileMenu.filter(item => item.section === 'account'),
+      },
+    ],
+    [],
+  );
 
   useEffect(() => {
     navigation.setOptions({
@@ -229,58 +239,93 @@ export const ProfileScreen = () => {
               );
             })}
           </View>
+
+          <View style={styles.quickInsightRow}>
+            <View
+              style={[
+                styles.quickInsightCard,
+                styles.quickInsightCardPrimary,
+              ]}
+            >
+              <Text style={styles.quickInsightLabel}>Pharmacy Wallet</Text>
+              <Text style={styles.quickInsightValue}>
+                ₹{(pharmacyWalletBalance ?? 0).toLocaleString('en-IN')}
+              </Text>
+              <Text style={styles.quickInsightSubtext}>
+                Existing wallet screen se directly linked
+              </Text>
+            </View>
+            <View style={styles.quickInsightCard}>
+              <Text style={styles.quickInsightLabel}>Doctor Consultation</Text>
+              <Text style={styles.quickInsightValue}>{counts.upcoming}</Text>
+              <Text style={styles.quickInsightSubtext}>
+                Upcoming bookings in dedicated consultation flow
+              </Text>
+            </View>
+          </View>
         </LinearGradient>
 
         <View style={styles.menuContainer}>
-          {profileMenu.map((m, idx) => (
-            <TouchableOpacity
-              key={m.id}
-              activeOpacity={0.85}
-              onPress={() => navigation.navigate(m.route)}
-              style={styles.menuRow}
+          {menuSections.map((section, sectionIndex) => (
+            <View
+              key={section.id}
+              style={[
+                styles.sectionCard,
+                sectionIndex === menuSections.length - 1 && styles.sectionCardLast,
+              ]}
             >
-              <View style={styles.menuLeft}>
-                <View
+              <Text style={styles.sectionTitle}>{section.title}</Text>
+              <Text style={styles.sectionDescription}>{section.description}</Text>
+
+              {section.items.map((m, idx) => (
+                <TouchableOpacity
+                  key={m.id}
+                  activeOpacity={0.85}
+                  onPress={() => (navigation as any).navigate(m.route, m.params)}
                   style={[
-                    styles.menuIconBox,
-                    {
-                      backgroundColor:
-                        menuIconBgColors[idx % menuIconBgColors.length],
-                    },
+                    styles.menuRow,
+                    idx === section.items.length - 1 && styles.menuRowLast,
                   ]}
                 >
-                  <Text style={styles.menuEmoji}>{m.emoji}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.menuTitle}>{m.title}</Text>
-                  {m.id === 'm1' && walletBalance !== null ? (
-                    <Text style={styles.menuSub}>
-                      Balance : ₹{walletBalance.toLocaleString('en-IN')}
-                    </Text>
-                  ) : m.id === 'm2' ? (
-                    <Text style={styles.menuSub}>
-                      {counts.upcoming} upcoming
-                    </Text>
-                  ) : m.id === 'm3' ? (
-                    <Text style={styles.menuSub}>
-                      {counts.orders} total orders
-                    </Text>
-                  ) : m.id === 'm4' ? (
-                    <Text style={styles.menuSub}>
-                      {counts.vault} records stored
-                    </Text>
-                  ) : m.subtitle ? (
-                    <Text style={styles.menuSub}>{m.subtitle}</Text>
-                  ) : null}
-                </View>
-              </View>
-              <ChevronRight size={scale(18)} color="#9CA3AF" />
-            </TouchableOpacity>
+                  <View style={styles.menuLeft}>
+                    <View
+                      style={[
+                        styles.menuIconBox,
+                        {
+                          backgroundColor:
+                            menuIconBgColors[idx % menuIconBgColors.length],
+                        },
+                      ]}
+                    >
+                      <Text style={styles.menuEmoji}>{m.emoji}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.menuTitle}>{m.title}</Text>
+                      {m.id === 'm1' &&
+                      typeof pharmacyWalletBalance === 'number' ? (
+                        <Text style={styles.menuSub}>
+                          Balance : ₹{pharmacyWalletBalance.toLocaleString('en-IN')}
+                        </Text>
+                      ) : m.id === 'm3' ? (
+                        <Text style={styles.menuSub}>{counts.upcoming} upcoming</Text>
+                      ) : m.id === 'm4' ? (
+                        <Text style={styles.menuSub}>{counts.orders} total orders</Text>
+                      ) : m.id === 'm5' ? (
+                        <Text style={styles.menuSub}>{counts.vault} records stored</Text>
+                      ) : (
+                        <Text style={styles.menuSub}>{m.subtitle}</Text>
+                      )}
+                    </View>
+                  </View>
+                  <ChevronRight size={scale(18)} color="#9CA3AF" />
+                </TouchableOpacity>
+              ))}
+            </View>
           ))}
 
           <TouchableOpacity
             activeOpacity={0.85}
-            style={[styles.menuRow, { borderBottomWidth: 0 }]} // Last item has no border
+            style={styles.logoutRow}
             onPress={() => setLogoutModalVisible(true)}
           >
             <View style={styles.menuLeft}>
@@ -314,7 +359,7 @@ const styles = StyleSheet.create({
   content: { paddingBottom: verticalScale(90) },
   header: {
     backgroundColor: '#E8F2FB',
-    paddingBottom: verticalScale(30),
+    paddingBottom: verticalScale(26),
     alignItems: 'center',
   },
   profileHero: {
@@ -385,6 +430,7 @@ const styles = StyleSheet.create({
     marginTop: verticalScale(28),
     paddingHorizontal: scale(16),
     gap: scale(12),
+    width: '100%',
   },
   statGlassCard: {
     flex: 1,
@@ -408,25 +454,83 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.8)',
     textTransform: 'uppercase',
   },
-  editingTitle: {
-    marginTop: verticalScale(20),
+  quickInsightRow: {
+    width: '100%',
+    paddingHorizontal: scale(16),
+    marginTop: verticalScale(16),
+    gap: scale(12),
+  },
+  quickInsightCard: {
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    borderRadius: scale(18),
+    paddingHorizontal: scale(16),
+    paddingVertical: verticalScale(14),
+  },
+  quickInsightCardPrimary: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  quickInsightLabel: {
+    fontFamily: typography.fontFamily.medium,
+    fontSize: scale(12),
+    color: 'rgba(255,255,255,0.78)',
+    textTransform: 'uppercase',
+  },
+  quickInsightValue: {
+    marginTop: verticalScale(6),
     fontFamily: typography.fontFamily.bold,
-    fontSize: scale(20),
-    color: '#fff',
+    fontSize: scale(24),
+    color: '#FFFFFF',
+  },
+  quickInsightSubtext: {
+    marginTop: verticalScale(4),
+    fontFamily: typography.fontFamily.regular,
+    fontSize: typography.fontSize.sm,
+    color: 'rgba(255,255,255,0.82)',
   },
   menuContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
+    paddingHorizontal: scale(16),
+    paddingTop: verticalScale(18),
+  },
+  sectionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: scale(22),
+    paddingHorizontal: scale(16),
     paddingTop: verticalScale(16),
+    marginBottom: verticalScale(14),
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  sectionCardLast: {
+    marginBottom: verticalScale(10),
+  },
+  sectionTitle: {
+    fontFamily: typography.fontFamily.bold,
+    fontSize: scale(17),
+    color: colors.textHeader,
+  },
+  sectionDescription: {
+    marginTop: verticalScale(4),
+    marginBottom: verticalScale(8),
+    fontFamily: typography.fontFamily.regular,
+    fontSize: typography.fontSize.sm,
+    color: colors.textLight,
   },
   menuRow: {
-    paddingHorizontal: scale(20),
     paddingVertical: verticalScale(16),
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#fff',
-    borderBottomWidth: 1.5,
-    borderBottomColor: '#F9FAFB',
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEF2F7',
+  },
+  menuRowLast: {
+    borderBottomWidth: 0,
   },
   menuLeft: {
     flexDirection: 'row',
@@ -455,6 +559,21 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily.regular,
     fontSize: typography.fontSize.sm,
     color: colors.textLight,
+  },
+  logoutRow: {
+    marginTop: verticalScale(4),
+    backgroundColor: '#FFFFFF',
+    borderRadius: scale(22),
+    paddingHorizontal: scale(16),
+    paddingVertical: verticalScale(16),
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.04,
+    shadowRadius: 16,
+    elevation: 3,
   },
   logoutText: {
     fontFamily: typography.fontFamily.semiBold,

@@ -137,6 +137,14 @@ export const GlobalSearchScreen = () => {
   // Handle navigation
   const handleItemPress = (screenName: keyof RootStackParamList) => {
     // Navigate to respective feature
+    if (screenName === 'Wallet') {
+      (navigation as any).navigate('Wallet', {
+        mode: 'pharmacy',
+        title: 'Pharmacy Wallet',
+      });
+      return;
+    }
+
     (navigation as any).navigate(screenName);
   };
 

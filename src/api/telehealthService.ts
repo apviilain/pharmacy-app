@@ -1,3 +1,5 @@
+import { apiClient } from './apiClient';
+import { endpoints } from './endpoints';
 import { localAppointments, localSpecialists } from './localUiData';
 
 export type Specialist = {
@@ -73,20 +75,13 @@ export const telehealthService = {
   getSpecialists: async (): Promise<Specialist[]> =>
     localSpecialists.map(item => ({ ...item })),
 
-  bookSpecialist: async (payload: BookingPayload): Promise<any> => ({
-    bookingId: `booking_${payload.slotId}`,
-    doctorId: payload.specialistId,
-    slotId: payload.slotId,
-    bookingDate: payload.bookingDate,
-    bookingTime: payload.bookingTime,
-    payment: {
-      razorpayOrderId: `order_${payload.slotId}`,
-      razorpayKeyId: 'rzp_test_placeholder',
-      amount: 49900,
-      currency: 'INR',
-      paymentTransactionId: `txn_${payload.slotId}`,
-    },
-  }),
+  bookSpecialist: async (payload: BookingPayload): Promise<any> => {
+    const response: any = await apiClient.post(
+      endpoints.bookings.specialist,
+      payload,
+    );
+    return response;
+  },
 
   getSlots: async (_doctorId: string, date: string): Promise<any> => buildSlots(date),
 

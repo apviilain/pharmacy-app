@@ -105,7 +105,6 @@ export const useProfile = () => {
         name: formData.name.trim() || 'My Pharmacy',
         nickname: formData.name.trim().split(' ')[0] || 'Pharmacy',
         ownerName: user?.ownerName || formData.name.trim() || 'Owner',
-        phone: formData.phone.trim() || user?.phone || '',
         email: formData.email.trim() || undefined,
         address: formData.address.trim() || undefined,
         city: formData.city.trim() || undefined,
@@ -117,7 +116,7 @@ export const useProfile = () => {
         openingHours: defaultOpeningHours,
       };
 
-      const createdProfile = await pharmacyService.createProfile(payload);
+      const createdProfile = await pharmacyService.updateMyProfile(payload);
       const mappedUser = mapPharmacyProfileToUser(createdProfile);
       if (mappedUser) {
         setUser({

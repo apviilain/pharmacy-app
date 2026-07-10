@@ -1,4 +1,66 @@
 export type RootStackParamList = {
+  PharmacyHub:
+    | {
+        section?:
+          | 'medicines'
+          | 'inventory'
+          | 'customers'
+          | 'orders'
+          | 'subscriptions'
+          | 'wallet'
+          | 'tracking'
+          | 'diagnostics';
+        lockedSection?: boolean;
+      }
+    | undefined;
+  PharmacyMedicines:
+    | {
+        section?: 'medicines';
+        lockedSection?: boolean;
+      }
+    | undefined;
+  PharmacyMedicineCreate: undefined;
+  PharmacyMedicineEdit: { medicineId: string };
+  PharmacyCustomers:
+    | {
+        section?: 'customers';
+        lockedSection?: boolean;
+      }
+    | undefined;
+  PharmacyInventory:
+    | {
+        section?: 'inventory';
+        lockedSection?: boolean;
+      }
+    | undefined;
+  PharmacyOrders:
+    | {
+        section?: 'orders';
+        lockedSection?: boolean;
+      }
+    | undefined;
+  PharmacySubscriptions:
+    | {
+        section?: 'subscriptions';
+        lockedSection?: boolean;
+      }
+    | undefined;
+  PatientTracking:
+    | {
+        section?: 'tracking';
+        lockedSection?: boolean;
+      }
+    | undefined;
+  Diagnostics:
+    | {
+        section?: 'diagnostics';
+        lockedSection?: boolean;
+      }
+    | undefined;
+  DiagnosticsCreateBooking: undefined;
+  DiagnosticsBookingDetails: { bookingId: string };
+  DiagnosticsPayment: { bookingId: string };
+  DiagnosticsReschedule: { bookingId: string };
   MainTabs: undefined;
   Home: undefined;
   GlobalSearch: undefined;
@@ -9,7 +71,12 @@ export type RootStackParamList = {
   HealthVault: undefined;
   Profile: undefined;
   Ambulance: undefined;
-  Wallet: undefined;
+  Wallet:
+    | {
+        mode?: 'general' | 'pharmacy';
+        title?: string;
+      }
+    | undefined;
   Settings: undefined;
   ReferEarn: undefined;
   Notifications: undefined;
@@ -64,7 +131,6 @@ export type RootStackParamList = {
       isFollowUp: boolean;
       parentConsultationId: string;
     };
-    // New: Pre-created booking data from SlotSelection
     bookingId?: string;
     bookingPrice?: number;
     payment?: {
@@ -88,7 +154,20 @@ export type RootStackParamList = {
     dateLabel: string;
     timeLabel: string;
   };
-  Pharmacy: undefined;
+  Pharmacy:
+    | {
+        section?:
+          | 'medicines'
+          | 'inventory'
+          | 'customers'
+          | 'orders'
+          | 'subscriptions'
+          | 'wallet'
+          | 'tracking'
+          | 'diagnostics';
+        lockedSection?: boolean;
+      }
+    | undefined;
   Splash: undefined;
   SignIn: undefined;
   SignUp: undefined;

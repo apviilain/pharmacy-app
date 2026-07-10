@@ -1,24 +1,24 @@
 import { apiClient } from './apiClient';
 import { endpoints } from './endpoints';
 import type {
-  CreatePharmacyProfileRequest,
   ListPharmaciesParams,
   PharmyxPharmacyProfile,
+  UpdateMyPharmacyProfileRequest,
 } from './pharmyx';
 
 export const pharmacyService = {
   getMyProfile: async (): Promise<PharmyxPharmacyProfile | null> => {
     const response: any = await apiClient.get(
-      endpoints.auth.profile,
+      endpoints.pharmacies.meProfile,
     );
     return response || null;
   },
 
-  createProfile: async (
-    payload: CreatePharmacyProfileRequest,
+  updateMyProfile: async (
+    payload: UpdateMyPharmacyProfileRequest,
   ): Promise<PharmyxPharmacyProfile> => {
-    const response: any = await apiClient.post(
-      endpoints.pharmacies.create,
+    const response: any = await apiClient.put(
+      endpoints.pharmacies.meProfile,
       payload,
     );
     return response;

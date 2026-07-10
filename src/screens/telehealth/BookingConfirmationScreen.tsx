@@ -13,6 +13,7 @@ import {
   Modal,
   Animated,
   Easing,
+  useWindowDimensions,
 } from 'react-native';
 import { RefreshCw } from 'lucide-react-native';
 
@@ -53,10 +54,13 @@ export const BookingConfirmationScreen: React.FC<Props> = ({
   navigation,
   route,
 }) => {
+  const { width } = useWindowDimensions();
   const [doctor, setDoctor] = useState<Specialist | null>(null);
   const [loading, setLoading] = useState(true);
   const showNotification = useNotificationStore(state => state.showNotification);
   const [bookingLoading, setBookingLoading] = useState(false);
+  const [paymentDetailsStatus, setPaymentDetailsStatus] = useState('');
+  const [paymentDetailsError, setPaymentDetailsError] = useState('');
   const [selectedMode, setSelectedMode] = useState<'video' | 'audio'>(
     route.params.mode && route.params.mode.toLowerCase() === 'audio'
       ? 'audio'
@@ -118,6 +122,7 @@ export const BookingConfirmationScreen: React.FC<Props> = ({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
   });
+  const contentWidth = Math.min(width - scale(24), width >= 768 ? 920 : 680);
 
 
   useEffect(() => {
@@ -170,6 +175,34 @@ export const BookingConfirmationScreen: React.FC<Props> = ({
       JSON.stringify(route.params, null, 2),
     );
   }, []);
+
+  useEffect(() => {
+    const bookingId = route.params.bookingId;
+    if (!bookingId) return;
+
+    const hydratePaymentDetails = async () => {
+      try {
+        setPaymentDetailsError('');
+        const response = await appointmentService.getPaymentDetails(bookingId);
+        const status =
+          response?.status ||
+          response?.paymentStatus ||
+          response?.payment?.status ||
+          response?.booking?.paymentStatus ||
+          '';
+        setPaymentDetailsStatus(String(status || '').trim());
+      } catch (error: any) {
+        setPaymentDetailsError(
+          error?.userMessage ||
+            error?.response?.data?.message ||
+            error?.message ||
+            'Unable to refresh payment details right now.',
+        );
+      }
+    };
+
+    hydratePaymentDetails();
+  }, [route.params.bookingId]);
 
   useEffect(() => {
     if (route.params.followUp?.isFollowUp && route.params.followUp?.parentConsultationId) {
@@ -297,6 +330,9 @@ export const BookingConfirmationScreen: React.FC<Props> = ({
 
       if (paymentMethod === 'later') {
         // Pay Later logic — just navigate to success
+        appointmentService.updateCachedAppointment(appointmentId, {
+          status: 'pending',
+        });
         triggerSuccessNotification(appointmentId);
         await autoScheduleReminder(appointmentId);
         navigation.navigate('BookingSuccess', {
@@ -330,6 +366,9 @@ export const BookingConfirmationScreen: React.FC<Props> = ({
       // Step 2: Handle Razorpay if needed (partial payment)
       if ((response as any)?.status === 'paid' || !payment?.razorpayOrderId) {
         // Step 3: Direct deduction or free — Successfully processed by backend
+        appointmentService.updateCachedAppointment(appointmentId, {
+          status: 'confirmed',
+        });
         triggerSuccessNotification(appointmentId);
         await autoScheduleReminder(appointmentId);
         navigation.navigate('BookingSuccess', {
@@ -373,6 +412,9 @@ export const BookingConfirmationScreen: React.FC<Props> = ({
               razorpaySignature: data.razorpay_signature,
             });
 
+            appointmentService.updateCachedAppointment(appointmentId, {
+              status: 'confirmed',
+            });
             triggerSuccessNotification(appointmentId);
             await autoScheduleReminder(appointmentId);
             navigation.navigate('BookingSuccess', {
@@ -439,7 +481,10 @@ export const BookingConfirmationScreen: React.FC<Props> = ({
     <SafeAreaView style={styles.container}>
 
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { width: contentWidth, alignSelf: 'center' },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.docCard}>
@@ -456,6 +501,20 @@ export const BookingConfirmationScreen: React.FC<Props> = ({
             </Text>
           </View>
         </View>
+
+        {paymentDetailsStatus ? (
+          <View style={styles.infoBanner}>
+            <Text style={styles.infoBannerText}>
+              Current payment status: {paymentDetailsStatus}
+            </Text>
+          </View>
+        ) : null}
+
+        {paymentDetailsError ? (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorBannerText}>{paymentDetailsError}</Text>
+          </View>
+        ) : null}
 
         {route.params.followUp?.isFollowUp && (
           <>
@@ -810,24 +869,29 @@ export const BookingConfirmationScreen: React.FC<Props> = ({
       <View
         style={[
           styles.bottom,
-          { paddingBottom: insets.bottom + verticalScale(16) },
+          {
+            paddingBottom: insets.bottom + verticalScale(16),
+            alignItems: 'center',
+          },
         ]}
       >
-        <PrimaryButton
-          title={
-            paymentMethod === 'later'
-              ? 'Confirm Booking (Pay Later)'
-              : paymentMethod === 'wallet'
-              ? finalToPay > 0
-                ? `Confirm & Pay ₹${finalToPay.toFixed(0)}`
-                : 'Confirm & Pay from Wallet'
-              : `Pay ₹${total.toFixed(0)} Online`
-          }
-          onPress={handleConfirm}
-          variant="green"
-          style={styles.cta}
-          disabled={bookingLoading}
-        />
+        <View style={{ width: contentWidth }}>
+          <PrimaryButton
+            title={
+              paymentMethod === 'later'
+                ? 'Confirm Booking (Pay Later)'
+                : paymentMethod === 'wallet'
+                ? finalToPay > 0
+                  ? `Confirm & Pay ₹${finalToPay.toFixed(0)}`
+                  : 'Confirm & Pay from Wallet'
+                : `Pay ₹${total.toFixed(0)} Online`
+            }
+            onPress={handleConfirm}
+            variant="green"
+            style={styles.cta}
+            disabled={bookingLoading}
+          />
+        </View>
       </View>
 
       {/* Payment Processing Modal */}
@@ -932,6 +996,34 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily.medium,
     fontSize: typography.fontSize.sm,
     color: colors.primaryBlue,
+  },
+  infoBanner: {
+    marginTop: verticalScale(12),
+    backgroundColor: 'rgba(21,114,183,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(21,114,183,0.16)',
+    borderRadius: scale(12),
+    paddingHorizontal: scale(14),
+    paddingVertical: verticalScale(10),
+  },
+  infoBannerText: {
+    fontFamily: typography.fontFamily.medium,
+    fontSize: typography.fontSize.sm,
+    color: colors.primaryBlue,
+  },
+  errorBanner: {
+    marginTop: verticalScale(12),
+    backgroundColor: '#FFF1EF',
+    borderWidth: 1,
+    borderColor: '#FFD2CC',
+    borderRadius: scale(12),
+    paddingHorizontal: scale(14),
+    paddingVertical: verticalScale(10),
+  },
+  errorBannerText: {
+    fontFamily: typography.fontFamily.medium,
+    fontSize: typography.fontSize.sm,
+    color: '#9F2E25',
   },
   summaryCard: {
     marginTop: verticalScale(14),

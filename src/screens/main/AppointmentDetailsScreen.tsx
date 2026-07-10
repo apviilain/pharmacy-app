@@ -339,6 +339,9 @@ export const AppointmentDetailsScreen = () => {
                 razorpayPaymentId: data.razorpay_payment_id,
                 razorpaySignature: data.razorpay_signature,
               });
+              appointmentService.updateCachedAppointment(appointmentId, {
+                status: 'confirmed',
+              });
               queryClient.invalidateQueries({ queryKey: ['appointments'] });
               Toast.show({
                 type: 'success',
@@ -365,6 +368,9 @@ export const AppointmentDetailsScreen = () => {
           .finally(() => setIsRetryingPayment(false));
       } else {
         // No Razorpay order — wallet fully covered or already paid
+        appointmentService.updateCachedAppointment(appointmentId, {
+          status: 'confirmed',
+        });
         queryClient.invalidateQueries({ queryKey: ['appointments'] });
         Toast.show({
           type: 'success',
@@ -406,6 +412,17 @@ export const AppointmentDetailsScreen = () => {
       setCancelModalVisible(null);
       setCancelReason('');
       navigation.goBack();
+    },
+    onError: (error: any) => {
+      Toast.show({
+        type: 'error',
+        text1: 'Cancellation Failed',
+        text2:
+          error?.userMessage ||
+          error?.response?.data?.message ||
+          error?.message ||
+          'Could not cancel the booking.',
+      });
     },
   });
 
@@ -575,6 +592,17 @@ export const AppointmentDetailsScreen = () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       setRescheduleVisible(false);
       navigation.goBack();
+    },
+    onError: (error: any) => {
+      Toast.show({
+        type: 'error',
+        text1: 'Reschedule Failed',
+        text2:
+          error?.userMessage ||
+          error?.response?.data?.message ||
+          error?.message ||
+          'Could not reschedule the booking.',
+      });
     },
   });
 

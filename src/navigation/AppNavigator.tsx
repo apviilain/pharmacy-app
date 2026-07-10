@@ -27,6 +27,17 @@ import { BookingConfirmationScreen } from '../screens/telehealth/BookingConfirma
 import { BookingSuccessScreen } from '../screens/telehealth/BookingSuccessScreen';
 import { ConsultationRoomScreen } from '../screens/telehealth/ConsultationRoomScreen';
 import { PharmacyScreen } from '../screens/main/PharmacyScreen';
+import {
+  DiagnosticsBookingDetailsScreen,
+  DiagnosticsCreateBookingScreen,
+  DiagnosticsPaymentScreen,
+  DiagnosticsRescheduleScreen,
+  DiagnosticsScreen,
+} from '../screens/diagnostics/DiagnosticsScreens';
+import {
+  PharmacyMedicineCreateScreen,
+  PharmacyMedicineEditScreen,
+} from '../screens/pharmacy/PharmacyMedicineFormScreen';
 import { AppHeader } from '../components/AppHeader';
 
 // Auth Flow Screens
@@ -47,6 +58,20 @@ export function AppNavigator() {
         screenOptions={({ navigation, route }) => {
           let title: string = route.name;
           switch (route.name) {
+            case 'PharmacyHub': title = 'Pharmacy Hub'; break;
+            case 'PharmacyMedicines': title = 'Pharmacy Medicines'; break;
+            case 'PharmacyMedicineCreate': title = 'Add Medicine'; break;
+            case 'PharmacyMedicineEdit': title = 'Edit Medicine'; break;
+            case 'PharmacyCustomers': title = 'Pharmacy Customers'; break;
+            case 'PharmacyInventory': title = 'Pharmacy Inventory'; break;
+            case 'PharmacyOrders': title = 'Pharmacy Orders'; break;
+            case 'PharmacySubscriptions': title = 'Pharmacy Subscriptions'; break;
+            case 'PatientTracking': title = 'Patient Tracking'; break;
+            case 'Diagnostics': title = 'Diagnostics'; break;
+            case 'DiagnosticsCreateBooking': title = 'Create Booking'; break;
+            case 'DiagnosticsBookingDetails': title = 'Booking Details'; break;
+            case 'DiagnosticsPayment': title = 'Payment'; break;
+            case 'DiagnosticsReschedule': title = 'Reschedule Booking'; break;
             case 'PathkindBooking': title = 'Book Test'; break;
             case 'Appointments': title = 'My Appointments'; break;
             case 'HealthVault': title = 'Health Vault'; break;
@@ -54,7 +79,11 @@ export function AppNavigator() {
             case 'GlobalSearch': title = 'Search'; break;
             case 'AppointmentDetails': title = 'Appointment Details'; break;
             case 'Ambulance': title = 'Ambulance Service'; break;
-            case 'Wallet': title = 'My Wallet'; break;
+            case 'Wallet':
+              title =
+                (route.params as RootStackParamList['Wallet'])?.title ||
+                'My Wallet';
+              break;
             case 'Settings': title = 'Settings'; break;
             case 'ReferEarn': title = 'Refer & Earn'; break;
             case 'Notifications': title = 'Notifications'; break;
@@ -145,6 +174,65 @@ export function AppNavigator() {
               </TouchableOpacity>
             ),
           })}
+        />
+        <Stack.Screen name="PharmacyHub" component={PharmacyScreen} />
+        <Stack.Screen
+          name="PharmacyMedicines"
+          component={PharmacyScreen}
+          initialParams={{ section: 'medicines', lockedSection: true }}
+        />
+        <Stack.Screen
+          name="PharmacyMedicineCreate"
+          component={PharmacyMedicineCreateScreen}
+        />
+        <Stack.Screen
+          name="PharmacyMedicineEdit"
+          component={PharmacyMedicineEditScreen}
+        />
+        <Stack.Screen
+          name="PharmacyCustomers"
+          component={PharmacyScreen}
+          initialParams={{ section: 'customers', lockedSection: true }}
+        />
+        <Stack.Screen
+          name="PharmacyInventory"
+          component={PharmacyScreen}
+          initialParams={{ section: 'inventory', lockedSection: true }}
+        />
+        <Stack.Screen
+          name="PharmacyOrders"
+          component={PharmacyScreen}
+          initialParams={{ section: 'orders', lockedSection: true }}
+        />
+        <Stack.Screen
+          name="PharmacySubscriptions"
+          component={PharmacyScreen}
+          initialParams={{ section: 'subscriptions', lockedSection: true }}
+        />
+        <Stack.Screen
+          name="PatientTracking"
+          component={PharmacyScreen}
+          initialParams={{ section: 'tracking', lockedSection: true }}
+        />
+        <Stack.Screen
+          name="Diagnostics"
+          component={DiagnosticsScreen}
+        />
+        <Stack.Screen
+          name="DiagnosticsCreateBooking"
+          component={DiagnosticsCreateBookingScreen}
+        />
+        <Stack.Screen
+          name="DiagnosticsBookingDetails"
+          component={DiagnosticsBookingDetailsScreen}
+        />
+        <Stack.Screen
+          name="DiagnosticsPayment"
+          component={DiagnosticsPaymentScreen}
+        />
+        <Stack.Screen
+          name="DiagnosticsReschedule"
+          component={DiagnosticsRescheduleScreen}
         />
         <Stack.Screen name="Pharmacy" component={PharmacyScreen} />
       </Stack.Navigator>

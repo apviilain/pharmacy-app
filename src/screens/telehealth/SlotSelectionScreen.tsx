@@ -13,6 +13,7 @@ import {
   Modal,
   Image,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Upload, X, Eye, FileText } from 'lucide-react-native';
@@ -28,6 +29,7 @@ import { typography } from '../../theme/typography';
 import { scale, verticalScale } from '../../theme/responsive';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { DetailsSkeleton } from '../../components/DetailsSkeleton';
+import { appointmentService } from '../../api/appointmentService';
 import { Specialist, telehealthService } from '../../api/telehealthService';
 import { fileService } from '../../api/fileService';
 import { getCurrentUserId } from '../../state/authStore';
@@ -79,6 +81,7 @@ const Chip = ({
 );
 
 export const SlotSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { width } = useWindowDimensions();
   const [doctor, setDoctor] = useState<Specialist | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -276,6 +279,7 @@ export const SlotSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
   }
 
   const insets = useSafeAreaInsets();
+  const contentWidth = Math.min(width - scale(24), width >= 768 ? 920 : 680);
   const fee = doctor?.consultationFee || 0;
   const currentSlots = availableSlots || {
     morning: [],
@@ -287,7 +291,10 @@ export const SlotSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
     <SafeAreaView style={styles.container}>
 
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { width: contentWidth, alignSelf: 'center' },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <ScrollView
@@ -544,7 +551,11 @@ export const SlotSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
       <View
         style={[
           styles.bottom,
-          { paddingBottom: insets.bottom + verticalScale(16) },
+          {
+            paddingBottom: insets.bottom + verticalScale(16),
+            width: contentWidth,
+            alignSelf: 'center',
+          },
         ]}
       >
         <PrimaryButton
@@ -645,6 +656,7 @@ export const SlotSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
                 bookingTime: activeSlot,
                 slotId: activeSlotId,
                 contactNo: route.params.member.contact,
+                notes: `Booked by pharmacy for ${route.params.member.name || 'customer'}`,
                 documents: mappedDocs.length > 0 ? mappedDocs : undefined,
                 followUp: route.params.followUp
                   ? {
@@ -687,13 +699,34 @@ export const SlotSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
                 response?._id ||
                 'APT-0000';
               const bookingPrice = booking?.price || fee;
+              const dateLabel =
+                daysList.find(d => d.id === activeDay)?.fullDate || '';
+
+              appointmentService.cacheAppointment({
+                id: bookingId,
+                _id: booking?._id || bookingId,
+                doctorName: formatDoctorName(doctor?.name || 'Doctor'),
+                specialization: doctor?.specialization || doctor?.specialty || '',
+                dateLabel,
+                timeLabel: activeSlot,
+                fee: bookingPrice,
+                walletAmount: 0,
+                remainingAmount: bookingPrice,
+                status: payment?.razorpayOrderId ? 'pending' : 'confirmed',
+                mode: selectedMode === 'audio' ? 'Audio' : 'Video',
+                specialistId: route.params.doctorId,
+                consultationMode: selectedMode,
+                createdAt: new Date().toISOString(),
+                patientName: route.params.member.name,
+                userId: route.params.member.id,
+                contactNo: route.params.member.contact,
+                documents: mappedDocs,
+              });
 
               // Step 3: Handle Follow-up vs Regular Booking
               if (route.params.followUp?.isFollowUp) {
                 console.log('[SlotSelection] Successful Follow-up! Skipping payment screen.');
-                
-                const dateLabel = daysList.find(d => d.id === activeDay)?.fullDate || '';
-                
+
                 // Trigger success notification
                 showNotification({
                   id: `success-${bookingId}-${Date.now()}`,

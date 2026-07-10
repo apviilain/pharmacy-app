@@ -278,6 +278,17 @@ export const AppointmentsScreen = () => {
       setCancelModalVisible(null);
       setCancelReason('');
     },
+    onError: (error: any) => {
+      Toast.show({
+        type: 'error',
+        text1: 'Cancellation Failed',
+        text2:
+          error?.userMessage ||
+          error?.response?.data?.message ||
+          error?.message ||
+          'Could not cancel the booking.',
+      });
+    },
   });
 
   const navigation = useNavigation<any>();
@@ -416,6 +427,9 @@ export const AppointmentsScreen = () => {
                 razorpayPaymentId: data.razorpay_payment_id,
                 razorpaySignature: data.razorpay_signature,
               });
+              appointmentService.updateCachedAppointment(appt.id, {
+                status: 'confirmed',
+              });
               queryClient.invalidateQueries({ queryKey: ['appointments'] });
               Toast.show({
                 type: 'success',
@@ -443,6 +457,9 @@ export const AppointmentsScreen = () => {
           });
       } else {
         setPaymentModalVisible(false);
+        appointmentService.updateCachedAppointment(appt.id, {
+          status: 'confirmed',
+        });
         queryClient.invalidateQueries({ queryKey: ['appointments'] });
         Toast.show({
           type: 'success',

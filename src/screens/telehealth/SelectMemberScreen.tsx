@@ -8,6 +8,7 @@ import {
   FlatList,
   ActivityIndicator,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -26,6 +27,7 @@ import type { RootStackParamList } from '../../navigation/types';
 type Props = NativeStackScreenProps<RootStackParamList, 'SelectMember'>;
 
 export const SelectMemberScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [members, setMembers] = useState<Dependent[]>([]);
   const [selectedId, setSelectedId] = useState<string>('');
@@ -83,6 +85,7 @@ export const SelectMemberScreen: React.FC<Props> = ({ navigation, route }) => {
     () => members.find(m => (m._id || m.id) === selectedId) ?? members[0],
     [members, selectedId],
   );
+  const contentWidth = Math.min(width - scale(24), width >= 768 ? 860 : 680);
 
   const handleDelete = async (itemId: string) => {
     Alert.alert(
@@ -158,6 +161,7 @@ export const SelectMemberScreen: React.FC<Props> = ({ navigation, route }) => {
     <SafeAreaView style={styles.container}>
 
       <View style={styles.content}>
+        <View style={{ width: contentWidth, alignSelf: 'center', flex: 1 }}>
         <View style={styles.addRow}>
 
           <TouchableOpacity
@@ -194,12 +198,15 @@ export const SelectMemberScreen: React.FC<Props> = ({ navigation, route }) => {
             showsVerticalScrollIndicator={false}
           />
         )}
+        </View>
       </View>
 
       <View
         style={[
           styles.bottom,
           {
+            width: contentWidth,
+            alignSelf: 'center',
             paddingBottom:
               insets.bottom > 0
                 ? insets.bottom + verticalScale(8)

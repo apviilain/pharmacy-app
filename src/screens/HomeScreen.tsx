@@ -52,7 +52,6 @@ import { scale, verticalScale, wp } from '../theme/responsive';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HomeSkeleton } from '../components/HomeSkeleton';
 
-// Using loosely mapped icons for the services
 const Services = [
   {
     id: '1',
@@ -165,7 +164,6 @@ export default function HomeScreen() {
   const scrollY = useSharedValue(0);
 
   React.useEffect(() => {
-    // Simulate initial data loading for the whole page
     const timer = setTimeout(() => {
       setLoading(false);
     }, 1500);
@@ -190,7 +188,7 @@ export default function HomeScreen() {
       } else if (serviceTitle === 'Ambulance') {
         navigation.navigate('Ambulance');
       } else if (serviceTitle === 'Pharmacy') {
-        navigation.navigate('Pharmacy');
+        navigation.navigate('Profile');
       }
     },
     [navigation],
@@ -213,9 +211,7 @@ export default function HomeScreen() {
         onScroll={scrollHandler}
         scrollEventThrottle={16}
       >
-        {/* Main Content Area — white card with rounded top */}
         <View style={styles.mainContent}>
-          {/* Our Services */}
           <SectionHeader title="Our Services" onViewAll={() => {}} />
 
           <View style={styles.servicesGrid}>
@@ -228,16 +224,9 @@ export default function HomeScreen() {
             ))}
           </View>
 
-          {/* All Specialists */}
           <AllSpecialists />
-
-          {/* Recent Activity */}
           <RecentActivity />
-
-          {/* Upcoming Consultation */}
           <UpcomingConsultation />
-
-          {/* Daily Health Tip */}
           <DailyHealthTip />
         </View>
       </Animated.ScrollView>
@@ -363,11 +352,11 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   mainContent: {
-    marginTop: -verticalScale(40), // Pulls the white card up slightly for the overlap effect
+    marginTop: -verticalScale(40),
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: scale(28),
     borderTopRightRadius: scale(28),
-    paddingTop: verticalScale(70), // Ensures the section header "Our Services" is visible below the search bar
+    paddingTop: verticalScale(70),
     paddingHorizontal: scale(20),
     paddingBottom: 0,
     zIndex: 1,
@@ -380,7 +369,7 @@ const styles = StyleSheet.create({
   },
   serviceCardWrapper: {
     width: '48%',
-    height: verticalScale(125), // Adjusted for better aspect ratio on mobile
+    height: verticalScale(125),
     marginBottom: verticalScale(14),
     borderRadius: scale(20),
     ...shadows.medium,

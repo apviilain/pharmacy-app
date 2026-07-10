@@ -81,6 +81,12 @@ android {
         cruncherEnabled = false
     }
 
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+    }
+
 
     namespace "com.etryx.atharvcare"
     defaultConfig {

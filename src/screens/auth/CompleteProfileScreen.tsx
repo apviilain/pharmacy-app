@@ -66,6 +66,30 @@ export const CompleteProfileScreen = () => {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  const getFormValuesFromUser = (
+    profileUser: typeof user,
+  ): CompleteProfileFormValues => ({
+    name: profileUser?.name || "",
+    nickname: profileUser?.nickname || "",
+    ownerName: profileUser?.ownerName || "",
+    email: profileUser?.email || "",
+    address: profileUser?.address || "",
+    city: profileUser?.city || "",
+    state: profileUser?.state || "",
+    pincode: profileUser?.pincode || "",
+    latitude: profileUser?.latitude ? String(profileUser.latitude) : "",
+    longitude: profileUser?.longitude ? String(profileUser.longitude) : "",
+    gstNumber: profileUser?.gstNumber || "",
+    drugLicenseNumber: profileUser?.drugLicenseNumber || "",
+    gstCertificateUrl: profileUser?.gstCertificateUrl || "",
+    drugLicenseDocumentUrl: profileUser?.drugLicenseDocumentUrl || "",
+    ownerIdProofUrl: profileUser?.ownerIdProofUrl || "",
+    shopFrontPhotoUrl: profileUser?.shopFrontPhotoUrl || "",
+    pickupAvailable: profileUser?.pickupAvailable ?? true,
+    deliveryAvailable: profileUser?.deliveryAvailable ?? true,
+  });
+
   const [currentStep, setCurrentStep] = useState(0);
   const [openingHours, setOpeningHours] = useState<PharmyxOpeningHours>(
     user?.openingHours || defaultOpeningHours,
@@ -81,26 +105,7 @@ export const CompleteProfileScreen = () => {
     field: null,
     value: new Date(),
   });
-  const initialValues: CompleteProfileFormValues = {
-    name: user?.name || "",
-    nickname: user?.nickname || "",
-    ownerName: user?.ownerName || "",
-    email: user?.email || "",
-    address: user?.address || "",
-    city: user?.city || "",
-    state: user?.state || "",
-    pincode: user?.pincode || "",
-    latitude: user?.latitude ? String(user.latitude) : "",
-    longitude: user?.longitude ? String(user.longitude) : "",
-    gstNumber: user?.gstNumber || "",
-    drugLicenseNumber: user?.drugLicenseNumber || "",
-    gstCertificateUrl: user?.gstCertificateUrl || "",
-    drugLicenseDocumentUrl: user?.drugLicenseDocumentUrl || "",
-    ownerIdProofUrl: user?.ownerIdProofUrl || "",
-    shopFrontPhotoUrl: user?.shopFrontPhotoUrl || "",
-    pickupAvailable: user?.pickupAvailable ?? true,
-    deliveryAvailable: user?.deliveryAvailable ?? true,
-  };
+  const initialValues: CompleteProfileFormValues = getFormValuesFromUser(user);
 
   const formik = useFormik({
     initialValues,
@@ -113,7 +118,7 @@ export const CompleteProfileScreen = () => {
 
   const [loading, setLoading] = useState(false);
   const [profilePicture, setProfilePicture] = useState(
-    user?.profilePicture || user?.avatar || "",
+    user?.profilePictureUrl || user?.profileImage || user?.profilePicture || user?.avatar || "",
   );
   const [uploadingImage, setUploadingImage] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
@@ -151,11 +156,13 @@ export const CompleteProfileScreen = () => {
 
   // Draft Saving / Restoring
   const isInitialMount = useRef(true);
+  const hasDraftProfile = useRef(false);
   useEffect(() => {
     const loadDraft = async () => {
       try {
         const draft = await AsyncStorage.getItem("draft_profile_cache");
         if (draft) {
+          hasDraftProfile.current = true;
           const parsed = JSON.parse(draft);
           if (parsed?.values) {
             setValues((prev) => ({ ...prev, ...parsed.values }));
@@ -172,6 +179,41 @@ export const CompleteProfileScreen = () => {
     };
     loadDraft();
   }, [setValues]);
+
+  useEffect(() => {
+    if (!user || hasDraftProfile.current) return;
+
+    setValues(getFormValuesFromUser(user));
+    setOpeningHours(user.openingHours || defaultOpeningHours);
+    setProfilePicture(
+      user.profilePictureUrl ||
+        user.profileImage ||
+        user.profilePicture ||
+        user.avatar ||
+        "",
+    );
+  }, [user, setValues]);
+
+  useEffect(() => {
+    const hydrateProfile = async () => {
+      try {
+        const profileResponse = await pharmacyService.getMyProfile();
+        const mappedUser = mapPharmacyProfileToUser(profileResponse);
+        if (!mappedUser) return;
+
+        setUser({
+          ...user,
+          ...mappedUser,
+          phone: mappedUser.phone || user?.phone || user?.mobile || "",
+          mobile: mappedUser.mobile || user?.mobile || user?.phone || "",
+        });
+      } catch (error) {
+        console.error("Failed to hydrate complete profile", error);
+      }
+    };
+
+    hydrateProfile();
+  }, []);
 
   useEffect(() => {
     if (isInitialMount.current) {
@@ -367,7 +409,6 @@ export const CompleteProfileScreen = () => {
           values.name.trim().split(" ")[0] ||
           "Pharmacy",
         ownerName: values.ownerName.trim(),
-        phone: (user?.phone || user?.mobile || "").trim(),
         email: values.email.trim() || undefined,
         address: values.address.trim() || undefined,
         city: values.city.trim() || undefined,
@@ -386,10 +427,9 @@ export const CompleteProfileScreen = () => {
         pickupAvailable: values.pickupAvailable,
         deliveryAvailable: values.deliveryAvailable,
         profilePictureUrl: profilePicture.trim() || undefined,
-        isVerified: false,
       };
 
-      const createdProfile = await pharmacyService.createProfile(payload);
+      const createdProfile = await pharmacyService.updateMyProfile(payload);
       const mappedUser = mapPharmacyProfileToUser(createdProfile);
       if (mappedUser) {
         setUser({
