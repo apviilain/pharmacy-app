@@ -45,6 +45,7 @@ android/.gradle
 android/local.properties
 android/build/
 android/app/build/
+android/app/.cxx/
 android/app/src/main/assets/
 *.apk
 *.aab
@@ -52,3 +53,7 @@ android/app/src/main/assets/
 
 # Vendor
 vendor/
+
+# Native build artifacts
+android/.cxx/
+android/app/.cxx/
