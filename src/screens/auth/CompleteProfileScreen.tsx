@@ -43,6 +43,7 @@ import { scale, verticalScale, wp } from "../../theme/responsive";
 import { useAuthStore } from "../../state/authStore";
 import {
   defaultOpeningHours,
+  hasCompletedPharmacyProfile,
   mapPharmacyProfileToUser,
   type PharmyxDayHours,
   type PharmyxOpeningHours,
@@ -198,6 +199,8 @@ export const CompleteProfileScreen = () => {
     const hydrateProfile = async () => {
       try {
         const profileResponse = await pharmacyService.getMyProfile();
+        if (!profileResponse) return;
+
         const mappedUser = mapPharmacyProfileToUser(profileResponse);
         if (!mappedUser) return;
 
@@ -207,6 +210,11 @@ export const CompleteProfileScreen = () => {
           phone: mappedUser.phone || user?.phone || user?.mobile || "",
           mobile: mappedUser.mobile || user?.mobile || user?.phone || "",
         });
+
+        if (hasCompletedPharmacyProfile(profileResponse)) {
+          await useAuthStore.getState().setProfileComplete(true);
+          navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] });
+        }
       } catch (error) {
         console.error("Failed to hydrate complete profile", error);
       }
@@ -409,6 +417,10 @@ export const CompleteProfileScreen = () => {
           values.name.trim().split(" ")[0] ||
           "Pharmacy",
         ownerName: values.ownerName.trim(),
+        phone:
+          user?.phone?.trim() ||
+          user?.mobile?.trim() ||
+          undefined,
         email: values.email.trim() || undefined,
         address: values.address.trim() || undefined,
         city: values.city.trim() || undefined,
@@ -429,8 +441,15 @@ export const CompleteProfileScreen = () => {
         profilePictureUrl: profilePicture.trim() || undefined,
       };
 
-      const createdProfile = await pharmacyService.updateMyProfile(payload);
-      const mappedUser = mapPharmacyProfileToUser(createdProfile);
+      const updateResponse = await pharmacyService.updateMyProfile(payload);
+      const refreshedProfile = await pharmacyService.getMyProfile();
+      const updatedProfile = refreshedProfile || updateResponse;
+
+      if (!hasCompletedPharmacyProfile(updatedProfile)) {
+        throw new Error("Pharmacy profile was not saved completely");
+      }
+
+      const mappedUser = mapPharmacyProfileToUser(updatedProfile);
       if (mappedUser) {
         setUser({
           ...user,

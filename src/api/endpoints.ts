@@ -4,10 +4,10 @@ export const endpoints = {
     verifyOtp: '/api/v1/auth/pharmacy/verify',
   },
   pharmacies: {
-    create: '/api/v1/pharmacies',
     meProfile: '/api/v1/pharmacies/me/profile',
     list: '/api/v1/pharmacies',
     details: (id: string) => `/api/v1/pharmacies/${id}`,
+    medicineAvailability: '/api/v1/pharmacies/medicine-availability',
   },
   pharmacyMedicines: {
     create: '/api/v1/pharmacy-medicines',
@@ -43,6 +43,12 @@ export const endpoints = {
     cancel: (id: string) => `/api/v1/pharmacy-orders/${id}/cancel`,
     markPaid: (id: string) => `/api/v1/pharmacy-orders/${id}/mark-paid`,
     healthCheck: (id: string) => `/api/v1/pharmacy-orders/${id}/health-check`,
+  },
+  pharmacyCart: {
+    summary: '/api/v1/pharmacy-cart',
+    items: '/api/v1/pharmacy-cart/items',
+    removeItem: (medicineId: string) =>
+      `/api/v1/pharmacy-cart/items/${medicineId}`,
   },
   pharmacySubscriptions: {
     create: '/api/v1/pharmacy-subscriptions',

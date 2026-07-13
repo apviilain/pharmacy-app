@@ -6,7 +6,7 @@ import {
   MPIN_LOCKOUT_MS,
   MPIN_MAX_RETRIES,
 } from '../constants/security';
-import { getMpinScope, hashMpin } from '../utils/mpin';
+import { getCompatibleMpinHashes, getMpinScope, hashMpin } from '../utils/mpin';
 
 const SECURITY_KEY = 'app_security_state';
 
@@ -132,10 +132,12 @@ export const useSecurityStore = create<SecurityState>((set, get) => ({
     }
 
     const expectedHash = state.mpinHash;
-    const receivedHash = hashMpin(mpin, getMpinScope(userId));
+    const scope = getMpinScope(userId);
+    const receivedHashes = getCompatibleMpinHashes(mpin, scope);
 
-    if (expectedHash && expectedHash === receivedHash) {
+    if (expectedHash && receivedHashes.includes(expectedHash)) {
       const payload = {
+        mpinHash: hashMpin(mpin, scope),
         failedAttempts: 0,
         blockedUntil: null,
         lastUnlockAt: now,

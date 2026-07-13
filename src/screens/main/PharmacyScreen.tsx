@@ -25,11 +25,17 @@ import {
   ChevronRight,
   CircleAlert,
   Clock3,
+  FileUp,
+  Minus,
+  Pause,
+  Pencil,
   Pill,
   Plus,
   RefreshCw,
   Search,
   ShieldCheck,
+  ShoppingCart,
+  Trash2,
   UserRound,
   Users,
 } from 'lucide-react-native';
@@ -38,6 +44,7 @@ import { ApiError } from '../../api/errorHandler';
 import { pharmacyCustomerService } from '../../api/pharmacyCustomerService';
 import { pharmacyInventoryImportService } from '../../api/pharmacyInventoryImportService';
 import { pharmacyInventoryService } from '../../api/pharmacyInventoryService';
+import { pharmacyCartService } from '../../api/pharmacyCartService';
 import { pharmacyMedicineService } from '../../api/pharmacyMedicineService';
 import { pharmacyOrderService } from '../../api/pharmacyOrderService';
 import { pharmacySubscriptionService } from '../../api/pharmacySubscriptionService';
@@ -69,8 +76,10 @@ import type {
   PharmyxMedicine,
   PharmyxOrder,
   InventoryActionRequest,
+  PharmyxCartItem,
   PausePharmacySubscriptionRequest,
   UpdatePatientTrackingRequest,
+  UpdatePharmacyCartItemRequest,
   UpdatePharmacyOrderRequest,
   UpdatePharmacyOrderStatusRequest,
   UpdatePharmacySubscriptionRequest,
@@ -85,6 +94,11 @@ import { moderateScale, scale, verticalScale } from '../../theme/responsive';
 import { typography } from '../../theme/typography';
 import { parseJwt } from '../../utils/jwt';
 import type { RootStackParamList } from '../../navigation/types';
+import {
+  locationService,
+  type DeviceCoordinates,
+  type LocationAccessState,
+} from '../../services/locationService';
 type PharmacySection =
   | 'medicines'
   | 'inventory'
@@ -420,7 +434,7 @@ const getEntityId = (entity: { id?: string; _id?: string }) =>
   entity.id || entity._id || '';
 
 const getDiagnosticsBookingId = (
-  entity: { id?: string; _id?: string; bookingId?: string } | null | undefined,
+  entity: { id?: string; _id?: string; bookingId?: string } | null | undefined
 ) => entity?.bookingId || entity?.id || entity?._id || '';
 
 const getErrorMessage = (error: unknown, fallback: string) => {
@@ -474,7 +488,10 @@ const toCompactTime = (date: Date) => {
 
 const countTrue = (items: boolean[]) => items.filter(Boolean).length;
 
-const normalizeState = (value?: string) => String(value || '').trim().toLowerCase();
+const normalizeState = (value?: string) =>
+  String(value || '')
+    .trim()
+    .toLowerCase();
 
 const SectionToggle = ({
   active,
@@ -517,7 +534,9 @@ const StatCard = ({
   icon: React.ReactNode;
 }) => (
   <View style={styles.statCard}>
-    <View style={[styles.statIconWrap, { backgroundColor: accent }]}>{icon}</View>
+    <View style={[styles.statIconWrap, { backgroundColor: accent }]}>
+      {icon}
+    </View>
     <Text style={styles.statValue}>{value}</Text>
     <Text style={styles.statLabel}>{label}</Text>
   </View>
@@ -537,7 +556,11 @@ const InlineError = ({
       <Text style={styles.inlineErrorText}>{message}</Text>
     </View>
     {onRetry ? (
-      <TouchableOpacity onPress={onRetry} activeOpacity={0.8} style={styles.retryPill}>
+      <TouchableOpacity
+        onPress={onRetry}
+        activeOpacity={0.8}
+        style={styles.retryPill}
+      >
         <RefreshCw size={scale(14)} color={colors.primaryBlue} />
         <Text style={styles.retryPillText}>Retry</Text>
       </TouchableOpacity>
@@ -629,11 +652,11 @@ export function PharmacyScreen() {
   const route = useRoute<any>();
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const authUser = useAuthStore(state => state.user);
-  const accessToken = useAuthStore(state => state.accessToken);
+  const authUser = useAuthStore((state) => state.user);
+  const accessToken = useAuthStore((state) => state.accessToken);
   const jwtPayload = parseJwt(accessToken);
   const pharmacyId = String(
-    authUser?.pharmacyId || jwtPayload?.pharmacyId || authUser?._id || '',
+    authUser?.pharmacyId || jwtPayload?.pharmacyId || authUser?._id || ''
   );
 
   const isTablet = width >= 768;
@@ -648,6 +671,11 @@ export function PharmacyScreen() {
   const [debouncedMedicineSearch, setDebouncedMedicineSearch] = useState('');
   const [medicinePage, setMedicinePage] = useState(1);
   const [selectedMedicineId, setSelectedMedicineId] = useState('');
+  const [medicineLocation, setMedicineLocation] =
+    useState<DeviceCoordinates | null>(null);
+  const [medicineLocationStatus, setMedicineLocationStatus] =
+    useState<LocationAccessState>('idle');
+  const [medicineLocationMessage, setMedicineLocationMessage] = useState('');
   const [inventoryPage, setInventoryPage] = useState(1);
   const [inventoryLowStockOnly, setInventoryLowStockOnly] = useState(false);
   const [selectedInventoryId, setSelectedInventoryId] = useState('');
@@ -657,33 +685,33 @@ export function PharmacyScreen() {
   const [medicineFormMode, setMedicineFormMode] =
     useState<MedicineFormMode>('create');
   const [medicineCreateForm, setMedicineCreateForm] = useState(
-    DEFAULT_MEDICINE_CREATE_FORM,
+    DEFAULT_MEDICINE_CREATE_FORM
   );
   const [medicineEditForm, setMedicineEditForm] = useState(
-    DEFAULT_MEDICINE_EDIT_FORM,
+    DEFAULT_MEDICINE_EDIT_FORM
   );
   const [medicineErrors, setMedicineErrors] = useState<Record<string, string>>(
-    {},
+    {}
   );
 
   const [customerModalVisible, setCustomerModalVisible] = useState(false);
   const [customerForm, setCustomerForm] = useState(DEFAULT_CUSTOMER_FORM);
   const [customerErrors, setCustomerErrors] = useState<Record<string, string>>(
-    {},
+    {}
   );
   const [inventoryModalVisible, setInventoryModalVisible] = useState(false);
   const [inventoryCreateForm, setInventoryCreateForm] = useState(
-    DEFAULT_INVENTORY_CREATE_FORM,
+    DEFAULT_INVENTORY_CREATE_FORM
   );
-  const [inventoryErrors, setInventoryErrors] = useState<Record<string, string>>(
-    {},
-  );
+  const [inventoryErrors, setInventoryErrors] = useState<
+    Record<string, string>
+  >({});
   const [inventoryActionModalVisible, setInventoryActionModalVisible] =
     useState(false);
   const [inventoryActionMode, setInventoryActionMode] =
     useState<InventoryActionMode>('reserve');
   const [inventoryActionForm, setInventoryActionForm] = useState(
-    DEFAULT_INVENTORY_ACTION_FORM,
+    DEFAULT_INVENTORY_ACTION_FORM
   );
   const [inventoryActionErrors, setInventoryActionErrors] = useState<
     Record<string, string>
@@ -693,71 +721,88 @@ export function PharmacyScreen() {
   const [inventoryImportMode, setInventoryImportMode] =
     useState<InventoryImportMode>('upsert');
   const [inventoryImportPage, setInventoryImportPage] = useState(1);
-  const [selectedInventoryImportId, setSelectedInventoryImportId] = useState('');
+  const [selectedInventoryImportId, setSelectedInventoryImportId] =
+    useState('');
   const [orderPage, setOrderPage] = useState(1);
   const [orderStatusFilter, setOrderStatusFilter] = useState('placed');
   const [orderPaymentFilter, setOrderPaymentFilter] = useState('pending');
   const [selectedOrderId, setSelectedOrderId] = useState('');
   const [orderModalVisible, setOrderModalVisible] = useState(false);
-  const [orderCreateForm, setOrderCreateForm] = useState(DEFAULT_ORDER_CREATE_FORM);
+  const [orderCreateForm, setOrderCreateForm] = useState(
+    DEFAULT_ORDER_CREATE_FORM
+  );
   const [orderErrors, setOrderErrors] = useState<Record<string, string>>({});
   const [orderActionModalVisible, setOrderActionModalVisible] = useState(false);
-  const [orderActionMode, setOrderActionMode] = useState<OrderActionMode>('update');
-  const [orderActionForm, setOrderActionForm] = useState(DEFAULT_ORDER_ACTION_FORM);
-  const [orderActionErrors, setOrderActionErrors] = useState<Record<string, string>>({});
+  const [orderActionMode, setOrderActionMode] =
+    useState<OrderActionMode>('update');
+  const [orderActionForm, setOrderActionForm] = useState(
+    DEFAULT_ORDER_ACTION_FORM
+  );
+  const [orderActionErrors, setOrderActionErrors] = useState<
+    Record<string, string>
+  >({});
   const [healthCheckModalVisible, setHealthCheckModalVisible] = useState(false);
-  const [healthCheckMode, setHealthCheckMode] = useState<HealthCheckMode>('create');
-  const [healthCheckForm, setHealthCheckForm] = useState(DEFAULT_HEALTH_CHECK_FORM);
-  const [healthCheckErrors, setHealthCheckErrors] = useState<Record<string, string>>({});
+  const [healthCheckMode, setHealthCheckMode] =
+    useState<HealthCheckMode>('create');
+  const [healthCheckForm, setHealthCheckForm] = useState(
+    DEFAULT_HEALTH_CHECK_FORM
+  );
+  const [healthCheckErrors, setHealthCheckErrors] = useState<
+    Record<string, string>
+  >({});
   const [subscriptionPage, setSubscriptionPage] = useState(1);
   const [selectedSubscriptionId, setSelectedSubscriptionId] = useState('');
-  const [subscriptionModalVisible, setSubscriptionModalVisible] = useState(false);
+  const [subscriptionModalVisible, setSubscriptionModalVisible] =
+    useState(false);
   const [subscriptionCreateForm, setSubscriptionCreateForm] = useState(
-    DEFAULT_SUBSCRIPTION_CREATE_FORM,
+    DEFAULT_SUBSCRIPTION_CREATE_FORM
   );
-  const [subscriptionErrors, setSubscriptionErrors] = useState<Record<string, string>>(
-    {},
-  );
+  const [subscriptionErrors, setSubscriptionErrors] = useState<
+    Record<string, string>
+  >({});
   const [subscriptionActionModalVisible, setSubscriptionActionModalVisible] =
     useState(false);
   const [subscriptionActionMode, setSubscriptionActionMode] =
     useState<SubscriptionActionMode>('update');
   const [subscriptionActionForm, setSubscriptionActionForm] = useState(
-    DEFAULT_SUBSCRIPTION_ACTION_FORM,
+    DEFAULT_SUBSCRIPTION_ACTION_FORM
   );
   const [subscriptionActionErrors, setSubscriptionActionErrors] = useState<
     Record<string, string>
   >({});
   const [walletTransactionPage, setWalletTransactionPage] = useState(1);
   const [walletModalVisible, setWalletModalVisible] = useState(false);
-  const [walletTopupForm, setWalletTopupForm] = useState(DEFAULT_WALLET_TOPUP_FORM);
+  const [walletTopupForm, setWalletTopupForm] = useState(
+    DEFAULT_WALLET_TOPUP_FORM
+  );
   const [walletErrors, setWalletErrors] = useState<Record<string, string>>({});
-  const [selectedTrackingCustomerId, setSelectedTrackingCustomerId] = useState('');
+  const [selectedTrackingCustomerId, setSelectedTrackingCustomerId] =
+    useState('');
   const [patientTrackingModalVisible, setPatientTrackingModalVisible] =
     useState(false);
   const [patientTrackingForm, setPatientTrackingForm] = useState(
-    DEFAULT_PATIENT_TRACKING_FORM,
+    DEFAULT_PATIENT_TRACKING_FORM
   );
   const [patientTrackingErrors, setPatientTrackingErrors] = useState<
     Record<string, string>
   >({});
-  const [selectedDiagnosticsBookingId, setSelectedDiagnosticsBookingId] = useState('');
-  const [diagnosticsBookingSnapshot, setDiagnosticsBookingSnapshot] = useState<
-    Record<string, unknown> | null
-  >(null);
+  const [selectedDiagnosticsBookingId, setSelectedDiagnosticsBookingId] =
+    useState('');
+  const [diagnosticsBookingSnapshot, setDiagnosticsBookingSnapshot] =
+    useState<Record<string, unknown> | null>(null);
   const [diagnosticsModalVisible, setDiagnosticsModalVisible] = useState(false);
   const [diagnosticsCreateForm, setDiagnosticsCreateForm] = useState(
-    DEFAULT_DIAGNOSTICS_CREATE_FORM,
+    DEFAULT_DIAGNOSTICS_CREATE_FORM
   );
-  const [diagnosticsErrors, setDiagnosticsErrors] = useState<Record<string, string>>(
-    {},
-  );
+  const [diagnosticsErrors, setDiagnosticsErrors] = useState<
+    Record<string, string>
+  >({});
   const [diagnosticsActionModalVisible, setDiagnosticsActionModalVisible] =
     useState(false);
   const [diagnosticsActionMode, setDiagnosticsActionMode] =
     useState<DiagnosticsActionMode>('retry');
   const [diagnosticsActionForm, setDiagnosticsActionForm] = useState(
-    DEFAULT_DIAGNOSTICS_ACTION_FORM,
+    DEFAULT_DIAGNOSTICS_ACTION_FORM
   );
   const [diagnosticsActionErrors, setDiagnosticsActionErrors] = useState<
     Record<string, string>
@@ -765,7 +810,7 @@ export function PharmacyScreen() {
   const [paymentVerificationModalVisible, setPaymentVerificationModalVisible] =
     useState(false);
   const [paymentVerificationForm, setPaymentVerificationForm] = useState(
-    DEFAULT_PAYMENT_VERIFICATION_FORM,
+    DEFAULT_PAYMENT_VERIFICATION_FORM
   );
   const [paymentVerificationErrors, setPaymentVerificationErrors] = useState<
     Record<string, string>
@@ -807,7 +852,7 @@ export function PharmacyScreen() {
     }
 
     const selectedStillVisible = medicines.some(
-      item => getEntityId(item) === selectedMedicineId,
+      (item) => getEntityId(item) === selectedMedicineId
     );
 
     if (!selectedMedicineId || !selectedStillVisible) {
@@ -816,8 +861,43 @@ export function PharmacyScreen() {
   }, [medicines, selectedMedicineId]);
 
   const selectedMedicineSummary = medicines.find(
-    item => getEntityId(item) === selectedMedicineId,
+    (item) => getEntityId(item) === selectedMedicineId
   );
+
+  const requestMedicineLocation = async () => {
+    setMedicineLocationStatus('loading');
+    setMedicineLocationMessage('');
+
+    const result = await locationService.requestCurrentLocation();
+
+    if (result.status === 'granted' && result.coords) {
+      setMedicineLocation(result.coords);
+      setMedicineLocationStatus('granted');
+      setMedicineLocationMessage('');
+      return;
+    }
+
+    setMedicineLocation(null);
+    setMedicineLocationStatus(result.status);
+    setMedicineLocationMessage(
+      result.message ||
+        'Location access is required to check nearby medicine availability.'
+    );
+  };
+
+  useEffect(() => {
+    if (activeSection === 'medicines' && medicineLocationStatus === 'idle') {
+      requestMedicineLocation().catch((error) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'Unable to request location permission.';
+        setMedicineLocation(null);
+        setMedicineLocationStatus('unavailable');
+        setMedicineLocationMessage(message);
+      });
+    }
+  }, [activeSection, medicineLocationStatus]);
 
   const medicineDetailQuery = useQuery({
     queryKey: ['pharmacyMedicineDetail', selectedMedicineId],
@@ -825,10 +905,65 @@ export function PharmacyScreen() {
     enabled: !!selectedMedicineId,
   });
 
-  const selectedMedicine = medicineDetailQuery.data || selectedMedicineSummary || null;
+  const selectedMedicine =
+    medicineDetailQuery.data || selectedMedicineSummary || null;
+
+  const pharmacyCartQuery = useQuery({
+    queryKey: ['pharmacyCart'],
+    queryFn: () => pharmacyCartService.getCart(),
+  });
+
+  const pharmacyCart = pharmacyCartQuery.data || null;
+  const cartItems = pharmacyCart?.items || [];
+  const selectedMedicineCartItem =
+    cartItems.find(
+      (item) =>
+        String(
+          item.medicineId || item.medicine?._id || item.medicine?.id || ''
+        ) === String(selectedMedicineId || '')
+    ) || null;
+  const selectedMedicineCartQuantity =
+    Number(selectedMedicineCartItem?.quantity || 0) || 0;
+  const cartTotalItems = Number(
+    pharmacyCart?.totalItems ?? pharmacyCart?.totalQuantity ?? cartItems.length
+  );
+  const cartSubtotal = Number(
+    pharmacyCart?.subtotal ??
+      pharmacyCart?.totalAmount ??
+      pharmacyCart?.grandTotal ??
+      0
+  );
+
+  const medicineAvailabilityQuery = useQuery({
+    queryKey: [
+      'medicineAvailability',
+      selectedMedicineId,
+      medicineLocation?.latitude,
+      medicineLocation?.longitude,
+    ],
+    queryFn: () =>
+      pharmacyMedicineService.getAvailability({
+        medicineId: selectedMedicineId,
+        latitude: medicineLocation?.latitude || 0,
+        longitude: medicineLocation?.longitude || 0,
+        radiusKm: 5,
+        page: 1,
+        limit: 20,
+      }),
+    enabled:
+      activeSection === 'medicines' &&
+      !!selectedMedicineId &&
+      !!medicineLocation &&
+      medicineLocationStatus === 'granted',
+  });
 
   const inventoryListQuery = useQuery({
-    queryKey: ['pharmacyInventory', pharmacyId, inventoryPage, inventoryLowStockOnly],
+    queryKey: [
+      'pharmacyInventory',
+      pharmacyId,
+      inventoryPage,
+      inventoryLowStockOnly,
+    ],
     queryFn: () =>
       inventoryLowStockOnly
         ? pharmacyInventoryService.lowStock({
@@ -855,7 +990,7 @@ export function PharmacyScreen() {
     }
 
     const selectedStillVisible = inventoryItems.some(
-      item => getEntityId(item) === selectedInventoryId,
+      (item) => getEntityId(item) === selectedInventoryId
     );
 
     if (!selectedInventoryId || !selectedStillVisible) {
@@ -864,7 +999,7 @@ export function PharmacyScreen() {
   }, [inventoryItems, selectedInventoryId]);
 
   const selectedInventorySummary = inventoryItems.find(
-    item => getEntityId(item) === selectedInventoryId,
+    (item) => getEntityId(item) === selectedInventoryId
   );
 
   const inventoryDetailQuery = useQuery({
@@ -906,7 +1041,7 @@ export function PharmacyScreen() {
     }
 
     const selectedStillVisible = inventoryImports.some(
-      item => getEntityId(item) === selectedInventoryImportId,
+      (item) => getEntityId(item) === selectedInventoryImportId
     );
 
     if (!selectedInventoryImportId || !selectedStillVisible) {
@@ -915,7 +1050,7 @@ export function PharmacyScreen() {
   }, [inventoryImports, selectedInventoryImportId]);
 
   const selectedInventoryImportSummary = inventoryImports.find(
-    item => getEntityId(item) === selectedInventoryImportId,
+    (item) => getEntityId(item) === selectedInventoryImportId
   );
 
   const inventoryImportDetailQuery = useQuery({
@@ -956,7 +1091,7 @@ export function PharmacyScreen() {
     }
 
     const selectedStillVisible = orders.some(
-      item => getEntityId(item) === selectedOrderId,
+      (item) => getEntityId(item) === selectedOrderId
     );
 
     if (!selectedOrderId || !selectedStillVisible) {
@@ -965,7 +1100,7 @@ export function PharmacyScreen() {
   }, [orders, selectedOrderId]);
 
   const selectedOrderSummary = orders.find(
-    item => getEntityId(item) === selectedOrderId,
+    (item) => getEntityId(item) === selectedOrderId
   );
 
   const orderDetailQuery = useQuery({
@@ -1002,7 +1137,7 @@ export function PharmacyScreen() {
     }
 
     const selectedStillVisible = subscriptions.some(
-      item => getEntityId(item) === selectedSubscriptionId,
+      (item) => getEntityId(item) === selectedSubscriptionId
     );
 
     if (!selectedSubscriptionId || !selectedStillVisible) {
@@ -1011,7 +1146,9 @@ export function PharmacyScreen() {
   }, [subscriptions, selectedSubscriptionId]);
 
   const selectedSubscription =
-    subscriptions.find(item => getEntityId(item) === selectedSubscriptionId) || null;
+    subscriptions.find(
+      (item) => getEntityId(item) === selectedSubscriptionId
+    ) || null;
 
   const walletSummaryQuery = useQuery({
     queryKey: ['pharmacyWallet'],
@@ -1041,12 +1178,8 @@ export function PharmacyScreen() {
   const filteredCustomers = useMemo(() => {
     const term = customerSearchInput.trim().toLowerCase();
     if (!term) return customers;
-    return customers.filter(customer => {
-      const haystack = [
-        customer.name,
-        customer.phone,
-        customer.diseaseNotes,
-      ]
+    return customers.filter((customer) => {
+      const haystack = [customer.name, customer.phone, customer.diseaseNotes]
         .filter(Boolean)
         .join(' ')
         .toLowerCase();
@@ -1061,7 +1194,7 @@ export function PharmacyScreen() {
     }
 
     const selectedStillVisible = customers.some(
-      item => getEntityId(item) === selectedTrackingCustomerId,
+      (item) => getEntityId(item) === selectedTrackingCustomerId
     );
 
     if (!selectedTrackingCustomerId || !selectedStillVisible) {
@@ -1070,7 +1203,9 @@ export function PharmacyScreen() {
   }, [customers, selectedTrackingCustomerId]);
 
   const selectedTrackingCustomer =
-    customers.find(item => getEntityId(item) === selectedTrackingCustomerId) || null;
+    customers.find(
+      (item) => getEntityId(item) === selectedTrackingCustomerId
+    ) || null;
 
   const patientTrackingQuery = useQuery({
     queryKey: ['patientTracking', selectedTrackingCustomerId],
@@ -1108,7 +1243,7 @@ export function PharmacyScreen() {
   const createMedicineMutation = useMutation({
     mutationFn: (payload: CreateMedicineRequest) =>
       pharmacyMedicineService.create(payload),
-    onSuccess: async created => {
+    onSuccess: async (created) => {
       await queryClient.invalidateQueries({ queryKey: ['pharmacyMedicines'] });
       setMedicineModalVisible(false);
       setMedicineCreateForm(DEFAULT_MEDICINE_CREATE_FORM);
@@ -1120,7 +1255,7 @@ export function PharmacyScreen() {
         text2: 'The medicine has been saved successfully.',
       });
     },
-    onError: error => {
+    onError: (error) => {
       Toast.show({
         type: 'error',
         text1: 'Unable to add medicine',
@@ -1128,6 +1263,92 @@ export function PharmacyScreen() {
       });
     },
   });
+
+  const updateCartItemMutation = useMutation({
+    mutationFn: (payload: UpdatePharmacyCartItemRequest) =>
+      pharmacyCartService.updateItem(payload),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['pharmacyCart'] });
+      Toast.show({
+        type: 'success',
+        text1: 'Cart updated',
+        text2: 'Medicine quantity has been updated in the cart.',
+      });
+    },
+    onError: (error) => {
+      Toast.show({
+        type: 'error',
+        text1: 'Unable to update cart',
+        text2: getErrorMessage(error, 'Please try again.'),
+      });
+    },
+  });
+
+  const removeCartItemMutation = useMutation({
+    mutationFn: (medicineId: string) =>
+      pharmacyCartService.removeItem(medicineId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['pharmacyCart'] });
+      Toast.show({
+        type: 'success',
+        text1: 'Item removed',
+        text2: 'Medicine has been removed from the cart.',
+      });
+    },
+    onError: (error) => {
+      Toast.show({
+        type: 'error',
+        text1: 'Unable to remove item',
+        text2: getErrorMessage(error, 'Please try again.'),
+      });
+    },
+  });
+
+  const clearCartMutation = useMutation({
+    mutationFn: () => pharmacyCartService.clearCart(),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['pharmacyCart'] });
+      Toast.show({
+        type: 'success',
+        text1: 'Cart cleared',
+        text2: 'All cart items have been removed.',
+      });
+    },
+    onError: (error) => {
+      Toast.show({
+        type: 'error',
+        text1: 'Unable to clear cart',
+        text2: getErrorMessage(error, 'Please try again.'),
+      });
+    },
+  });
+
+  const updateSelectedMedicineCart = (quantity: number) => {
+    if (!selectedMedicineId || !pharmacyId) {
+      Toast.show({
+        type: 'error',
+        text1: 'Unable to update cart',
+        text2: 'Pharmacy or medicine details are missing.',
+      });
+      return;
+    }
+
+    updateCartItemMutation.mutate({
+      pharmacyId,
+      medicineId: selectedMedicineId,
+      quantity,
+    });
+  };
+
+  const getCartMedicineLabel = (item: PharmyxCartItem) =>
+    String(
+      item.medicine?.name ||
+        item.medicine?.brandName ||
+        item.name ||
+        item.genericName ||
+        item.medicineId ||
+        'Medicine'
+    );
 
   const updateMedicineMutation = useMutation({
     mutationFn: ({
@@ -1137,7 +1358,7 @@ export function PharmacyScreen() {
       id: string;
       payload: UpdateMedicineRequest;
     }) => pharmacyMedicineService.update(id, payload),
-    onSuccess: async updated => {
+    onSuccess: async (updated) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['pharmacyMedicines'] }),
         queryClient.invalidateQueries({
@@ -1152,7 +1373,7 @@ export function PharmacyScreen() {
         text2: 'The latest changes are now visible.',
       });
     },
-    onError: error => {
+    onError: (error) => {
       Toast.show({
         type: 'error',
         text1: 'Unable to update medicine',
@@ -1175,7 +1396,7 @@ export function PharmacyScreen() {
         text2: 'Customer details have been saved successfully.',
       });
     },
-    onError: error => {
+    onError: (error) => {
       Toast.show({
         type: 'error',
         text1: 'Unable to add customer',
@@ -1203,7 +1424,7 @@ export function PharmacyScreen() {
         text2: 'Stock has been added successfully.',
       });
     },
-    onError: error => {
+    onError: (error) => {
       Toast.show({
         type: 'error',
         text1: 'Unable to add stock',
@@ -1231,7 +1452,7 @@ export function PharmacyScreen() {
         text2: 'Selected inventory has been reserved.',
       });
     },
-    onError: error => {
+    onError: (error) => {
       Toast.show({
         type: 'error',
         text1: 'Unable to reserve stock',
@@ -1259,7 +1480,7 @@ export function PharmacyScreen() {
         text2: 'Reserved stock has been released.',
       });
     },
-    onError: error => {
+    onError: (error) => {
       Toast.show({
         type: 'error',
         text1: 'Unable to release stock',
@@ -1271,7 +1492,7 @@ export function PharmacyScreen() {
   const inventoryImportPreviewMutation = useMutation({
     mutationFn: (payload: InventoryImportPreviewInput) =>
       pharmacyInventoryImportService.preview(payload),
-    onSuccess: async preview => {
+    onSuccess: async (preview) => {
       await queryClient.invalidateQueries({
         queryKey: ['pharmacyInventoryImports'],
       });
@@ -1285,7 +1506,7 @@ export function PharmacyScreen() {
         text2: 'Review the preview before committing inventory changes.',
       });
     },
-    onError: error => {
+    onError: (error) => {
       Toast.show({
         type: 'error',
         text1: 'Preview failed',
@@ -1297,7 +1518,7 @@ export function PharmacyScreen() {
   const inventoryImportCommitMutation = useMutation({
     mutationFn: (payload: CommitInventoryImportRequest) =>
       pharmacyInventoryImportService.commit(payload),
-    onSuccess: async committed => {
+    onSuccess: async (committed) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['pharmacyInventory'] }),
         queryClient.invalidateQueries({
@@ -1317,11 +1538,14 @@ export function PharmacyScreen() {
         text2: 'Inventory import has been applied successfully.',
       });
     },
-    onError: error => {
+    onError: (error) => {
       Toast.show({
         type: 'error',
         text1: 'Commit failed',
-        text2: getErrorMessage(error, 'Unable to commit this inventory import.'),
+        text2: getErrorMessage(
+          error,
+          'Unable to commit this inventory import.'
+        ),
       });
     },
   });
@@ -1329,7 +1553,7 @@ export function PharmacyScreen() {
   const createOrderMutation = useMutation({
     mutationFn: (payload: CreatePharmacyOrderRequest) =>
       pharmacyOrderService.create(payload),
-    onSuccess: async created => {
+    onSuccess: async (created) => {
       await queryClient.invalidateQueries({ queryKey: ['pharmacyOrders'] });
       setOrderModalVisible(false);
       setOrderCreateForm(DEFAULT_ORDER_CREATE_FORM);
@@ -1341,7 +1565,7 @@ export function PharmacyScreen() {
         text2: 'Pharmacy order has been saved successfully.',
       });
     },
-    onError: error => {
+    onError: (error) => {
       Toast.show({
         type: 'error',
         text1: 'Unable to create order',
@@ -1351,9 +1575,14 @@ export function PharmacyScreen() {
   });
 
   const updateOrderMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: UpdatePharmacyOrderRequest }) =>
-      pharmacyOrderService.update(id, payload),
-    onSuccess: async updated => {
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: UpdatePharmacyOrderRequest;
+    }) => pharmacyOrderService.update(id, payload),
+    onSuccess: async (updated) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['pharmacyOrders'] }),
         queryClient.invalidateQueries({
@@ -1368,7 +1597,7 @@ export function PharmacyScreen() {
         text2: 'Order details have been updated.',
       });
     },
-    onError: error => {
+    onError: (error) => {
       Toast.show({
         type: 'error',
         text1: 'Unable to update order',
@@ -1385,7 +1614,7 @@ export function PharmacyScreen() {
       id: string;
       payload: UpdatePharmacyOrderStatusRequest;
     }) => pharmacyOrderService.updateStatus(id, payload),
-    onSuccess: async updated => {
+    onSuccess: async (updated) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['pharmacyOrders'] }),
         queryClient.invalidateQueries({
@@ -1400,7 +1629,7 @@ export function PharmacyScreen() {
         text2: 'Order status has been updated.',
       });
     },
-    onError: error => {
+    onError: (error) => {
       Toast.show({
         type: 'error',
         text1: 'Unable to update status',
@@ -1410,9 +1639,14 @@ export function PharmacyScreen() {
   });
 
   const cancelOrderMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: CancelPharmacyOrderRequest }) =>
-      pharmacyOrderService.cancel(id, payload),
-    onSuccess: async updated => {
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: CancelPharmacyOrderRequest;
+    }) => pharmacyOrderService.cancel(id, payload),
+    onSuccess: async (updated) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['pharmacyOrders'] }),
         queryClient.invalidateQueries({
@@ -1427,7 +1661,7 @@ export function PharmacyScreen() {
         text2: 'The pharmacy order has been cancelled.',
       });
     },
-    onError: error => {
+    onError: (error) => {
       Toast.show({
         type: 'error',
         text1: 'Unable to cancel order',
@@ -1437,9 +1671,14 @@ export function PharmacyScreen() {
   });
 
   const markPaidOrderMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: MarkPharmacyOrderPaidRequest }) =>
-      pharmacyOrderService.markPaid(id, payload),
-    onSuccess: async updated => {
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: MarkPharmacyOrderPaidRequest;
+    }) => pharmacyOrderService.markPaid(id, payload),
+    onSuccess: async (updated) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['pharmacyOrders'] }),
         queryClient.invalidateQueries({
@@ -1454,7 +1693,7 @@ export function PharmacyScreen() {
         text2: 'Order payment has been marked as collected.',
       });
     },
-    onError: error => {
+    onError: (error) => {
       Toast.show({
         type: 'error',
         text1: 'Unable to mark payment',
@@ -1483,7 +1722,7 @@ export function PharmacyScreen() {
         text2: 'Order health check values have been recorded.',
       });
     },
-    onError: error => {
+    onError: (error) => {
       Toast.show({
         type: 'error',
         text1: 'Unable to save health check',
@@ -1512,7 +1751,7 @@ export function PharmacyScreen() {
         text2: 'The latest reading is now visible on the order.',
       });
     },
-    onError: error => {
+    onError: (error) => {
       Toast.show({
         type: 'error',
         text1: 'Unable to update health check',
@@ -1524,8 +1763,10 @@ export function PharmacyScreen() {
   const createSubscriptionMutation = useMutation({
     mutationFn: (payload: CreatePharmacySubscriptionRequest) =>
       pharmacySubscriptionService.create(payload),
-    onSuccess: async created => {
-      await queryClient.invalidateQueries({ queryKey: ['pharmacySubscriptions'] });
+    onSuccess: async (created) => {
+      await queryClient.invalidateQueries({
+        queryKey: ['pharmacySubscriptions'],
+      });
       setSubscriptionModalVisible(false);
       setSubscriptionCreateForm(DEFAULT_SUBSCRIPTION_CREATE_FORM);
       setSubscriptionErrors({});
@@ -1536,7 +1777,7 @@ export function PharmacyScreen() {
         text2: 'Recurring refill plan has been saved.',
       });
     },
-    onError: error => {
+    onError: (error) => {
       Toast.show({
         type: 'error',
         text1: 'Unable to create subscription',
@@ -1553,8 +1794,10 @@ export function PharmacyScreen() {
       id: string;
       payload: UpdatePharmacySubscriptionRequest;
     }) => pharmacySubscriptionService.update(id, payload),
-    onSuccess: async updated => {
-      await queryClient.invalidateQueries({ queryKey: ['pharmacySubscriptions'] });
+    onSuccess: async (updated) => {
+      await queryClient.invalidateQueries({
+        queryKey: ['pharmacySubscriptions'],
+      });
       setSubscriptionActionModalVisible(false);
       setSubscriptionActionErrors({});
       setSelectedSubscriptionId(getEntityId(updated) || selectedSubscriptionId);
@@ -1564,7 +1807,7 @@ export function PharmacyScreen() {
         text2: 'Refill interval and reminders have been updated.',
       });
     },
-    onError: error => {
+    onError: (error) => {
       Toast.show({
         type: 'error',
         text1: 'Unable to update subscription',
@@ -1581,8 +1824,10 @@ export function PharmacyScreen() {
       id: string;
       payload: PausePharmacySubscriptionRequest;
     }) => pharmacySubscriptionService.pause(id, payload),
-    onSuccess: async updated => {
-      await queryClient.invalidateQueries({ queryKey: ['pharmacySubscriptions'] });
+    onSuccess: async (updated) => {
+      await queryClient.invalidateQueries({
+        queryKey: ['pharmacySubscriptions'],
+      });
       setSubscriptionActionModalVisible(false);
       setSubscriptionActionErrors({});
       setSelectedSubscriptionId(getEntityId(updated) || selectedSubscriptionId);
@@ -1592,7 +1837,7 @@ export function PharmacyScreen() {
         text2: 'The refill plan has been paused successfully.',
       });
     },
-    onError: error => {
+    onError: (error) => {
       Toast.show({
         type: 'error',
         text1: 'Unable to pause subscription',
@@ -1604,7 +1849,9 @@ export function PharmacyScreen() {
   const deleteSubscriptionMutation = useMutation({
     mutationFn: (id: string) => pharmacySubscriptionService.remove(id),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['pharmacySubscriptions'] });
+      await queryClient.invalidateQueries({
+        queryKey: ['pharmacySubscriptions'],
+      });
       setSubscriptionActionModalVisible(false);
       setSubscriptionActionErrors({});
       Toast.show({
@@ -1613,7 +1860,7 @@ export function PharmacyScreen() {
         text2: 'The recurring refill plan has been removed.',
       });
     },
-    onError: error => {
+    onError: (error) => {
       Toast.show({
         type: 'error',
         text1: 'Unable to delete subscription',
@@ -1623,7 +1870,8 @@ export function PharmacyScreen() {
   });
 
   const walletTopupMutation = useMutation({
-    mutationFn: (payload: WalletTopupRequest) => pharmacyWalletService.topup(payload),
+    mutationFn: (payload: WalletTopupRequest) =>
+      pharmacyWalletService.topup(payload),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['pharmacyWallet'] }),
@@ -1640,7 +1888,7 @@ export function PharmacyScreen() {
         text2: 'Pharmacy wallet balance has been refreshed.',
       });
     },
-    onError: error => {
+    onError: (error) => {
       Toast.show({
         type: 'error',
         text1: 'Unable to top up wallet',
@@ -1669,7 +1917,7 @@ export function PharmacyScreen() {
         text2: 'Follow-up notes and refill tracking are now updated.',
       });
     },
-    onError: error => {
+    onError: (error) => {
       Toast.show({
         type: 'error',
         text1: 'Unable to update patient tracking',
@@ -1681,7 +1929,7 @@ export function PharmacyScreen() {
   const createDiagnosticsBookingMutation = useMutation({
     mutationFn: (payload: DiagnosticsBookingRequest) =>
       diagnosticsBookingService.create(payload),
-    onSuccess: created => {
+    onSuccess: (created) => {
       const bookingId = getDiagnosticsBookingId(created);
       setDiagnosticsModalVisible(false);
       setDiagnosticsCreateForm(DEFAULT_DIAGNOSTICS_CREATE_FORM);
@@ -1699,7 +1947,7 @@ export function PharmacyScreen() {
         text2: 'Payment flow is ready for this diagnostics booking.',
       });
     },
-    onError: error => {
+    onError: (error) => {
       Toast.show({
         type: 'error',
         text1: 'Unable to create diagnostics booking',
@@ -1716,8 +1964,9 @@ export function PharmacyScreen() {
       id: string;
       payload: DiagnosticsRetryPaymentRequest;
     }) => diagnosticsBookingService.retryPayment(id, payload),
-    onSuccess: updated => {
-      const bookingId = getDiagnosticsBookingId(updated) || selectedDiagnosticsBookingId;
+    onSuccess: (updated) => {
+      const bookingId =
+        getDiagnosticsBookingId(updated) || selectedDiagnosticsBookingId;
       setDiagnosticsActionModalVisible(false);
       setDiagnosticsActionErrors({});
       setDiagnosticsBookingSnapshot(updated as Record<string, unknown>);
@@ -1733,7 +1982,7 @@ export function PharmacyScreen() {
         text2: 'Diagnostics payment retry has been triggered.',
       });
     },
-    onError: error => {
+    onError: (error) => {
       Toast.show({
         type: 'error',
         text1: 'Unable to retry payment',
@@ -1750,8 +1999,9 @@ export function PharmacyScreen() {
       id: string;
       payload: DiagnosticsCancelRequest;
     }) => diagnosticsBookingService.cancel(id, payload),
-    onSuccess: updated => {
-      const bookingId = getDiagnosticsBookingId(updated) || selectedDiagnosticsBookingId;
+    onSuccess: (updated) => {
+      const bookingId =
+        getDiagnosticsBookingId(updated) || selectedDiagnosticsBookingId;
       setDiagnosticsActionModalVisible(false);
       setDiagnosticsActionErrors({});
       setDiagnosticsBookingSnapshot(updated as Record<string, unknown>);
@@ -1767,7 +2017,7 @@ export function PharmacyScreen() {
         text2: 'The diagnostics booking has been cancelled.',
       });
     },
-    onError: error => {
+    onError: (error) => {
       Toast.show({
         type: 'error',
         text1: 'Unable to cancel diagnostics booking',
@@ -1784,8 +2034,9 @@ export function PharmacyScreen() {
       id: string;
       payload: DiagnosticsRescheduleRequest;
     }) => diagnosticsBookingService.reschedule(id, payload),
-    onSuccess: updated => {
-      const bookingId = getDiagnosticsBookingId(updated) || selectedDiagnosticsBookingId;
+    onSuccess: (updated) => {
+      const bookingId =
+        getDiagnosticsBookingId(updated) || selectedDiagnosticsBookingId;
       setDiagnosticsActionModalVisible(false);
       setDiagnosticsActionErrors({});
       setDiagnosticsBookingSnapshot(updated as Record<string, unknown>);
@@ -1801,7 +2052,7 @@ export function PharmacyScreen() {
         text2: 'The diagnostics booking date and time have been updated.',
       });
     },
-    onError: error => {
+    onError: (error) => {
       Toast.show({
         type: 'error',
         text1: 'Unable to reschedule diagnostics booking',
@@ -1813,10 +2064,10 @@ export function PharmacyScreen() {
   const verifyDiagnosticsPaymentMutation = useMutation({
     mutationFn: (payload: PaymentVerificationRequest) =>
       diagnosticsBookingService.verifyPayment(payload),
-    onSuccess: verified => {
+    onSuccess: (verified) => {
       setPaymentVerificationModalVisible(false);
       setPaymentVerificationErrors({});
-      setDiagnosticsBookingSnapshot(current => ({
+      setDiagnosticsBookingSnapshot((current) => ({
         ...(current || {}),
         verification: verified,
       }));
@@ -1831,7 +2082,7 @@ export function PharmacyScreen() {
         text2: 'Diagnostics payment verification completed.',
       });
     },
-    onError: error => {
+    onError: (error) => {
       Toast.show({
         type: 'error',
         text1: 'Unable to verify payment',
@@ -1907,7 +2158,8 @@ export function PharmacyScreen() {
             batchNumber: `BATCH-${seedKey}`,
             expiryDate: toCompactDate(addDays(now, 365)),
             reason: 'Workspace API seed',
-            notes: 'Initial inventory created for testing the pharmacy workspace.',
+            notes:
+              'Initial inventory created for testing the pharmacy workspace.',
           },
         ],
       });
@@ -1920,7 +2172,9 @@ export function PharmacyScreen() {
         items: [
           {
             medicineId,
-            medicineName: String(medicine.name || medicine.brandName || 'Demo Medicine'),
+            medicineName: String(
+              medicine.name || medicine.brandName || 'Demo Medicine'
+            ),
             orderedQty: 2,
             discount: 0,
             recurring: true,
@@ -1957,7 +2211,9 @@ export function PharmacyScreen() {
         items: [
           {
             medicineId,
-            medicineName: String(medicine.name || medicine.brandName || 'Demo Medicine'),
+            medicineName: String(
+              medicine.name || medicine.brandName || 'Demo Medicine'
+            ),
             frequency: 'Daily after dinner',
             intervalDays: 30,
             nextRefillDate: refillDate,
@@ -2010,7 +2266,7 @@ export function PharmacyScreen() {
         diagnosticsBookingId: getDiagnosticsBookingId(diagnostics),
       };
     },
-    onSuccess: async result => {
+    onSuccess: async (result) => {
       setSelectedMedicineId(result.medicineId);
       setSelectedTrackingCustomerId(result.customerId);
       setSelectedInventoryId(result.inventoryId);
@@ -2022,38 +2278,51 @@ export function PharmacyScreen() {
         queryClient.invalidateQueries({ queryKey: ['pharmacyMedicines'] }),
         queryClient.invalidateQueries({ queryKey: ['pharmacyMedicineDetail'] }),
         queryClient.invalidateQueries({ queryKey: ['pharmacyCustomers'] }),
-        queryClient.invalidateQueries({ queryKey: ['patientTracking', result.customerId] }),
+        queryClient.invalidateQueries({
+          queryKey: ['patientTracking', result.customerId],
+        }),
         queryClient.invalidateQueries({ queryKey: ['pharmacyInventory'] }),
-        queryClient.invalidateQueries({ queryKey: ['pharmacyInventoryAdjustments'] }),
+        queryClient.invalidateQueries({
+          queryKey: ['pharmacyInventoryAdjustments'],
+        }),
         queryClient.invalidateQueries({ queryKey: ['pharmacyOrders'] }),
         queryClient.invalidateQueries({ queryKey: ['pharmacyOrderDetail'] }),
-        queryClient.invalidateQueries({ queryKey: ['pharmacyOrderHealthCheck'] }),
+        queryClient.invalidateQueries({
+          queryKey: ['pharmacyOrderHealthCheck'],
+        }),
         queryClient.invalidateQueries({ queryKey: ['pharmacySubscriptions'] }),
         queryClient.invalidateQueries({ queryKey: ['pharmacyWallet'] }),
-        queryClient.invalidateQueries({ queryKey: ['pharmacyWalletTransactions'] }),
-        queryClient.invalidateQueries({ queryKey: ['pharmacyTrackingSummary'] }),
+        queryClient.invalidateQueries({
+          queryKey: ['pharmacyWalletTransactions'],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['pharmacyTrackingSummary'],
+        }),
         queryClient.invalidateQueries({
           queryKey: ['pharmacyTrackingSummaryById', pharmacyId],
         }),
         queryClient.invalidateQueries({
           queryKey: ['diagnosticsPaymentDetails', result.diagnosticsBookingId],
         }),
-        queryClient.invalidateQueries({ queryKey: ['diagnosticsSessionBookings'] }),
+        queryClient.invalidateQueries({
+          queryKey: ['diagnosticsSessionBookings'],
+        }),
       ]);
 
       Toast.show({
         type: 'success',
         text1: 'Workspace data added',
-        text2: 'Demo records were created across pharmacy modules using live APIs.',
+        text2:
+          'Demo records were created across pharmacy modules using live APIs.',
       });
     },
-    onError: error => {
+    onError: (error) => {
       Toast.show({
         type: 'error',
         text1: 'Unable to add workspace data',
         text2: getErrorMessage(
           error,
-          'The API seed action failed. Please check the configured backend and try again.',
+          'The API seed action failed. Please check the configured backend and try again.'
         ),
       });
     },
@@ -2061,62 +2330,68 @@ export function PharmacyScreen() {
 
   const customerStats = {
     total: customers.length,
-    chronic: countTrue(customers.map(item => !!item.chronicCondition)),
-    recurring: countTrue(customers.map(item => !!item.recurringMedicine)),
+    chronic: countTrue(customers.map((item) => !!item.chronicCondition)),
+    recurring: countTrue(customers.map((item) => !!item.recurringMedicine)),
   };
   const inventoryStats = {
     total: inventoryItems.length,
-    lowStock: inventoryItems.filter(item => !!item.lowStock).length,
+    lowStock: inventoryItems.filter((item) => !!item.lowStock).length,
     reserved: inventoryItems.reduce(
       (sum, item) => sum + Number(item.reservedQuantity || 0),
-      0,
+      0
     ),
   };
   const inventoryImportStats = {
     total: inventoryImports.length,
     pending: inventoryImports.filter(
-      item => String(item.status || '').toLowerCase() === 'preview',
+      (item) => String(item.status || '').toLowerCase() === 'preview'
     ).length,
-    failed: inventoryImports.filter(item => Number(item.failedRows || 0) > 0)
+    failed: inventoryImports.filter((item) => Number(item.failedRows || 0) > 0)
       .length,
   };
   const orderStats = {
     total: orders.length,
     pending: orders.filter(
-      item => String(item.paymentStatus || '').toLowerCase() === 'pending',
+      (item) => String(item.paymentStatus || '').toLowerCase() === 'pending'
     ).length,
     accepted: orders.filter(
-      item => String(item.status || '').toLowerCase() === 'accepted',
+      (item) => String(item.status || '').toLowerCase() === 'accepted'
     ).length,
   };
   const subscriptionStats = {
     total: subscriptions.length,
     active: subscriptions.filter(
-      item => String(item.status || '').toLowerCase() === 'active',
+      (item) => String(item.status || '').toLowerCase() === 'active'
     ).length,
     paused: subscriptions.filter(
-      item =>
-        String(item.status || '').toLowerCase() === 'paused' || !!item.pausedUntil,
+      (item) =>
+        String(item.status || '').toLowerCase() === 'paused' ||
+        !!item.pausedUntil
     ).length,
   };
   const walletStats = {
     balance: Number(
-      walletSummary?.availableBalance ?? walletSummary?.balance ?? walletSummary?.totalBalance ?? 0,
+      walletSummary?.availableBalance ??
+        walletSummary?.balance ??
+        walletSummary?.totalBalance ??
+        0
     ),
     transactions: walletTransactions.length,
-    topups: walletTransactions.filter(
-      item => String(item.type || '').toLowerCase().includes('top'),
+    topups: walletTransactions.filter((item) =>
+      String(item.type || '')
+        .toLowerCase()
+        .includes('top')
     ).length,
   };
   const trackingStats = {
     customers: Number(
-      pharmacyTrackingSummary?.totalCustomers ?? customers.length ?? 0,
+      pharmacyTrackingSummary?.totalCustomers ?? customers.length ?? 0
     ),
     activeSubscriptions: Number(
-      pharmacyTrackingSummary?.activeSubscriptions ?? subscriptionStats.active,
+      pharmacyTrackingSummary?.activeSubscriptions ?? subscriptionStats.active
     ),
     pendingOrders: Number(
-      pharmacyTrackingSummary?.pendingOrders ?? orderStats.pending,
+      pharmacyTrackingSummary?.pendingOrders ?? orderStats.pending
     ),
   };
   const diagnosticsStats = {
@@ -2128,10 +2403,19 @@ export function PharmacyScreen() {
         : 0,
     tests: diagnosticsCreateForm.testIds
       .split(',')
-      .map(item => item.trim())
+      .map((item) => item.trim())
       .filter(Boolean).length,
   };
 
+  useEffect(() => {
+    if (
+      activeSection === 'inventory' &&
+      inventoryLowStockOnly &&
+      inventoryStats.lowStock === 0
+    ) {
+      setInventoryLowStockOnly(false);
+    }
+  }, [activeSection, inventoryLowStockOnly, inventoryStats.lowStock]);
 
   const openCreateMedicineModal = () => {
     navigation.navigate('PharmacyMedicineCreate');
@@ -2147,7 +2431,9 @@ export function PharmacyScreen() {
   const submitCustomer = () => {
     const nextErrors: Record<string, string> = {};
     const ageValue = parseOptionalNumber(customerForm.age);
-    const recurringValue = parseOptionalNumber(customerForm.recurringIntervalDays);
+    const recurringValue = parseOptionalNumber(
+      customerForm.recurringIntervalDays
+    );
 
     if (!customerForm.name.trim()) {
       nextErrors.name = 'Customer name is required';
@@ -2158,7 +2444,10 @@ export function PharmacyScreen() {
     if (Number.isNaN(ageValue)) {
       nextErrors.age = 'Age must be a number';
     }
-    if (customerForm.recurringMedicine && !customerForm.recurringIntervalDays.trim()) {
+    if (
+      customerForm.recurringMedicine &&
+      !customerForm.recurringIntervalDays.trim()
+    ) {
       nextErrors.recurringIntervalDays = 'Recurring interval is required';
     } else if (customerForm.recurringMedicine && Number.isNaN(recurringValue)) {
       nextErrors.recurringIntervalDays = 'Interval must be a number';
@@ -2174,7 +2463,9 @@ export function PharmacyScreen() {
       diseaseNotes: customerForm.diseaseNotes.trim() || undefined,
       chronicCondition: customerForm.chronicCondition,
       recurringMedicine: customerForm.recurringMedicine,
-      recurringIntervalDays: customerForm.recurringMedicine ? recurringValue : undefined,
+      recurringIntervalDays: customerForm.recurringMedicine
+        ? recurringValue
+        : undefined,
     });
   };
 
@@ -2191,8 +2482,9 @@ export function PharmacyScreen() {
     setInventoryActionMode(mode);
     setInventoryActionForm({
       ...DEFAULT_INVENTORY_ACTION_FORM,
-      medicineId:
-        String(selectedInventory?.medicineId || selectedMedicineId || '').trim(),
+      medicineId: String(
+        selectedInventory?.medicineId || selectedMedicineId || ''
+      ).trim(),
       reason: mode === 'reserve' ? 'internal_hold' : 'release_hold',
     });
     setInventoryActionErrors({});
@@ -2203,11 +2495,15 @@ export function PharmacyScreen() {
     const nextErrors: Record<string, string> = {};
     const quantity = parseOptionalNumber(inventoryCreateForm.quantity);
     const reorderThreshold = parseOptionalNumber(
-      inventoryCreateForm.reorderThreshold,
+      inventoryCreateForm.reorderThreshold
     );
-    const purchasePrice = parseOptionalNumber(inventoryCreateForm.purchasePrice);
+    const purchasePrice = parseOptionalNumber(
+      inventoryCreateForm.purchasePrice
+    );
     const retailPrice = parseOptionalNumber(inventoryCreateForm.retailPrice);
-    const wholesalePrice = parseOptionalNumber(inventoryCreateForm.wholesalePrice);
+    const wholesalePrice = parseOptionalNumber(
+      inventoryCreateForm.wholesalePrice
+    );
 
     if (!inventoryCreateForm.medicineId.trim()) {
       nextErrors.medicineId = 'Medicine ID is required';
@@ -2243,7 +2539,9 @@ export function PharmacyScreen() {
           medicineId: inventoryCreateForm.medicineId.trim(),
           quantity: Number(quantity),
           reorderThreshold:
-            reorderThreshold === undefined ? undefined : Number(reorderThreshold),
+            reorderThreshold === undefined
+              ? undefined
+              : Number(reorderThreshold),
           rackLocation: inventoryCreateForm.rackLocation.trim() || undefined,
           purchasePrice:
             purchasePrice === undefined ? undefined : Number(purchasePrice),
@@ -2365,7 +2663,7 @@ export function PharmacyScreen() {
               importId,
             }),
         },
-      ],
+      ]
     );
   };
 
@@ -2391,7 +2689,9 @@ export function PharmacyScreen() {
       deliveryAddress: String(selectedOrder.deliveryAddress || ''),
       paymentMode: String(selectedOrder.paymentMode || 'cash_on_delivery'),
       linkedConsultationId: String(selectedOrder.linkedConsultationId || ''),
-      linkedDiagnosticOrderId: String(selectedOrder.linkedDiagnosticOrderId || ''),
+      linkedDiagnosticOrderId: String(
+        selectedOrder.linkedDiagnosticOrderId || ''
+      ),
       status: String(selectedOrder.status || 'accepted'),
     });
     setOrderActionErrors({});
@@ -2412,9 +2712,11 @@ export function PharmacyScreen() {
     setHealthCheckModalVisible(true);
   };
 
-  const selectedOrderStatus = normalizeState(String(selectedOrder?.status || 'placed'));
+  const selectedOrderStatus = normalizeState(
+    String(selectedOrder?.status || 'placed')
+  );
   const selectedOrderPaymentStatus = normalizeState(
-    String(selectedOrder?.paymentStatus || 'pending'),
+    String(selectedOrder?.paymentStatus || 'pending')
   );
 
   const orderActionItems = useMemo(() => {
@@ -2427,9 +2729,12 @@ export function PharmacyScreen() {
     const canAdvanceStatus = !isCancelled && !isDelivered;
     const canCancel = !isCancelled && !isDelivered;
     const canMarkPaid = !isCancelled && !isPaid;
-    const canHealthCheck = ['accepted', 'processing', 'ready', 'delivered'].includes(
-      selectedOrderStatus,
-    );
+    const canHealthCheck = [
+      'accepted',
+      'processing',
+      'ready',
+      'delivered',
+    ].includes(selectedOrderStatus);
 
     return [
       canEditCore
@@ -2459,7 +2764,9 @@ export function PharmacyScreen() {
       canHealthCheck
         ? {
             key: 'healthCheck',
-            title: orderHealthCheck ? 'Update Health Check' : 'Add Health Check',
+            title: orderHealthCheck
+              ? 'Update Health Check'
+              : 'Add Health Check',
             variant: 'outline' as const,
             onPress: openHealthCheckModal,
           }
@@ -2494,13 +2801,12 @@ export function PharmacyScreen() {
         selectedSubscription?.items?.[0]?.medicineId ||
         selectedOrder?.items?.[0]?.medicineId ||
         selectedMedicineId,
-      medicineName:
-        String(
-          selectedSubscription?.items?.[0]?.medicineName ||
-            selectedOrder?.items?.[0]?.medicineName ||
-            selectedMedicine?.name ||
-            '',
-        ),
+      medicineName: String(
+        selectedSubscription?.items?.[0]?.medicineName ||
+          selectedOrder?.items?.[0]?.medicineName ||
+          selectedMedicine?.name ||
+          ''
+      ),
     });
     setSubscriptionErrors({});
     setSubscriptionModalVisible(true);
@@ -2533,8 +2839,12 @@ export function PharmacyScreen() {
       diseaseNotes: String(patientTracking?.diseaseNotes || ''),
       chronicCondition: !!patientTracking?.chronicCondition,
       recurringMedicine: !!patientTracking?.recurringMedicine,
-      recurringIntervalDays: String(patientTracking?.recurringIntervalDays ?? ''),
-      preferredFollowUpDate: String(patientTracking?.preferredFollowUpDate || ''),
+      recurringIntervalDays: String(
+        patientTracking?.recurringIntervalDays ?? ''
+      ),
+      preferredFollowUpDate: String(
+        patientTracking?.preferredFollowUpDate || ''
+      ),
       pharmacyNotes: String(patientTracking?.pharmacyNotes || ''),
     });
     setPatientTrackingErrors({});
@@ -2556,10 +2866,12 @@ export function PharmacyScreen() {
     setDiagnosticsActionForm({
       ...DEFAULT_DIAGNOSTICS_ACTION_FORM,
       bookingDate: String(
-        (diagnosticsPaymentDetails as Record<string, unknown> | null)?.bookingDate || '',
+        (diagnosticsPaymentDetails as Record<string, unknown> | null)
+          ?.bookingDate || ''
       ),
       bookingTime: String(
-        (diagnosticsPaymentDetails as Record<string, unknown> | null)?.bookingTime || '',
+        (diagnosticsPaymentDetails as Record<string, unknown> | null)
+          ?.bookingTime || ''
       ),
     });
     setDiagnosticsActionErrors({});
@@ -2571,7 +2883,7 @@ export function PharmacyScreen() {
       ...DEFAULT_PAYMENT_VERIFICATION_FORM,
       paymentTransactionId: String(
         (diagnosticsPaymentDetails as Record<string, unknown> | null)
-          ?.paymentTransactionId || '',
+          ?.paymentTransactionId || ''
       ),
     });
     setPaymentVerificationErrors({});
@@ -2583,7 +2895,7 @@ export function PharmacyScreen() {
     const orderedQty = parseOptionalNumber(orderCreateForm.orderedQty);
     const discount = parseOptionalNumber(orderCreateForm.discount);
     const subscriptionIntervalDays = parseOptionalNumber(
-      orderCreateForm.subscriptionIntervalDays,
+      orderCreateForm.subscriptionIntervalDays
     );
 
     if (!orderCreateForm.customerId.trim()) {
@@ -2600,7 +2912,8 @@ export function PharmacyScreen() {
     }
     if (
       orderCreateForm.recurring &&
-      (Number.isNaN(subscriptionIntervalDays) || subscriptionIntervalDays === undefined)
+      (Number.isNaN(subscriptionIntervalDays) ||
+        subscriptionIntervalDays === undefined)
     ) {
       nextErrors.subscriptionIntervalDays = 'Subscription interval is required';
     }
@@ -2641,10 +2954,11 @@ export function PharmacyScreen() {
       isWalkIn: orderCreateForm.isWalkIn,
       prescriptionUrls: orderCreateForm.prescriptionUrls
         .split(',')
-        .map(item => item.trim())
+        .map((item) => item.trim())
         .filter(Boolean),
       notes: orderCreateForm.notes.trim() || undefined,
-      linkedConsultationId: orderCreateForm.linkedConsultationId.trim() || undefined,
+      linkedConsultationId:
+        orderCreateForm.linkedConsultationId.trim() || undefined,
       linkedDiagnosticOrderId:
         orderCreateForm.linkedDiagnosticOrderId.trim() || undefined,
     });
@@ -2722,10 +3036,14 @@ export function PharmacyScreen() {
     const postMealSugar = parseOptionalNumber(healthCheckForm.postMealSugar);
     const hba1c = parseOptionalNumber(healthCheckForm.hba1c);
 
-    if (Number.isNaN(systolicBP)) nextErrors.systolicBP = 'Enter a valid number';
-    if (Number.isNaN(diastolicBP)) nextErrors.diastolicBP = 'Enter a valid number';
-    if (Number.isNaN(fastingSugar)) nextErrors.fastingSugar = 'Enter a valid number';
-    if (Number.isNaN(postMealSugar)) nextErrors.postMealSugar = 'Enter a valid number';
+    if (Number.isNaN(systolicBP))
+      nextErrors.systolicBP = 'Enter a valid number';
+    if (Number.isNaN(diastolicBP))
+      nextErrors.diastolicBP = 'Enter a valid number';
+    if (Number.isNaN(fastingSugar))
+      nextErrors.fastingSugar = 'Enter a valid number';
+    if (Number.isNaN(postMealSugar))
+      nextErrors.postMealSugar = 'Enter a valid number';
     if (Number.isNaN(hba1c)) nextErrors.hba1c = 'Enter a valid number';
 
     setHealthCheckErrors(nextErrors);
@@ -2734,7 +3052,8 @@ export function PharmacyScreen() {
     const payload = {
       systolicBP: systolicBP === undefined ? undefined : Number(systolicBP),
       diastolicBP: diastolicBP === undefined ? undefined : Number(diastolicBP),
-      fastingSugar: fastingSugar === undefined ? undefined : Number(fastingSugar),
+      fastingSugar:
+        fastingSugar === undefined ? undefined : Number(fastingSugar),
       postMealSugar:
         postMealSugar === undefined ? undefined : Number(postMealSugar),
       hba1c: hba1c === undefined ? undefined : Number(hba1c),
@@ -2751,7 +3070,9 @@ export function PharmacyScreen() {
 
   const submitCreateSubscription = () => {
     const nextErrors: Record<string, string> = {};
-    const intervalDays = parseOptionalNumber(subscriptionCreateForm.intervalDays);
+    const intervalDays = parseOptionalNumber(
+      subscriptionCreateForm.intervalDays
+    );
 
     if (!subscriptionCreateForm.userId.trim()) {
       nextErrors.userId = 'User ID is required';
@@ -2793,12 +3114,11 @@ export function PharmacyScreen() {
     if (!selectedSubscriptionId) return;
 
     const nextErrors: Record<string, string> = {};
-    const intervalDays = parseOptionalNumber(subscriptionActionForm.intervalDays);
+    const intervalDays = parseOptionalNumber(
+      subscriptionActionForm.intervalDays
+    );
 
-    if (
-      subscriptionActionMode === 'update' &&
-      Number.isNaN(intervalDays)
-    ) {
+    if (subscriptionActionMode === 'update' && Number.isNaN(intervalDays)) {
       nextErrors.intervalDays = 'Interval must be a valid number';
     }
     if (
@@ -2851,9 +3171,10 @@ export function PharmacyScreen() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => deleteSubscriptionMutation.mutate(selectedSubscriptionId),
+          onPress: () =>
+            deleteSubscriptionMutation.mutate(selectedSubscriptionId),
         },
-      ],
+      ]
     );
   };
 
@@ -2883,12 +3204,13 @@ export function PharmacyScreen() {
 
     const nextErrors: Record<string, string> = {};
     const recurringIntervalDays = parseOptionalNumber(
-      patientTrackingForm.recurringIntervalDays,
+      patientTrackingForm.recurringIntervalDays
     );
 
     if (
       patientTrackingForm.recurringMedicine &&
-      (Number.isNaN(recurringIntervalDays) || recurringIntervalDays === undefined)
+      (Number.isNaN(recurringIntervalDays) ||
+        recurringIntervalDays === undefined)
     ) {
       nextErrors.recurringIntervalDays = 'Recurring interval is required';
     }
@@ -2896,7 +3218,8 @@ export function PharmacyScreen() {
       patientTrackingForm.preferredFollowUpDate.trim() &&
       !/^\d{8}$/.test(patientTrackingForm.preferredFollowUpDate.trim())
     ) {
-      nextErrors.preferredFollowUpDate = 'Preferred follow-up date must be YYYYMMDD';
+      nextErrors.preferredFollowUpDate =
+        'Preferred follow-up date must be YYYYMMDD';
     }
 
     setPatientTrackingErrors(nextErrors);
@@ -2942,11 +3265,11 @@ export function PharmacyScreen() {
 
     const testIds = diagnosticsCreateForm.testIds
       .split(',')
-      .map(item => item.trim())
+      .map((item) => item.trim())
       .filter(Boolean);
     const testNames = diagnosticsCreateForm.testNames
       .split(',')
-      .map(item => item.trim())
+      .map((item) => item.trim())
       .filter(Boolean);
 
     if (!testIds.length) {
@@ -2979,7 +3302,10 @@ export function PharmacyScreen() {
     if (!selectedDiagnosticsBookingId) return;
 
     const nextErrors: Record<string, string> = {};
-    if (diagnosticsActionMode === 'cancel' && !diagnosticsActionForm.cancellationReason.trim()) {
+    if (
+      diagnosticsActionMode === 'cancel' &&
+      !diagnosticsActionForm.cancellationReason.trim()
+    ) {
       nextErrors.cancellationReason = 'Cancellation reason is required';
     }
     if (
@@ -3069,7 +3395,7 @@ export function PharmacyScreen() {
         <InlineError
           message={getErrorMessage(
             medicinesQuery.error,
-            'Unable to load medicines right now.',
+            'Unable to load medicines right now.'
           )}
           onRetry={() => medicinesQuery.refetch()}
         />
@@ -3085,7 +3411,7 @@ export function PharmacyScreen() {
       );
     }
 
-    return medicines.map(item => {
+    return medicines.map((item) => {
       const entityId = getEntityId(item);
       const isSelected = entityId === selectedMedicineId;
 
@@ -3098,7 +3424,9 @@ export function PharmacyScreen() {
         >
           <View style={styles.listCardTop}>
             <View style={styles.listTitleWrap}>
-              <Text style={styles.listTitle}>{item.name || 'Unnamed medicine'}</Text>
+              <Text style={styles.listTitle}>
+                {item.name || 'Unnamed medicine'}
+              </Text>
               <Text style={styles.listSubtitle}>
                 {item.genericName || item.category || 'No category'}
               </Text>
@@ -3130,7 +3458,9 @@ export function PharmacyScreen() {
           </View>
           <View style={styles.medicineMetaRow}>
             <Text style={styles.metaLabel}>Manufacturer</Text>
-            <Text style={styles.metaValue}>{item.manufacturer || 'Not set'}</Text>
+            <Text style={styles.metaValue}>
+              {item.manufacturer || 'Not set'}
+            </Text>
           </View>
         </TouchableOpacity>
       );
@@ -3161,7 +3491,7 @@ export function PharmacyScreen() {
         <InlineError
           message={getErrorMessage(
             medicineDetailQuery.error,
-            'Unable to load medicine details.',
+            'Unable to load medicine details.'
           )}
           onRetry={() => medicineDetailQuery.refetch()}
         />
@@ -3182,10 +3512,14 @@ export function PharmacyScreen() {
         <View style={styles.detailHeader}>
           <View style={styles.detailHeaderContent}>
             <Text style={styles.detailTitle}>
-              {selectedMedicine.name || selectedMedicine.brandName || 'Medicine'}
+              {selectedMedicine.name ||
+                selectedMedicine.brandName ||
+                'Medicine'}
             </Text>
             <Text style={styles.detailSubtitle}>
-              {selectedMedicine.genericName || selectedMedicine.category || 'Medicine profile'}
+              {selectedMedicine.genericName ||
+                selectedMedicine.category ||
+                'Medicine profile'}
             </Text>
           </View>
           <TouchableOpacity
@@ -3197,11 +3531,80 @@ export function PharmacyScreen() {
           </TouchableOpacity>
         </View>
 
+        <View style={styles.medicineCartHero}>
+          <View style={styles.medicineCartHeroCopy}>
+            <Text style={styles.medicineCartHeroEyebrow}>Pharmacy Cart</Text>
+            <Text style={styles.medicineCartHeroTitle}>
+              {selectedMedicineCartQuantity > 0
+                ? `${selectedMedicineCartQuantity} item${
+                    selectedMedicineCartQuantity === 1 ? '' : 's'
+                  } added for this medicine`
+                : 'Add this medicine to your pharmacy cart'}
+            </Text>
+          </View>
+          <View style={styles.medicineCartHeroActionWrap}>
+            {selectedMedicineCartQuantity > 0 ? (
+              <View style={styles.medicineCartStepper}>
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  disabled={updateCartItemMutation.isPending}
+                  onPress={() => updateSelectedMedicineCart(-1)}
+                  style={styles.medicineCartStepButton}
+                >
+                  <Minus size={scale(16)} color={colors.primaryBlue} />
+                </TouchableOpacity>
+                <View style={styles.medicineCartQuantityBadge}>
+                  <Text style={styles.medicineCartQuantityText}>
+                    {selectedMedicineCartQuantity}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  disabled={updateCartItemMutation.isPending}
+                  onPress={() => updateSelectedMedicineCart(1)}
+                  style={[
+                    styles.medicineCartStepButton,
+                    styles.medicineCartStepButtonFilled,
+                  ]}
+                >
+                  <Plus size={scale(16)} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                activeOpacity={0.85}
+                disabled={updateCartItemMutation.isPending}
+                onPress={() => updateSelectedMedicineCart(2)}
+                style={styles.medicineCartAddButton}
+              >
+                <ShoppingCart size={scale(18)} color="#FFFFFF" />
+                <Text style={styles.medicineCartAddButtonText}>
+                  Add 2 to cart
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {selectedMedicineCartQuantity > 0 ? (
+              <TouchableOpacity
+                activeOpacity={0.85}
+                disabled={removeCartItemMutation.isPending}
+                onPress={() =>
+                  removeCartItemMutation.mutate(selectedMedicineId)
+                }
+                style={styles.medicineCartRemoveButton}
+              >
+                <Trash2 size={scale(16)} color="#B45309" />
+                <Text style={styles.medicineCartRemoveButtonText}>Remove</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </View>
+
         {medicineDetailQuery.error ? (
           <InlineError
             message={getErrorMessage(
               medicineDetailQuery.error,
-              'Showing cached medicine data.',
+              'Showing cached medicine data.'
             )}
             onRetry={() => medicineDetailQuery.refetch()}
           />
@@ -3235,16 +3638,389 @@ export function PharmacyScreen() {
           <View style={styles.detailItem}>
             <Text style={styles.detailLabel}>Prescription</Text>
             <Text style={styles.detailValue}>
-              {selectedMedicine.prescriptionRequired ? 'Required' : 'Not required'}
+              {selectedMedicine.prescriptionRequired
+                ? 'Required'
+                : 'Not required'}
             </Text>
           </View>
           <View style={styles.detailItem}>
             <Text style={styles.detailLabel}>Updated</Text>
             <Text style={styles.detailValue}>
-              {formatTimestamp(selectedMedicine.updatedAt || selectedMedicine.createdAt)}
+              {formatTimestamp(
+                selectedMedicine.updatedAt || selectedMedicine.createdAt
+              )}
             </Text>
           </View>
         </View>
+
+        <View style={styles.availabilitySection}>
+          <View style={styles.availabilityHeader}>
+            <Text style={styles.availabilityTitle}>Nearby Availability</Text>
+            <Text style={styles.availabilitySubtitle}>
+              Requires live device location within 5 km radius
+            </Text>
+          </View>
+
+          {medicineLocationStatus === 'loading' ? (
+            <View style={styles.loadingCard}>
+              <ActivityIndicator color={colors.primaryBlue} />
+              <Text style={styles.loadingText}>Checking your location...</Text>
+            </View>
+          ) : medicineLocationStatus !== 'granted' ? (
+            <View
+              style={[
+                styles.detailStatusBanner,
+                styles.detailStatusWarning,
+                styles.availabilityBlockedCard,
+              ]}
+            >
+              <Text style={styles.detailStatusEyebrow}>Location Required</Text>
+              <Text style={styles.detailStatusTitle}>
+                Enable location to continue
+              </Text>
+              <Text style={styles.detailStatusText}>
+                {medicineLocationMessage ||
+                  'Medicine availability works only after location permission is allowed.'}
+              </Text>
+              <View style={styles.availabilityActionRow}>
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    requestMedicineLocation().catch((error) => {
+                      const message =
+                        error instanceof Error
+                          ? error.message
+                          : 'Unable to request location permission.';
+                      setMedicineLocationStatus('unavailable');
+                      setMedicineLocationMessage(message);
+                    });
+                  }}
+                  style={styles.secondaryAction}
+                >
+                  <Text style={styles.secondaryActionText}>
+                    Enable Location
+                  </Text>
+                </TouchableOpacity>
+                {(medicineLocationStatus === 'blocked' ||
+                  medicineLocationStatus === 'denied') && (
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      locationService.openSettings().catch(() => {
+                        Toast.show({
+                          type: 'error',
+                          text1: 'Unable to open settings',
+                          text2:
+                            'Please open app settings manually and allow location access.',
+                        });
+                      });
+                    }}
+                    style={styles.availabilitySecondaryButton}
+                  >
+                    <Text style={styles.availabilitySecondaryButtonText}>
+                      Open Settings
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          ) : medicineAvailabilityQuery.isLoading ? (
+            <View style={styles.loadingCard}>
+              <ActivityIndicator color={colors.primaryBlue} />
+              <Text style={styles.loadingText}>
+                Loading nearby pharmacies...
+              </Text>
+            </View>
+          ) : medicineAvailabilityQuery.error ? (
+            <InlineError
+              message={getErrorMessage(
+                medicineAvailabilityQuery.error,
+                'Unable to load nearby medicine availability.'
+              )}
+              onRetry={() => medicineAvailabilityQuery.refetch()}
+            />
+          ) : !medicineAvailabilityQuery.data?.length ? (
+            <EmptyState
+              title="No nearby pharmacies found"
+              subtitle="No medicine availability was returned for your current location."
+            />
+          ) : (
+            <View style={styles.availabilityList}>
+              {medicineAvailabilityQuery.data.map((item, index) => {
+                const pharmacyName =
+                  String(
+                    item.pharmacyName ||
+                      item.name ||
+                      item.pharmacy?.name ||
+                      'Nearby Pharmacy'
+                  ) || 'Nearby Pharmacy';
+                const distance =
+                  Number(item.distanceKm ?? item.distance ?? 0) || 0;
+                const availableQty =
+                  Number(
+                    item.availableQuantity ??
+                      item.quantity ??
+                      item.stock ??
+                      item.availableStock ??
+                      item.inventory?.availableQuantity ??
+                      0
+                  ) || 0;
+                const retailPrice =
+                  Number(
+                    item.retailPrice ??
+                      item.price ??
+                      item.inventory?.retailPrice ??
+                      0
+                  ) || 0;
+                const address = [item.address, item.city, item.state]
+                  .filter(Boolean)
+                  .join(', ');
+
+                return (
+                  <View
+                    key={String(
+                      item.id || item._id || `${pharmacyName}-${index}`
+                    )}
+                    style={styles.availabilityCard}
+                  >
+                    <View style={styles.listCardTop}>
+                      <View style={styles.listTitleWrap}>
+                        <Text style={styles.listTitle}>{pharmacyName}</Text>
+                        <Text style={styles.listSubtitle}>
+                          {distance > 0
+                            ? `${distance.toFixed(1)} km away`
+                            : 'Nearby pharmacy'}
+                        </Text>
+                      </View>
+                      <View
+                        style={[
+                          styles.badge,
+                          availableQty > 0
+                            ? styles.badgeSuccess
+                            : styles.badgeWarning,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.badgeText,
+                            availableQty > 0
+                              ? styles.badgeTextSuccess
+                              : styles.badgeTextWarning,
+                          ]}
+                        >
+                          {availableQty > 0 ? 'Available' : 'Low/Unknown'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.medicineMetaRow}>
+                      <Text style={styles.metaLabel}>Stock</Text>
+                      <Text style={styles.metaValue}>
+                        {availableQty || 'NA'}
+                      </Text>
+                    </View>
+                    <View style={styles.medicineMetaRow}>
+                      <Text style={styles.metaLabel}>Price</Text>
+                      <Text style={styles.metaValue}>
+                        {retailPrice > 0 ? `₹${retailPrice}` : 'NA'}
+                      </Text>
+                    </View>
+                    <View style={styles.medicineMetaRow}>
+                      <Text style={styles.metaLabel}>Address</Text>
+                      <Text style={styles.metaValue}>
+                        {address || 'Address unavailable'}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+        </View>
+      </View>
+    );
+  };
+
+  const renderCartWorkspace = () => {
+    if (pharmacyCartQuery.isLoading && !pharmacyCart) {
+      return (
+        <View style={styles.cartWorkspace}>
+          <View style={styles.loadingCard}>
+            <ActivityIndicator color={colors.primaryBlue} />
+            <Text style={styles.loadingText}>Loading pharmacy cart...</Text>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.cartWorkspace}>
+        <View style={styles.cartWorkspaceHeader}>
+          <View style={styles.cartWorkspaceTitleWrap}>
+            <View style={styles.cartWorkspaceIcon}>
+              <ShoppingCart size={scale(20)} color={colors.primaryBlue} />
+            </View>
+            <View style={styles.cartWorkspaceCopy}>
+              <Text style={styles.cartWorkspaceTitle}>Cart</Text>
+              <Text style={styles.cartWorkspaceSubtitle}>
+                {cartItems.length
+                  ? `${cartItems.length} medicines`
+                  : 'No items'}
+              </Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            activeOpacity={0.85}
+            disabled={!cartItems.length || clearCartMutation.isPending}
+            onPress={() => clearCartMutation.mutate()}
+            style={[
+              styles.cartWorkspaceClearButton,
+              !cartItems.length && styles.cartWorkspaceClearButtonDisabled,
+            ]}
+          >
+            <Trash2
+              size={scale(16)}
+              color={!cartItems.length ? colors.textLight : '#A16207'}
+            />
+            <Text
+              style={[
+                styles.cartWorkspaceClearButtonText,
+                !cartItems.length &&
+                  styles.cartWorkspaceClearButtonTextDisabled,
+              ]}
+            >
+              Clear Cart
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.cartSummaryRow}>
+          <View style={[styles.cartSummaryCard, styles.cartSummaryCardPrimary]}>
+            <Text style={styles.cartSummaryLabel}>Total Items</Text>
+            <Text style={styles.cartSummaryValue}>{cartTotalItems || 0}</Text>
+          </View>
+          <View style={styles.cartSummaryCard}>
+            <Text style={styles.cartSummaryLabel}>Subtotal</Text>
+            <Text style={styles.cartSummaryValue}>
+              {cartSubtotal > 0 ? `₹${cartSubtotal.toFixed(2)}` : '₹0.00'}
+            </Text>
+          </View>
+        </View>
+
+        {pharmacyCartQuery.error ? (
+          <InlineError
+            message={getErrorMessage(
+              pharmacyCartQuery.error,
+              'Unable to load pharmacy cart right now.'
+            )}
+            onRetry={() => pharmacyCartQuery.refetch()}
+          />
+        ) : null}
+
+        {!cartItems.length ? (
+          <View style={styles.cartEmptyState}>
+            <Text style={styles.cartEmptyTitle}>Your cart is empty</Text>
+            <Text style={styles.cartEmptyText}>
+              Select a medicine and use the cart controls above to prepare order
+              quantities.
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.cartItemsStack}>
+            {cartItems.map((item) => {
+              const itemMedicineId = String(
+                item.medicineId || item.medicine?._id || item.medicine?.id || ''
+              );
+              const itemQuantity = Number(item.quantity || 0) || 0;
+              const itemPrice =
+                Number(item.totalPrice ?? item.subtotal ?? item.price ?? 0) ||
+                0;
+
+              return (
+                <View
+                  key={itemMedicineId || getCartMedicineLabel(item)}
+                  style={styles.cartItemCard}
+                >
+                  <View style={styles.cartItemHeader}>
+                    <View style={styles.cartItemCopy}>
+                      <Text style={styles.cartItemTitle}>
+                        {getCartMedicineLabel(item)}
+                      </Text>
+                      <Text style={styles.cartItemSubtitle}>
+                        {String(
+                          item.medicine?.genericName ||
+                            item.genericName ||
+                            item.medicine?.manufacturer ||
+                            item.manufacturer ||
+                            'Pharmacy medicine'
+                        )}
+                      </Text>
+                    </View>
+                    <View style={styles.cartItemPricePill}>
+                      <Text style={styles.cartItemPriceText}>
+                        {itemPrice > 0
+                          ? `₹${itemPrice.toFixed(2)}`
+                          : 'No price'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.cartItemFooter}>
+                    <View style={styles.cartItemStepper}>
+                      <TouchableOpacity
+                        activeOpacity={0.85}
+                        disabled={updateCartItemMutation.isPending}
+                        onPress={() =>
+                          updateCartItemMutation.mutate({
+                            pharmacyId,
+                            medicineId: itemMedicineId,
+                            quantity: -1,
+                          })
+                        }
+                        style={styles.cartItemStepButton}
+                      >
+                        <Minus size={scale(15)} color={colors.primaryBlue} />
+                      </TouchableOpacity>
+                      <Text style={styles.cartItemQuantityText}>
+                        {itemQuantity}
+                      </Text>
+                      <TouchableOpacity
+                        activeOpacity={0.85}
+                        disabled={updateCartItemMutation.isPending}
+                        onPress={() =>
+                          updateCartItemMutation.mutate({
+                            pharmacyId,
+                            medicineId: itemMedicineId,
+                            quantity: 1,
+                          })
+                        }
+                        style={[
+                          styles.cartItemStepButton,
+                          styles.cartItemStepButtonAccent,
+                        ]}
+                      >
+                        <Plus size={scale(15)} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    </View>
+
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      disabled={removeCartItemMutation.isPending}
+                      onPress={() =>
+                        removeCartItemMutation.mutate(itemMedicineId)
+                      }
+                      style={styles.cartItemDeleteButton}
+                    >
+                      <Trash2 size={scale(15)} color="#B45309" />
+                      <Text style={styles.cartItemDeleteText}>Delete</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
       </View>
     );
   };
@@ -3264,7 +4040,7 @@ export function PharmacyScreen() {
         <InlineError
           message={getErrorMessage(
             inventoryListQuery.error,
-            'Unable to load inventory right now.',
+            'Unable to load inventory right now.'
           )}
           onRetry={() => inventoryListQuery.refetch()}
         />
@@ -3280,7 +4056,7 @@ export function PharmacyScreen() {
       );
     }
 
-    return inventoryItems.map(item => {
+    return inventoryItems.map((item) => {
       const entityId = getEntityId(item);
       const isSelected = entityId === selectedInventoryId;
       const medicineName =
@@ -3301,7 +4077,8 @@ export function PharmacyScreen() {
             <View style={styles.listTitleWrap}>
               <Text style={styles.listTitle}>{medicineName}</Text>
               <Text style={styles.listSubtitle}>
-                Batch {item.batchNumber || 'NA'} · Rack {item.rackLocation || 'NA'}
+                Batch {item.batchNumber || 'NA'} · Rack{' '}
+                {item.rackLocation || 'NA'}
               </Text>
             </View>
             <View
@@ -3364,7 +4141,7 @@ export function PharmacyScreen() {
         <InlineError
           message={getErrorMessage(
             inventoryDetailQuery.error,
-            'Unable to load inventory details.',
+            'Unable to load inventory details.'
           )}
           onRetry={() => inventoryDetailQuery.refetch()}
         />
@@ -3401,7 +4178,7 @@ export function PharmacyScreen() {
           <InlineError
             message={getErrorMessage(
               inventoryDetailQuery.error,
-              'Showing cached inventory data.',
+              'Showing cached inventory data.'
             )}
             onRetry={() => inventoryDetailQuery.refetch()}
           />
@@ -3464,7 +4241,7 @@ export function PharmacyScreen() {
         <InlineError
           message={getErrorMessage(
             inventoryAdjustmentsQuery.error,
-            'Unable to load stock adjustments.',
+            'Unable to load stock adjustments.'
           )}
           onRetry={() => inventoryAdjustmentsQuery.refetch()}
         />
@@ -3480,7 +4257,7 @@ export function PharmacyScreen() {
       );
     }
 
-    return inventoryAdjustments.map(item => (
+    return inventoryAdjustments.map((item) => (
       <View key={getEntityId(item)} style={styles.adjustmentCard}>
         <View style={styles.listCardTop}>
           <View style={styles.listTitleWrap}>
@@ -3503,13 +4280,16 @@ export function PharmacyScreen() {
   };
 
   const renderInventoryImportPreview = () => {
-    const preview = inventoryImportPreviewMutation.data || selectedInventoryImport;
+    const preview =
+      inventoryImportPreviewMutation.data || selectedInventoryImport;
 
     if (inventoryImportPreviewMutation.isPending) {
       return (
         <View style={styles.loadingCard}>
           <ActivityIndicator color={colors.primaryBlue} />
-          <Text style={styles.loadingText}>Uploading file and building preview...</Text>
+          <Text style={styles.loadingText}>
+            Uploading file and building preview...
+          </Text>
         </View>
       );
     }
@@ -3531,12 +4311,15 @@ export function PharmacyScreen() {
           <View style={styles.detailHeaderContent}>
             <Text style={styles.detailTitle}>
               {String(
-                preview.fileName || preview.originalFileName || 'Inventory import preview',
+                preview.fileName ||
+                  preview.originalFileName ||
+                  'Inventory import preview'
               )}
             </Text>
             <Text style={styles.detailSubtitle}>
-              Mode {String(preview.importMode || inventoryImportMode).toUpperCase()} · Status{' '}
-              {String(preview.status || 'preview')}
+              Mode{' '}
+              {String(preview.importMode || inventoryImportMode).toUpperCase()}{' '}
+              · Status {String(preview.status || 'preview')}
             </Text>
           </View>
         </View>
@@ -3544,7 +4327,9 @@ export function PharmacyScreen() {
         <View style={styles.detailGrid}>
           <View style={styles.detailItem}>
             <Text style={styles.detailLabel}>Import ID</Text>
-            <Text style={styles.detailValue}>{getEntityId(preview) || 'Pending'}</Text>
+            <Text style={styles.detailValue}>
+              {getEntityId(preview) || 'Pending'}
+            </Text>
           </View>
           <View style={styles.detailItem}>
             <Text style={styles.detailLabel}>Total Rows</Text>
@@ -3593,7 +4378,7 @@ export function PharmacyScreen() {
         <InlineError
           message={getErrorMessage(
             inventoryImportsQuery.error,
-            'Unable to load inventory import history.',
+            'Unable to load inventory import history.'
           )}
           onRetry={() => inventoryImportsQuery.refetch()}
         />
@@ -3609,7 +4394,7 @@ export function PharmacyScreen() {
       );
     }
 
-    return inventoryImports.map(item => {
+    return inventoryImports.map((item) => {
       const entityId = getEntityId(item);
       const isSelected = entityId === selectedInventoryImportId;
       return (
@@ -3622,7 +4407,9 @@ export function PharmacyScreen() {
           <View style={styles.listCardTop}>
             <View style={styles.listTitleWrap}>
               <Text style={styles.listTitle}>
-                {String(item.fileName || item.originalFileName || 'Inventory import')}
+                {String(
+                  item.fileName || item.originalFileName || 'Inventory import'
+                )}
               </Text>
               <Text style={styles.listSubtitle}>
                 {String(item.importMode || 'upsert').toUpperCase()} ·{' '}
@@ -3688,7 +4475,7 @@ export function PharmacyScreen() {
         <InlineError
           message={getErrorMessage(
             inventoryImportDetailQuery.error,
-            'Unable to load import details.',
+            'Unable to load import details.'
           )}
           onRetry={() => inventoryImportDetailQuery.refetch()}
         />
@@ -3712,7 +4499,7 @@ export function PharmacyScreen() {
               {String(
                 selectedInventoryImport.fileName ||
                   selectedInventoryImport.originalFileName ||
-                  'Inventory import',
+                  'Inventory import'
               )}
             </Text>
             <Text style={styles.detailSubtitle}>
@@ -3726,7 +4513,9 @@ export function PharmacyScreen() {
           <View style={styles.detailItem}>
             <Text style={styles.detailLabel}>Mode</Text>
             <Text style={styles.detailValue}>
-              {String(selectedInventoryImport.importMode || 'upsert').toUpperCase()}
+              {String(
+                selectedInventoryImport.importMode || 'upsert'
+              ).toUpperCase()}
             </Text>
           </View>
           <View style={styles.detailItem}>
@@ -3735,7 +4524,7 @@ export function PharmacyScreen() {
               {String(
                 selectedInventoryImport.processedRows ??
                   selectedInventoryImport.totalRows ??
-                  0,
+                  0
               )}
             </Text>
           </View>
@@ -3781,7 +4570,7 @@ export function PharmacyScreen() {
         <InlineError
           message={getErrorMessage(
             ordersQuery.error,
-            'Unable to load pharmacy orders right now.',
+            'Unable to load pharmacy orders right now.'
           )}
           onRetry={() => ordersQuery.refetch()}
         />
@@ -3797,7 +4586,7 @@ export function PharmacyScreen() {
       );
     }
 
-    return orders.map(item => {
+    return orders.map((item) => {
       const entityId = getEntityId(item);
       const isSelected = entityId === selectedOrderId;
       const firstItem = item.items?.[0];
@@ -3811,7 +4600,9 @@ export function PharmacyScreen() {
           <View style={styles.listCardTop}>
             <View style={styles.listTitleWrap}>
               <Text style={styles.listTitle}>
-                {firstItem?.medicineName || firstItem?.medicineId || 'Pharmacy order'}
+                {firstItem?.medicineName ||
+                  firstItem?.medicineId ||
+                  'Pharmacy order'}
               </Text>
               <Text style={styles.listSubtitle}>
                 {String(item.orderType || 'online').toUpperCase()} · Customer{' '}
@@ -3840,11 +4631,15 @@ export function PharmacyScreen() {
           </View>
           <View style={styles.medicineMetaRow}>
             <Text style={styles.metaLabel}>Status</Text>
-            <Text style={styles.metaValue}>{String(item.status || 'placed')}</Text>
+            <Text style={styles.metaValue}>
+              {String(item.status || 'placed')}
+            </Text>
           </View>
           <View style={styles.medicineMetaRow}>
             <Text style={styles.metaLabel}>Qty</Text>
-            <Text style={styles.metaValue}>{String(firstItem?.orderedQty || 0)}</Text>
+            <Text style={styles.metaValue}>
+              {String(firstItem?.orderedQty || 0)}
+            </Text>
           </View>
         </TouchableOpacity>
       );
@@ -3875,7 +4670,7 @@ export function PharmacyScreen() {
         <InlineError
           message={getErrorMessage(
             orderDetailQuery.error,
-            'Unable to load pharmacy order details.',
+            'Unable to load pharmacy order details.'
           )}
           onRetry={() => orderDetailQuery.refetch()}
         />
@@ -3906,10 +4701,13 @@ export function PharmacyScreen() {
         <View style={styles.detailHeader}>
           <View style={styles.detailHeaderContent}>
             <Text style={styles.detailTitle}>
-              {firstItem?.medicineName || firstItem?.medicineId || 'Pharmacy order'}
+              {firstItem?.medicineName ||
+                firstItem?.medicineId ||
+                'Pharmacy order'}
             </Text>
             <Text style={styles.detailSubtitle}>
-              {String(selectedOrder.status || 'placed')} · {String(selectedOrder.paymentStatus || 'pending')}
+              {String(selectedOrder.status || 'placed')} ·{' '}
+              {String(selectedOrder.paymentStatus || 'pending')}
             </Text>
           </View>
         </View>
@@ -3939,28 +4737,40 @@ export function PharmacyScreen() {
         <View style={styles.detailGrid}>
           <View style={styles.detailItem}>
             <Text style={styles.detailLabel}>Customer ID</Text>
-            <Text style={styles.detailValue}>{selectedOrder.customerId || 'NA'}</Text>
+            <Text style={styles.detailValue}>
+              {selectedOrder.customerId || 'NA'}
+            </Text>
           </View>
           <View style={styles.detailItem}>
             <Text style={styles.detailLabel}>Payment Mode</Text>
-            <Text style={styles.detailValue}>{selectedOrder.paymentMode || 'NA'}</Text>
+            <Text style={styles.detailValue}>
+              {selectedOrder.paymentMode || 'NA'}
+            </Text>
           </View>
           <View style={styles.detailItem}>
             <Text style={styles.detailLabel}>Delivery Mode</Text>
-            <Text style={styles.detailValue}>{selectedOrder.deliveryMode || 'NA'}</Text>
+            <Text style={styles.detailValue}>
+              {selectedOrder.deliveryMode || 'NA'}
+            </Text>
           </View>
           <View style={styles.detailItem}>
             <Text style={styles.detailLabel}>Ordered Qty</Text>
-            <Text style={styles.detailValue}>{String(firstItem?.orderedQty || 0)}</Text>
+            <Text style={styles.detailValue}>
+              {String(firstItem?.orderedQty || 0)}
+            </Text>
           </View>
           <View style={styles.detailItem}>
             <Text style={styles.detailLabel}>Recurring</Text>
-            <Text style={styles.detailValue}>{firstItem?.recurring ? 'Yes' : 'No'}</Text>
+            <Text style={styles.detailValue}>
+              {firstItem?.recurring ? 'Yes' : 'No'}
+            </Text>
           </View>
           <View style={styles.detailItem}>
             <Text style={styles.detailLabel}>Updated</Text>
             <Text style={styles.detailValue}>
-              {formatTimestamp(selectedOrder.updatedAt || selectedOrder.createdAt)}
+              {formatTimestamp(
+                selectedOrder.updatedAt || selectedOrder.createdAt
+              )}
             </Text>
           </View>
         </View>
@@ -3980,9 +4790,11 @@ export function PharmacyScreen() {
           <Text style={styles.customerNotes}>Loading latest readings...</Text>
         ) : orderHealthCheck ? (
           <Text style={styles.customerNotes}>
-            BP {orderHealthCheck.systolicBP || '-'} / {orderHealthCheck.diastolicBP || '-'} ·
-            Fasting {orderHealthCheck.fastingSugar || '-'} · Post Meal{' '}
-            {orderHealthCheck.postMealSugar || '-'} · HbA1c {orderHealthCheck.hba1c || '-'}
+            BP {orderHealthCheck.systolicBP || '-'} /{' '}
+            {orderHealthCheck.diastolicBP || '-'} · Fasting{' '}
+            {orderHealthCheck.fastingSugar || '-'} · Post Meal{' '}
+            {orderHealthCheck.postMealSugar || '-'} · HbA1c{' '}
+            {orderHealthCheck.hba1c || '-'}
             {orderHealthCheck.notes ? `\n${orderHealthCheck.notes}` : ''}
           </Text>
         ) : (
@@ -4009,7 +4821,7 @@ export function PharmacyScreen() {
         <InlineError
           message={getErrorMessage(
             subscriptionsQuery.error,
-            'Unable to load subscriptions right now.',
+            'Unable to load subscriptions right now.'
           )}
           onRetry={() => subscriptionsQuery.refetch()}
         />
@@ -4025,7 +4837,7 @@ export function PharmacyScreen() {
       );
     }
 
-    return subscriptions.map(item => {
+    return subscriptions.map((item) => {
       const entityId = getEntityId(item);
       const isSelected = entityId === selectedSubscriptionId;
       const firstItem = item.items?.[0];
@@ -4040,7 +4852,9 @@ export function PharmacyScreen() {
           <View style={styles.listCardTop}>
             <View style={styles.listTitleWrap}>
               <Text style={styles.listTitle}>
-                {firstItem?.medicineName || firstItem?.medicineId || 'Subscription'}
+                {firstItem?.medicineName ||
+                  firstItem?.medicineId ||
+                  'Subscription'}
               </Text>
               <Text style={styles.listSubtitle}>
                 User {item.userId || item.customerId || 'NA'}
@@ -4062,7 +4876,9 @@ export function PharmacyScreen() {
                     : styles.badgeTextWarning,
                 ]}
               >
-                {String(item.status || (item.pausedUntil ? 'paused' : 'active'))}
+                {String(
+                  item.status || (item.pausedUntil ? 'paused' : 'active')
+                )}
               </Text>
             </View>
           </View>
@@ -4109,12 +4925,14 @@ export function PharmacyScreen() {
         <View style={styles.detailHeader}>
           <View style={styles.detailHeaderContent}>
             <Text style={styles.detailTitle}>
-              {firstItem?.medicineName || firstItem?.medicineId || 'Subscription'}
+              {firstItem?.medicineName ||
+                firstItem?.medicineId ||
+                'Subscription'}
             </Text>
             <Text style={styles.detailSubtitle}>
               {String(
                 selectedSubscription.status ||
-                  (selectedSubscription.pausedUntil ? 'paused' : 'active'),
+                  (selectedSubscription.pausedUntil ? 'paused' : 'active')
               )}{' '}
               · ID {selectedSubscriptionId}
             </Text>
@@ -4125,12 +4943,16 @@ export function PharmacyScreen() {
           <View style={styles.detailItem}>
             <Text style={styles.detailLabel}>User ID</Text>
             <Text style={styles.detailValue}>
-              {selectedSubscription.userId || selectedSubscription.customerId || 'NA'}
+              {selectedSubscription.userId ||
+                selectedSubscription.customerId ||
+                'NA'}
             </Text>
           </View>
           <View style={styles.detailItem}>
             <Text style={styles.detailLabel}>Frequency</Text>
-            <Text style={styles.detailValue}>{firstItem?.frequency || 'NA'}</Text>
+            <Text style={styles.detailValue}>
+              {firstItem?.frequency || 'NA'}
+            </Text>
           </View>
           <View style={styles.detailItem}>
             <Text style={styles.detailLabel}>Interval Days</Text>
@@ -4176,7 +4998,7 @@ export function PharmacyScreen() {
         <InlineError
           message={getErrorMessage(
             walletTransactionsQuery.error,
-            'Unable to load wallet transactions right now.',
+            'Unable to load wallet transactions right now.'
           )}
           onRetry={() => walletTransactionsQuery.refetch()}
         />
@@ -4192,7 +5014,7 @@ export function PharmacyScreen() {
       );
     }
 
-    return walletTransactions.map(item => (
+    return walletTransactions.map((item) => (
       <View key={getEntityId(item)} style={styles.adjustmentCard}>
         <View style={styles.listCardTop}>
           <View style={styles.listTitleWrap}>
@@ -4200,7 +5022,8 @@ export function PharmacyScreen() {
               {String(item.type || 'transaction').toUpperCase()}
             </Text>
             <Text style={styles.listSubtitle}>
-              {String(item.status || 'processed')} · {formatTimestamp(item.createdAt)}
+              {String(item.status || 'processed')} ·{' '}
+              {formatTimestamp(item.createdAt)}
             </Text>
           </View>
           <Text style={styles.adjustmentQty}>₹{String(item.amount ?? 0)}</Text>
@@ -4227,7 +5050,7 @@ export function PharmacyScreen() {
         <InlineError
           message={getErrorMessage(
             walletSummaryQuery.error,
-            'Unable to load the wallet summary.',
+            'Unable to load the wallet summary.'
           )}
           onRetry={() => walletSummaryQuery.refetch()}
         />
@@ -4249,7 +5072,7 @@ export function PharmacyScreen() {
           <View style={styles.detailHeaderContent}>
             <Text style={styles.detailTitle}>Pharmacy Wallet</Text>
             <Text style={styles.detailSubtitle}>
-              Live wallet balance and top-up actions
+              Balance and recent activity
             </Text>
           </View>
         </View>
@@ -4263,7 +5086,7 @@ export function PharmacyScreen() {
                 walletSummary.availableBalance ??
                   walletSummary.balance ??
                   walletSummary.totalBalance ??
-                  0,
+                  0
               )}
             </Text>
           </View>
@@ -4276,7 +5099,9 @@ export function PharmacyScreen() {
           <View style={styles.detailItem}>
             <Text style={styles.detailLabel}>Updated</Text>
             <Text style={styles.detailValue}>
-              {formatTimestamp(walletSummary.updatedAt || walletSummary.createdAt)}
+              {formatTimestamp(
+                walletSummary.updatedAt || walletSummary.createdAt
+              )}
             </Text>
           </View>
         </View>
@@ -4308,7 +5133,7 @@ export function PharmacyScreen() {
         <InlineError
           message={getErrorMessage(
             patientTrackingQuery.error,
-            'Unable to load patient tracking right now.',
+            'Unable to load patient tracking right now.'
           )}
           onRetry={() => patientTrackingQuery.refetch()}
         />
@@ -4329,10 +5154,14 @@ export function PharmacyScreen() {
         <View style={styles.detailHeader}>
           <View style={styles.detailHeaderContent}>
             <Text style={styles.detailTitle}>
-              {patientTracking.name || selectedTrackingCustomer?.name || 'Patient tracking'}
+              {patientTracking.name ||
+                selectedTrackingCustomer?.name ||
+                'Patient tracking'}
             </Text>
             <Text style={styles.detailSubtitle}>
-              {patientTracking.phone || selectedTrackingCustomer?.phone || 'Phone unavailable'}
+              {patientTracking.phone ||
+                selectedTrackingCustomer?.phone ||
+                'Phone unavailable'}
             </Text>
           </View>
           <TouchableOpacity
@@ -4373,12 +5202,16 @@ export function PharmacyScreen() {
 
         <Text style={styles.customerNotesLabel}>Disease Notes</Text>
         <Text style={styles.customerNotes}>
-          {String(patientTracking.diseaseNotes || 'No disease notes added yet.')}
+          {String(
+            patientTracking.diseaseNotes || 'No disease notes added yet.'
+          )}
         </Text>
 
         <Text style={styles.customerNotesLabel}>Pharmacy Notes</Text>
         <Text style={styles.customerNotes}>
-          {String(patientTracking.pharmacyNotes || 'No pharmacy notes added yet.')}
+          {String(
+            patientTracking.pharmacyNotes || 'No pharmacy notes added yet.'
+          )}
         </Text>
       </View>
     );
@@ -4399,7 +5232,7 @@ export function PharmacyScreen() {
         <InlineError
           message={getErrorMessage(
             customersQuery.error,
-            'Unable to load customers right now.',
+            'Unable to load customers right now.'
           )}
           onRetry={() => customersQuery.refetch()}
         />
@@ -4415,7 +5248,7 @@ export function PharmacyScreen() {
       );
     }
 
-    return customers.map(item => {
+    return customers.map((item) => {
       const entityId = getEntityId(item);
       const isSelected = entityId === selectedTrackingCustomerId;
       return (
@@ -4427,8 +5260,12 @@ export function PharmacyScreen() {
         >
           <View style={styles.listCardTop}>
             <View style={styles.listTitleWrap}>
-              <Text style={styles.listTitle}>{item.name || 'Unnamed customer'}</Text>
-              <Text style={styles.listSubtitle}>{item.phone || 'Phone unavailable'}</Text>
+              <Text style={styles.listTitle}>
+                {item.name || 'Unnamed customer'}
+              </Text>
+              <Text style={styles.listSubtitle}>
+                {item.phone || 'Phone unavailable'}
+              </Text>
             </View>
           </View>
           <View style={styles.medicineMetaRow}>
@@ -4451,7 +5288,9 @@ export function PharmacyScreen() {
       return (
         <View style={styles.loadingCard}>
           <ActivityIndicator color={colors.primaryBlue} />
-          <Text style={styles.loadingText}>Loading pharmacy tracking summary...</Text>
+          <Text style={styles.loadingText}>
+            Loading pharmacy tracking summary...
+          </Text>
         </View>
       );
     }
@@ -4464,8 +5303,9 @@ export function PharmacyScreen() {
       return (
         <InlineError
           message={getErrorMessage(
-            pharmacyTrackingByIdQuery.error || pharmacyTrackingSummaryQuery.error,
-            'Unable to load pharmacy tracking summary.',
+            pharmacyTrackingByIdQuery.error ||
+              pharmacyTrackingSummaryQuery.error,
+            'Unable to load pharmacy tracking summary.'
           )}
           onRetry={() => {
             pharmacyTrackingSummaryQuery.refetch();
@@ -4499,28 +5339,33 @@ export function PharmacyScreen() {
           <View style={styles.detailItem}>
             <Text style={styles.detailLabel}>Total Customers</Text>
             <Text style={styles.detailValue}>
-              {String(pharmacyTrackingSummary.totalCustomers ?? customers.length)}
+              {String(
+                pharmacyTrackingSummary.totalCustomers ?? customers.length
+              )}
             </Text>
           </View>
           <View style={styles.detailItem}>
             <Text style={styles.detailLabel}>Active Subscriptions</Text>
             <Text style={styles.detailValue}>
               {String(
-                pharmacyTrackingSummary.activeSubscriptions ?? subscriptionStats.active,
+                pharmacyTrackingSummary.activeSubscriptions ??
+                  subscriptionStats.active
               )}
             </Text>
           </View>
           <View style={styles.detailItem}>
             <Text style={styles.detailLabel}>Pending Orders</Text>
             <Text style={styles.detailValue}>
-              {String(pharmacyTrackingSummary.pendingOrders ?? orderStats.pending)}
+              {String(
+                pharmacyTrackingSummary.pendingOrders ?? orderStats.pending
+              )}
             </Text>
           </View>
           <View style={styles.detailItem}>
             <Text style={styles.detailLabel}>Low Stock Count</Text>
             <Text style={styles.detailValue}>
               {String(
-                pharmacyTrackingSummary.lowStockCount ?? inventoryStats.lowStock,
+                pharmacyTrackingSummary.lowStockCount ?? inventoryStats.lowStock
               )}
             </Text>
           </View>
@@ -4551,11 +5396,16 @@ export function PharmacyScreen() {
       );
     }
 
-    if (diagnosticsPaymentDetailsQuery.isLoading && !diagnosticsPaymentDetails) {
+    if (
+      diagnosticsPaymentDetailsQuery.isLoading &&
+      !diagnosticsPaymentDetails
+    ) {
       return (
         <View style={styles.loadingCard}>
           <ActivityIndicator color={colors.primaryBlue} />
-          <Text style={styles.loadingText}>Loading diagnostics payment details...</Text>
+          <Text style={styles.loadingText}>
+            Loading diagnostics payment details...
+          </Text>
         </View>
       );
     }
@@ -4565,7 +5415,7 @@ export function PharmacyScreen() {
         <InlineError
           message={getErrorMessage(
             diagnosticsPaymentDetailsQuery.error,
-            'Unable to load diagnostics payment details.',
+            'Unable to load diagnostics payment details.'
           )}
           onRetry={() => diagnosticsPaymentDetailsQuery.refetch()}
         />
@@ -4582,7 +5432,9 @@ export function PharmacyScreen() {
               {String(details?.patientName || 'Diagnostics booking')}
             </Text>
             <Text style={styles.detailSubtitle}>
-              Booking {selectedDiagnosticsBookingId || getDiagnosticsBookingId(details as any)}
+              Booking{' '}
+              {selectedDiagnosticsBookingId ||
+                getDiagnosticsBookingId(details as any)}
             </Text>
           </View>
         </View>
@@ -4656,7 +5508,7 @@ export function PharmacyScreen() {
         <InlineError
           message={getErrorMessage(
             customersQuery.error,
-            'Unable to load customers right now.',
+            'Unable to load customers right now.'
           )}
           onRetry={() => customersQuery.refetch()}
         />
@@ -4674,7 +5526,7 @@ export function PharmacyScreen() {
 
     return (
       <View style={styles.customerGrid}>
-        {filteredCustomers.map(customer => {
+        {filteredCustomers.map((customer) => {
           const recurring = !!customer.recurringMedicine;
           const chronic = !!customer.chronicCondition;
 
@@ -4688,8 +5540,12 @@ export function PharmacyScreen() {
             >
               <View style={styles.customerHeader}>
                 <View>
-                  <Text style={styles.customerName}>{customer.name || 'Unnamed customer'}</Text>
-                  <Text style={styles.customerPhone}>{customer.phone || 'Phone not available'}</Text>
+                  <Text style={styles.customerName}>
+                    {customer.name || 'Unnamed customer'}
+                  </Text>
+                  <Text style={styles.customerPhone}>
+                    {customer.phone || 'Phone not available'}
+                  </Text>
                 </View>
                 <View style={styles.customerAgePill}>
                   <Text style={styles.customerAgeText}>
@@ -4698,35 +5554,30 @@ export function PharmacyScreen() {
                 </View>
               </View>
 
-              <View style={styles.customerFlags}>
-                <View style={[styles.badge, chronic ? styles.badgeWarning : styles.badgeNeutral]}>
-                  <Text
-                    style={[
-                      styles.badgeText,
-                      chronic ? styles.badgeTextWarning : styles.badgeTextNeutral,
-                    ]}
-                  >
-                    {chronic ? 'Chronic Condition' : 'No Chronic Flag'}
-                  </Text>
+              {chronic || recurring ? (
+                <View style={styles.customerFlags}>
+                  {chronic ? (
+                    <View style={[styles.badge, styles.badgeWarning]}>
+                      <Text style={[styles.badgeText, styles.badgeTextWarning]}>
+                        Chronic
+                      </Text>
+                    </View>
+                  ) : null}
+                  {recurring ? (
+                    <View style={[styles.badge, styles.badgeSuccess]}>
+                      <Text style={[styles.badgeText, styles.badgeTextSuccess]}>
+                        Every {customer.recurringIntervalDays || '-'} days
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
-                <View style={[styles.badge, recurring ? styles.badgeSuccess : styles.badgeNeutral]}>
-                  <Text
-                    style={[
-                      styles.badgeText,
-                      recurring ? styles.badgeTextSuccess : styles.badgeTextNeutral,
-                    ]}
-                  >
-                    {recurring
-                      ? `Recurring every ${customer.recurringIntervalDays || '-'} days`
-                      : 'No Recurring Plan'}
-                  </Text>
-                </View>
-              </View>
+              ) : null}
 
-              <Text style={styles.customerNotesLabel}>Notes</Text>
-              <Text style={styles.customerNotes}>
-                {customer.diseaseNotes || 'No disease notes added yet.'}
-              </Text>
+              {customer.diseaseNotes ? (
+                <Text numberOfLines={2} style={styles.customerNotes}>
+                  {customer.diseaseNotes}
+                </Text>
+              ) : null}
             </View>
           );
         })}
@@ -4795,45 +5646,6 @@ export function PharmacyScreen() {
         <View style={[styles.innerContainer, { width: contentWidth }]}>
           {!lockedSection ? (
             <>
-              <View style={styles.heroCard}>
-                <View style={styles.heroTextWrap}>
-                  <Text style={styles.heroEyebrow}>Pharmacy Operations</Text>
-                  <Text style={styles.heroTitle}>Manage medicines and customer follow-ups in one place.</Text>
-                  <Text style={styles.heroDescription}>
-                    Live API data, clear retry states, and layouts tuned for Android, iPhone, tablets, and iPad.
-                  </Text>
-                </View>
-                <View style={styles.heroActionRow}>
-                  <PrimaryButton
-                    title="Add Demo Data"
-                    onPress={() => seedWorkspaceMutation.mutate()}
-                    loading={seedWorkspaceMutation.isPending}
-                    icon={<Plus size={scale(18)} color="#fff" />}
-                    style={styles.heroActionButton}
-                  />
-                </View>
-                <View style={styles.heroStatsRow}>
-                  <StatCard
-                    label="Medicines on page"
-                    value={String(medicines.length)}
-                    accent="rgba(21,114,183,0.10)"
-                    icon={<Pill size={scale(18)} color={colors.primaryBlue} />}
-                  />
-                  <StatCard
-                    label="Customers"
-                    value={String(customerStats.total)}
-                    accent="rgba(64,179,70,0.12)"
-                    icon={<Users size={scale(18)} color={colors.primaryGreen} />}
-                  />
-                  <StatCard
-                    label="Recurring plans"
-                    value={String(customerStats.recurring)}
-                    accent="rgba(245,158,11,0.14)"
-                    icon={<Clock3 size={scale(18)} color="#D97706" />}
-                  />
-                </View>
-              </View>
-
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -4844,80 +5656,147 @@ export function PharmacyScreen() {
                   active={activeSection === 'medicines'}
                   label="Medicines"
                   onPress={() => setActiveSection('medicines')}
-                  icon={<Pill size={scale(18)} color={activeSection === 'medicines' ? '#fff' : colors.primaryBlue} />}
+                  icon={
+                    <Pill
+                      size={scale(18)}
+                      color={
+                        activeSection === 'medicines'
+                          ? '#fff'
+                          : colors.primaryBlue
+                      }
+                    />
+                  }
                 />
                 <SectionToggle
                   active={activeSection === 'customers'}
                   label="Customers"
                   onPress={() => setActiveSection('customers')}
-                  icon={<UserRound size={scale(18)} color={activeSection === 'customers' ? '#fff' : colors.primaryBlue} />}
+                  icon={
+                    <UserRound
+                      size={scale(18)}
+                      color={
+                        activeSection === 'customers'
+                          ? '#fff'
+                          : colors.primaryBlue
+                      }
+                    />
+                  }
                 />
                 <SectionToggle
                   active={activeSection === 'inventory'}
                   label="Inventory"
                   onPress={() => setActiveSection('inventory')}
-                  icon={<ShieldCheck size={scale(18)} color={activeSection === 'inventory' ? '#fff' : colors.primaryBlue} />}
+                  icon={
+                    <ShieldCheck
+                      size={scale(18)}
+                      color={
+                        activeSection === 'inventory'
+                          ? '#fff'
+                          : colors.primaryBlue
+                      }
+                    />
+                  }
                 />
                 <SectionToggle
                   active={activeSection === 'orders'}
                   label="Orders"
                   onPress={() => setActiveSection('orders')}
-                  icon={<ArrowRight size={scale(18)} color={activeSection === 'orders' ? '#fff' : colors.primaryBlue} />}
+                  icon={
+                    <ArrowRight
+                      size={scale(18)}
+                      color={
+                        activeSection === 'orders' ? '#fff' : colors.primaryBlue
+                      }
+                    />
+                  }
                 />
                 <SectionToggle
                   active={activeSection === 'subscriptions'}
                   label="Subscriptions"
                   onPress={() => setActiveSection('subscriptions')}
-                  icon={<Clock3 size={scale(18)} color={activeSection === 'subscriptions' ? '#fff' : colors.primaryBlue} />}
+                  icon={
+                    <Clock3
+                      size={scale(18)}
+                      color={
+                        activeSection === 'subscriptions'
+                          ? '#fff'
+                          : colors.primaryBlue
+                      }
+                    />
+                  }
                 />
                 <SectionToggle
                   active={activeSection === 'wallet'}
                   label="Wallet"
                   onPress={() => setActiveSection('wallet')}
-                  icon={<ShieldCheck size={scale(18)} color={activeSection === 'wallet' ? '#fff' : colors.primaryBlue} />}
+                  icon={
+                    <ShieldCheck
+                      size={scale(18)}
+                      color={
+                        activeSection === 'wallet' ? '#fff' : colors.primaryBlue
+                      }
+                    />
+                  }
                 />
                 <SectionToggle
                   active={activeSection === 'tracking'}
                   label="Tracking"
                   onPress={() => setActiveSection('tracking')}
-                  icon={<Users size={scale(18)} color={activeSection === 'tracking' ? '#fff' : colors.primaryBlue} />}
+                  icon={
+                    <Users
+                      size={scale(18)}
+                      color={
+                        activeSection === 'tracking'
+                          ? '#fff'
+                          : colors.primaryBlue
+                      }
+                    />
+                  }
                 />
                 <SectionToggle
                   active={activeSection === 'diagnostics'}
                   label="Diagnostics"
                   onPress={() => setActiveSection('diagnostics')}
-                  icon={<CircleAlert size={scale(18)} color={activeSection === 'diagnostics' ? '#fff' : colors.primaryBlue} />}
+                  icon={
+                    <CircleAlert
+                      size={scale(18)}
+                      color={
+                        activeSection === 'diagnostics'
+                          ? '#fff'
+                          : colors.primaryBlue
+                      }
+                    />
+                  }
                 />
               </ScrollView>
             </>
           ) : null}
 
           {activeSection === 'medicines' ? (
-            <View style={styles.sectionCard}>
-              <View style={[styles.toolbar, isTablet && styles.toolbarTablet]}>
-                <View style={styles.searchBox}>
-                  <Search size={scale(18)} color={colors.textLight} />
-                  <TextInput
-                    value={medicineSearchInput}
-                    onChangeText={setMedicineSearchInput}
-                    placeholder="Search medicines or generic name"
-                    placeholderTextColor={colors.textLight}
-                    style={styles.searchInput}
-                  />
+            <View style={[styles.sectionCard, styles.sectionCardMedicines]}>
+              <View style={styles.medicinesControlDeck}>
+                <View style={styles.medicinesControlGlow} />
+                <View style={styles.medicinesSearchHero}>
+                  <View style={styles.medicinesSearchBadge}>
+                    <Search size={scale(18)} color={colors.primaryBlue} />
+                  </View>
+                  <View style={styles.medicinesSearchTextWrap}>
+                    <TextInput
+                      value={medicineSearchInput}
+                      onChangeText={setMedicineSearchInput}
+                      placeholder="Search medicines or generic name"
+                      placeholderTextColor={colors.textLight}
+                      style={styles.medicinesSearchInput}
+                    />
+                  </View>
                 </View>
-                <View style={[styles.toolbarActions, isTablet && styles.toolbarActionsTablet]}>
-                  <TouchableOpacity
-                    activeOpacity={0.85}
-                    onPress={() => {
-                      medicinesQuery.refetch();
-                      if (selectedMedicineId) {
-                        medicineDetailQuery.refetch();
-                      }
-                    }}
-                    style={styles.iconAction}
-                  >
-                    <RefreshCw size={scale(18)} color={colors.primaryBlue} />
-                  </TouchableOpacity>
+
+                <View
+                  style={[
+                    styles.medicinesActionRow,
+                    isTablet && styles.medicinesActionRowTablet,
+                  ]}
+                >
                   <PrimaryButton
                     title="Add Medicine"
                     onPress={openCreateMedicineModal}
@@ -4925,28 +5804,41 @@ export function PharmacyScreen() {
                     style={
                       isTablet
                         ? {
-                            ...styles.toolbarPrimaryButton,
+                            ...styles.medicinesPrimaryAction,
                             ...styles.toolbarButtonTablet,
                           }
-                        : styles.toolbarPrimaryButton
+                        : styles.medicinesPrimaryAction
                     }
                   />
                 </View>
               </View>
 
-              <View style={styles.sectionIntroCard}>
-                <Text style={styles.sectionIntroTitle}>Manage your medicine catalog</Text>
-                <Text style={styles.sectionIntroText}>
-                  Search, add, and review medicine details from one clean workspace.
-                </Text>
-              </View>
-
-              <View style={[styles.panelLayout, isTablet && styles.panelLayoutTablet]}>
-                <View style={[styles.panel, isTablet && styles.medicineListPanelTablet]}>
-                  <View style={styles.panelHeader}>
+              <View
+                style={[
+                  styles.panelLayout,
+                  styles.medicinesShowcase,
+                  isTablet && styles.panelLayoutTablet,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.panel,
+                    styles.medicinesListPanel,
+                    isTablet && styles.medicineListPanelTablet,
+                  ]}
+                >
+                  <View
+                    style={[styles.panelHeader, styles.medicinesPanelHeader]}
+                  >
                     <Text style={styles.panelTitle}>Medicine Inventory</Text>
-                    <Text style={styles.panelSubtitle}>
-                      Page {medicinePage} · {medicines.length} result{medicines.length === 1 ? '' : 's'}
+                    <Text
+                      style={[
+                        styles.panelSubtitle,
+                        styles.medicinesPanelSubtitle,
+                      ]}
+                    >
+                      Page {medicinePage} · {medicines.length} result
+                      {medicines.length === 1 ? '' : 's'}
                     </Text>
                   </View>
                   {renderMedicineList()}
@@ -4954,13 +5846,22 @@ export function PharmacyScreen() {
                     <TouchableOpacity
                       activeOpacity={0.85}
                       disabled={medicinePage === 1}
-                      onPress={() => setMedicinePage(current => Math.max(1, current - 1))}
+                      onPress={() =>
+                        setMedicinePage((current) => Math.max(1, current - 1))
+                      }
                       style={[
                         styles.paginationButton,
                         medicinePage === 1 && styles.paginationButtonDisabled,
                       ]}
                     >
-                      <ChevronLeft size={scale(16)} color={medicinePage === 1 ? colors.textLight : colors.primaryBlue} />
+                      <ChevronLeft
+                        size={scale(16)}
+                        color={
+                          medicinePage === 1
+                            ? colors.textLight
+                            : colors.primaryBlue
+                        }
+                      />
                       <Text
                         style={[
                           styles.paginationText,
@@ -4974,80 +5875,103 @@ export function PharmacyScreen() {
                     <TouchableOpacity
                       activeOpacity={0.85}
                       disabled={medicines.length < 20}
-                      onPress={() => setMedicinePage(current => current + 1)}
+                      onPress={() => setMedicinePage((current) => current + 1)}
                       style={[
                         styles.paginationButton,
-                        medicines.length < 20 && styles.paginationButtonDisabled,
+                        medicines.length < 20 &&
+                          styles.paginationButtonDisabled,
                       ]}
                     >
                       <Text
                         style={[
                           styles.paginationText,
-                          medicines.length < 20 && styles.paginationTextDisabled,
+                          medicines.length < 20 &&
+                            styles.paginationTextDisabled,
                         ]}
                       >
                         Next
                       </Text>
-                      <ChevronRight size={scale(16)} color={medicines.length < 20 ? colors.textLight : colors.primaryBlue} />
+                      <ChevronRight
+                        size={scale(16)}
+                        color={
+                          medicines.length < 20
+                            ? colors.textLight
+                            : colors.primaryBlue
+                        }
+                      />
                     </TouchableOpacity>
                   </View>
                 </View>
 
-                <View style={[styles.panel, isTablet && styles.medicineDetailPanelTablet]}>
-                  <View style={styles.panelHeader}>
+                <View
+                  style={[
+                    styles.panel,
+                    styles.medicinesDetailPanel,
+                    isTablet && styles.medicineDetailPanelTablet,
+                  ]}
+                >
+                  <View
+                    style={[styles.panelHeader, styles.medicinesPanelHeader]}
+                  >
                     <Text style={styles.panelTitle}>Medicine Details</Text>
-                    <Text style={styles.panelSubtitle}>
-                      Uses live `GET /pharmacy-medicines/:id`
+                    <Text
+                      style={[
+                        styles.panelSubtitle,
+                        styles.medicinesPanelSubtitle,
+                      ]}
+                    >
+                      Selected medicine
                     </Text>
                   </View>
                   {renderMedicineDetails()}
                 </View>
               </View>
+
+              {renderCartWorkspace()}
             </View>
           ) : activeSection === 'inventory' ? (
-            <View style={styles.sectionCard}>
+            <View style={[styles.sectionCard, styles.sectionCardInventory]}>
               <View style={[styles.toolbar, isTablet && styles.toolbarTablet]}>
                 <View style={styles.searchBox}>
                   <Text style={styles.searchHint}>
-                    {selectedMedicineId
-                      ? `Filtered by medicine ID: ${selectedMedicineId}`
-                      : 'Showing pharmacy stock across medicines'}
+                    {selectedMedicineId ? 'Filtered stock' : 'All stock'}
                   </Text>
                 </View>
-                <View style={[styles.toolbarActions, isTablet && styles.toolbarActionsTabletWide]}>
-                  <TouchableOpacity
-                    activeOpacity={0.85}
-                    onPress={() => {
-                      setInventoryLowStockOnly(current => !current);
-                      setInventoryPage(1);
-                    }}
-                    style={[
-                      styles.filterAction,
-                      inventoryLowStockOnly && styles.filterActionActive,
-                    ]}
-                  >
-                    <Text
+                <View
+                  style={[
+                    styles.toolbarActions,
+                    isTablet && styles.toolbarActionsTabletWide,
+                  ]}
+                >
+                  {(inventoryStats.lowStock > 0 || inventoryLowStockOnly) && (
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      onPress={() => {
+                        setInventoryLowStockOnly((current) => !current);
+                        setInventoryPage(1);
+                      }}
                       style={[
-                        styles.filterActionText,
-                        inventoryLowStockOnly && styles.filterActionTextActive,
+                        styles.filterAction,
+                        inventoryLowStockOnly && styles.filterActionActive,
                       ]}
                     >
-                      Low Stock
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    activeOpacity={0.85}
-                    onPress={() => {
-                      inventoryListQuery.refetch();
-                      inventoryAdjustmentsQuery.refetch();
-                      if (selectedInventoryId) {
-                        inventoryDetailQuery.refetch();
-                      }
-                    }}
-                    style={styles.iconAction}
-                  >
-                    <RefreshCw size={scale(18)} color={colors.primaryBlue} />
-                  </TouchableOpacity>
+                      <CircleAlert
+                        size={scale(15)}
+                        color={
+                          inventoryLowStockOnly ? '#FFFFFF' : colors.primaryBlue
+                        }
+                      />
+                      <Text
+                        style={[
+                          styles.filterActionText,
+                          inventoryLowStockOnly &&
+                            styles.filterActionTextActive,
+                        ]}
+                      >
+                        Low Stock
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
 
@@ -5058,12 +5982,14 @@ export function PharmacyScreen() {
                   accent="rgba(21,114,183,0.10)"
                   icon={<Pill size={scale(18)} color={colors.primaryBlue} />}
                 />
-                <StatCard
-                  label="Low stock"
-                  value={String(inventoryStats.lowStock)}
-                  accent="rgba(233,84,84,0.12)"
-                  icon={<CircleAlert size={scale(18)} color="#D14343" />}
-                />
+                {(inventoryStats.lowStock > 0 || inventoryLowStockOnly) && (
+                  <StatCard
+                    label="Low stock"
+                    value={String(inventoryStats.lowStock)}
+                    accent="rgba(233,84,84,0.12)"
+                    icon={<CircleAlert size={scale(18)} color="#D14343" />}
+                  />
+                )}
                 <StatCard
                   label="Reserved qty"
                   value={String(inventoryStats.reserved)}
@@ -5089,12 +6015,18 @@ export function PharmacyScreen() {
                   title="Reserve"
                   onPress={() => openInventoryActionModal('reserve')}
                   variant="outline"
+                  icon={
+                    <ShieldCheck size={scale(16)} color={colors.primaryBlue} />
+                  }
                   style={styles.inventoryActionButton}
                 />
                 <PrimaryButton
                   title="Release"
                   onPress={() => openInventoryActionModal('release')}
                   variant="outline"
+                  icon={
+                    <RefreshCw size={scale(16)} color={colors.primaryBlue} />
+                  }
                   style={styles.inventoryActionButton}
                 />
               </View>
@@ -5102,9 +6034,7 @@ export function PharmacyScreen() {
               <View style={styles.importWorkspace}>
                 <View style={styles.importWorkspaceHeader}>
                   <Text style={styles.panelTitle}>Inventory Imports</Text>
-                  <Text style={styles.panelSubtitle}>
-                    Preview bulk files, commit validated imports, and inspect history.
-                  </Text>
+                  <Text style={styles.panelSubtitle}>Bulk stock updates</Text>
                 </View>
 
                 <View style={styles.importControlRow}>
@@ -5112,12 +6042,16 @@ export function PharmacyScreen() {
                     title={inventoryImportFile ? 'Change File' : 'Choose File'}
                     onPress={pickInventoryImportFile}
                     variant="outline"
+                    icon={
+                      <FileUp size={scale(16)} color={colors.primaryBlue} />
+                    }
                     style={styles.importControlButton}
                   />
                   <PrimaryButton
                     title="Preview Import"
                     onPress={submitInventoryImportPreview}
                     loading={inventoryImportPreviewMutation.isPending}
+                    icon={<Search size={scale(16)} color="#FFFFFF" />}
                     style={styles.importControlButton}
                   />
                   <PrimaryButton
@@ -5125,6 +6059,7 @@ export function PharmacyScreen() {
                     onPress={submitInventoryImportCommit}
                     loading={inventoryImportCommitMutation.isPending}
                     variant="green"
+                    icon={<ShieldCheck size={scale(16)} color="#FFFFFF" />}
                     style={styles.importControlButton}
                   />
                 </View>
@@ -5135,7 +6070,8 @@ export function PharmacyScreen() {
                     onPress={() => setInventoryImportMode('upsert')}
                     style={[
                       styles.filterAction,
-                      inventoryImportMode === 'upsert' && styles.filterActionActive,
+                      inventoryImportMode === 'upsert' &&
+                        styles.filterActionActive,
                     ]}
                   >
                     <Text
@@ -5153,7 +6089,8 @@ export function PharmacyScreen() {
                     onPress={() => setInventoryImportMode('insert')}
                     style={[
                       styles.filterAction,
-                      inventoryImportMode === 'insert' && styles.filterActionActive,
+                      inventoryImportMode === 'insert' &&
+                        styles.filterActionActive,
                     ]}
                   >
                     <Text
@@ -5173,12 +6110,23 @@ export function PharmacyScreen() {
 
                 {renderInventoryImportPreview()}
 
-                <View style={[styles.panelLayout, isTablet && styles.panelLayoutTablet]}>
-                  <View style={[styles.panel, isTablet && styles.medicineListPanelTablet]}>
+                <View
+                  style={[
+                    styles.panelLayout,
+                    isTablet && styles.panelLayoutTablet,
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.panel,
+                      isTablet && styles.medicineListPanelTablet,
+                    ]}
+                  >
                     <View style={styles.panelHeader}>
                       <Text style={styles.panelTitle}>Import History</Text>
                       <Text style={styles.panelSubtitle}>
-                        Page {inventoryImportPage} · {inventoryImports.length} result
+                        Page {inventoryImportPage} · {inventoryImports.length}{' '}
+                        result
                         {inventoryImports.length === 1 ? '' : 's'}
                       </Text>
                     </View>
@@ -5188,7 +6136,9 @@ export function PharmacyScreen() {
                         activeOpacity={0.85}
                         disabled={inventoryImportPage === 1}
                         onPress={() =>
-                          setInventoryImportPage(current => Math.max(1, current - 1))
+                          setInventoryImportPage((current) =>
+                            Math.max(1, current - 1)
+                          )
                         }
                         style={[
                           styles.paginationButton,
@@ -5196,7 +6146,14 @@ export function PharmacyScreen() {
                             styles.paginationButtonDisabled,
                         ]}
                       >
-                        <ChevronLeft size={scale(16)} color={inventoryImportPage === 1 ? colors.textLight : colors.primaryBlue} />
+                        <ChevronLeft
+                          size={scale(16)}
+                          color={
+                            inventoryImportPage === 1
+                              ? colors.textLight
+                              : colors.primaryBlue
+                          }
+                        />
                         <Text
                           style={[
                             styles.paginationText,
@@ -5210,7 +6167,9 @@ export function PharmacyScreen() {
                       <TouchableOpacity
                         activeOpacity={0.85}
                         disabled={inventoryImports.length < 20}
-                        onPress={() => setInventoryImportPage(current => current + 1)}
+                        onPress={() =>
+                          setInventoryImportPage((current) => current + 1)
+                        }
                         style={[
                           styles.paginationButton,
                           inventoryImports.length < 20 &&
@@ -5226,25 +6185,45 @@ export function PharmacyScreen() {
                         >
                           Next
                         </Text>
-                        <ChevronRight size={scale(16)} color={inventoryImports.length < 20 ? colors.textLight : colors.primaryBlue} />
+                        <ChevronRight
+                          size={scale(16)}
+                          color={
+                            inventoryImports.length < 20
+                              ? colors.textLight
+                              : colors.primaryBlue
+                          }
+                        />
                       </TouchableOpacity>
                     </View>
                   </View>
 
-                  <View style={[styles.panel, isTablet && styles.medicineDetailPanelTablet]}>
+                  <View
+                    style={[
+                      styles.panel,
+                      isTablet && styles.medicineDetailPanelTablet,
+                    ]}
+                  >
                     <View style={styles.panelHeader}>
                       <Text style={styles.panelTitle}>Import Details</Text>
-                      <Text style={styles.panelSubtitle}>
-                        Review row counts, status, and the latest error details.
-                      </Text>
+                      <Text style={styles.panelSubtitle}>Import status</Text>
                     </View>
                     {renderInventoryImportDetails()}
                   </View>
                 </View>
               </View>
 
-              <View style={[styles.panelLayout, isTablet && styles.panelLayoutTablet]}>
-                <View style={[styles.panel, isTablet && styles.medicineListPanelTablet]}>
+              <View
+                style={[
+                  styles.panelLayout,
+                  isTablet && styles.panelLayoutTablet,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.panel,
+                    isTablet && styles.medicineListPanelTablet,
+                  ]}
+                >
                   <View style={styles.panelHeader}>
                     <Text style={styles.panelTitle}>Stock List</Text>
                     <Text style={styles.panelSubtitle}>
@@ -5257,13 +6236,22 @@ export function PharmacyScreen() {
                     <TouchableOpacity
                       activeOpacity={0.85}
                       disabled={inventoryPage === 1}
-                      onPress={() => setInventoryPage(current => Math.max(1, current - 1))}
+                      onPress={() =>
+                        setInventoryPage((current) => Math.max(1, current - 1))
+                      }
                       style={[
                         styles.paginationButton,
                         inventoryPage === 1 && styles.paginationButtonDisabled,
                       ]}
                     >
-                      <ChevronLeft size={scale(16)} color={inventoryPage === 1 ? colors.textLight : colors.primaryBlue} />
+                      <ChevronLeft
+                        size={scale(16)}
+                        color={
+                          inventoryPage === 1
+                            ? colors.textLight
+                            : colors.primaryBlue
+                        }
+                      />
                       <Text
                         style={[
                           styles.paginationText,
@@ -5276,46 +6264,63 @@ export function PharmacyScreen() {
                     <TouchableOpacity
                       activeOpacity={0.85}
                       disabled={inventoryItems.length < 20}
-                      onPress={() => setInventoryPage(current => current + 1)}
+                      onPress={() => setInventoryPage((current) => current + 1)}
                       style={[
                         styles.paginationButton,
-                        inventoryItems.length < 20 && styles.paginationButtonDisabled,
+                        inventoryItems.length < 20 &&
+                          styles.paginationButtonDisabled,
                       ]}
                     >
                       <Text
                         style={[
                           styles.paginationText,
-                          inventoryItems.length < 20 && styles.paginationTextDisabled,
+                          inventoryItems.length < 20 &&
+                            styles.paginationTextDisabled,
                         ]}
                       >
                         Next
                       </Text>
-                      <ChevronRight size={scale(16)} color={inventoryItems.length < 20 ? colors.textLight : colors.primaryBlue} />
+                      <ChevronRight
+                        size={scale(16)}
+                        color={
+                          inventoryItems.length < 20
+                            ? colors.textLight
+                            : colors.primaryBlue
+                        }
+                      />
                     </TouchableOpacity>
                   </View>
                 </View>
 
-                <View style={[styles.panel, isTablet && styles.medicineDetailPanelTablet]}>
+                <View
+                  style={[
+                    styles.panel,
+                    isTablet && styles.medicineDetailPanelTablet,
+                  ]}
+                >
                   <View style={styles.panelHeader}>
                     <Text style={styles.panelTitle}>Stock Details</Text>
                     <Text style={styles.panelSubtitle}>
-                      Live detail plus recent adjustment history
+                      Stock and adjustments
                     </Text>
                   </View>
                   {renderInventoryDetails()}
                   <View style={styles.adjustmentsSection}>
-                    <Text style={styles.adjustmentsTitle}>Recent Adjustments</Text>
+                    <Text style={styles.adjustmentsTitle}>
+                      Recent Adjustments
+                    </Text>
                     {renderInventoryAdjustments()}
                   </View>
                 </View>
               </View>
             </View>
           ) : activeSection === 'orders' ? (
-            <View style={styles.sectionCard}>
+            <View style={[styles.sectionCard, styles.sectionCardOrders]}>
               <View style={[styles.toolbar, isTablet && styles.toolbarTablet]}>
                 <View style={styles.searchBox}>
                   <Text style={styles.searchHint}>
-                    Filters: status {orderStatusFilter} · payment {orderPaymentFilter}
+                    Filters: status {orderStatusFilter} · payment{' '}
+                    {orderPaymentFilter}
                   </Text>
                 </View>
                 <View
@@ -5328,8 +6333,8 @@ export function PharmacyScreen() {
                   <TouchableOpacity
                     activeOpacity={0.85}
                     onPress={() =>
-                      setOrderStatusFilter(current =>
-                        current === 'placed' ? 'accepted' : 'placed',
+                      setOrderStatusFilter((current) =>
+                        current === 'placed' ? 'accepted' : 'placed'
                       )
                     }
                     style={[styles.filterAction, styles.orderFilterAction]}
@@ -5339,8 +6344,8 @@ export function PharmacyScreen() {
                   <TouchableOpacity
                     activeOpacity={0.85}
                     onPress={() =>
-                      setOrderPaymentFilter(current =>
-                        current === 'pending' ? 'paid' : 'pending',
+                      setOrderPaymentFilter((current) =>
+                        current === 'pending' ? 'paid' : 'pending'
                       )
                     }
                     style={[styles.filterAction, styles.orderFilterAction]}
@@ -5361,13 +6366,17 @@ export function PharmacyScreen() {
                   label="Orders"
                   value={String(orderStats.total)}
                   accent="rgba(21,114,183,0.10)"
-                  icon={<ArrowRight size={scale(18)} color={colors.primaryBlue} />}
+                  icon={
+                    <ArrowRight size={scale(18)} color={colors.primaryBlue} />
+                  }
                 />
                 <StatCard
                   label="Accepted"
                   value={String(orderStats.accepted)}
                   accent="rgba(64,179,70,0.12)"
-                  icon={<ShieldCheck size={scale(18)} color={colors.primaryGreen} />}
+                  icon={
+                    <ShieldCheck size={scale(18)} color={colors.primaryGreen} />
+                  }
                 />
                 <StatCard
                   label="Pending Payment"
@@ -5377,42 +6386,56 @@ export function PharmacyScreen() {
                 />
               </View>
 
-              {selectedOrder ? (
-                <View style={styles.sectionIntroCard}>
-                  <Text style={styles.sectionIntroTitle}>Context-aware order actions</Text>
-                  <Text style={styles.sectionIntroText}>
-                    Actions update automatically based on the selected order status and payment state.
-                  </Text>
-                </View>
-              ) : null}
-
               <View style={[styles.inventoryActionRow, styles.orderActionRow]}>
                 {orderActionItems.length ? (
-                  orderActionItems.map(action => (
+                  orderActionItems.map((action) => (
                     <PrimaryButton
                       key={action.key}
                       title={action.title}
                       onPress={action.onPress}
                       variant={action.variant}
+                      icon={
+                        <ArrowRight
+                          size={scale(16)}
+                          color={
+                            action.variant === 'outline'
+                              ? colors.primaryBlue
+                              : '#FFFFFF'
+                          }
+                        />
+                      }
                       style={styles.orderActionButton}
                     />
                   ))
                 ) : (
                   <View style={styles.orderActionEmptyState}>
-                    <Text style={styles.orderActionEmptyTitle}>Select an order to continue</Text>
+                    <Text style={styles.orderActionEmptyTitle}>
+                      Select an order to continue
+                    </Text>
                     <Text style={styles.orderActionEmptyText}>
-                      Relevant actions will appear here based on the current workflow stage.
+                      Choose an order to view actions.
                     </Text>
                   </View>
                 )}
               </View>
 
-              <View style={[styles.panelLayout, isTablet && styles.panelLayoutTablet]}>
-                <View style={[styles.panel, isTablet && styles.medicineListPanelTablet]}>
+              <View
+                style={[
+                  styles.panelLayout,
+                  isTablet && styles.panelLayoutTablet,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.panel,
+                    isTablet && styles.medicineListPanelTablet,
+                  ]}
+                >
                   <View style={styles.panelHeader}>
                     <Text style={styles.panelTitle}>Order List</Text>
                     <Text style={styles.panelSubtitle}>
-                      Page {orderPage} · {orders.length} result{orders.length === 1 ? '' : 's'}
+                      Page {orderPage} · {orders.length} result
+                      {orders.length === 1 ? '' : 's'}
                     </Text>
                   </View>
                   {renderOrdersList()}
@@ -5420,61 +6443,86 @@ export function PharmacyScreen() {
                     <TouchableOpacity
                       activeOpacity={0.85}
                       disabled={orderPage === 1}
-                      onPress={() => setOrderPage(current => Math.max(1, current - 1))}
+                      onPress={() =>
+                        setOrderPage((current) => Math.max(1, current - 1))
+                      }
                       style={[
                         styles.paginationButton,
                         orderPage === 1 && styles.paginationButtonDisabled,
                       ]}
                     >
-                      <ChevronLeft size={scale(16)} color={orderPage === 1 ? colors.textLight : colors.primaryBlue} />
-                      <Text style={[styles.paginationText, orderPage === 1 && styles.paginationTextDisabled]}>
+                      <ChevronLeft
+                        size={scale(16)}
+                        color={
+                          orderPage === 1
+                            ? colors.textLight
+                            : colors.primaryBlue
+                        }
+                      />
+                      <Text
+                        style={[
+                          styles.paginationText,
+                          orderPage === 1 && styles.paginationTextDisabled,
+                        ]}
+                      >
                         Previous
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       activeOpacity={0.85}
                       disabled={orders.length < 20}
-                      onPress={() => setOrderPage(current => current + 1)}
+                      onPress={() => setOrderPage((current) => current + 1)}
                       style={[
                         styles.paginationButton,
                         orders.length < 20 && styles.paginationButtonDisabled,
                       ]}
                     >
-                      <Text style={[styles.paginationText, orders.length < 20 && styles.paginationTextDisabled]}>
+                      <Text
+                        style={[
+                          styles.paginationText,
+                          orders.length < 20 && styles.paginationTextDisabled,
+                        ]}
+                      >
                         Next
                       </Text>
-                      <ChevronRight size={scale(16)} color={orders.length < 20 ? colors.textLight : colors.primaryBlue} />
+                      <ChevronRight
+                        size={scale(16)}
+                        color={
+                          orders.length < 20
+                            ? colors.textLight
+                            : colors.primaryBlue
+                        }
+                      />
                     </TouchableOpacity>
                   </View>
                 </View>
 
-                <View style={[styles.panel, isTablet && styles.medicineDetailPanelTablet]}>
+                <View
+                  style={[
+                    styles.panel,
+                    isTablet && styles.medicineDetailPanelTablet,
+                  ]}
+                >
                   <View style={styles.panelHeader}>
                     <Text style={styles.panelTitle}>Order Details</Text>
-                    <Text style={styles.panelSubtitle}>
-                      Inspect customer, payment, delivery, and subscription details.
-                    </Text>
+                    <Text style={styles.panelSubtitle}>Order summary</Text>
                   </View>
                   {renderOrderDetails()}
                 </View>
               </View>
             </View>
           ) : activeSection === 'subscriptions' ? (
-            <View style={styles.sectionCard}>
+            <View style={[styles.sectionCard, styles.sectionCardSubscriptions]}>
               <View style={[styles.toolbar, isTablet && styles.toolbarTablet]}>
                 <View style={styles.searchBox}>
-                  <Text style={styles.searchHint}>
-                    Manage recurring refill plans and reminder preferences.
-                  </Text>
+                  <Text style={styles.searchHint}>Refill plans</Text>
                 </View>
-                <View style={[styles.toolbarActions, isTablet && styles.toolbarActionsTabletWide]}>
-                  <TouchableOpacity
-                    activeOpacity={0.85}
-                    onPress={() => subscriptionsQuery.refetch()}
-                    style={styles.iconAction}
-                  >
-                    <RefreshCw size={scale(18)} color={colors.primaryBlue} />
-                  </TouchableOpacity>
+                <View
+                  style={[
+                    styles.toolbarActions,
+                    isTablet && styles.toolbarActionsTabletWide,
+                  ]}
+                >
                   <PrimaryButton
                     title="New Subscription"
                     onPress={openSubscriptionCreateModal}
@@ -5495,7 +6543,9 @@ export function PharmacyScreen() {
                   label="Active"
                   value={String(subscriptionStats.active)}
                   accent="rgba(64,179,70,0.12)"
-                  icon={<ShieldCheck size={scale(18)} color={colors.primaryGreen} />}
+                  icon={
+                    <ShieldCheck size={scale(18)} color={colors.primaryGreen} />
+                  }
                 />
                 <StatCard
                   label="Paused"
@@ -5510,24 +6560,37 @@ export function PharmacyScreen() {
                   title="Update"
                   onPress={() => openSubscriptionActionModal('update')}
                   variant="outline"
+                  icon={<Pencil size={scale(16)} color={colors.primaryBlue} />}
                   style={styles.inventoryActionButton}
                 />
                 <PrimaryButton
                   title="Pause"
                   onPress={() => openSubscriptionActionModal('pause')}
                   variant="outline"
+                  icon={<Pause size={scale(16)} color={colors.primaryBlue} />}
                   style={styles.inventoryActionButton}
                 />
                 <PrimaryButton
                   title="Delete"
                   onPress={() => openSubscriptionActionModal('delete')}
                   variant="outline"
+                  icon={<Trash2 size={scale(16)} color="#B45309" />}
                   style={styles.inventoryActionButton}
                 />
               </View>
 
-              <View style={[styles.panelLayout, isTablet && styles.panelLayoutTablet]}>
-                <View style={[styles.panel, isTablet && styles.medicineListPanelTablet]}>
+              <View
+                style={[
+                  styles.panelLayout,
+                  isTablet && styles.panelLayoutTablet,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.panel,
+                    isTablet && styles.medicineListPanelTablet,
+                  ]}
+                >
                   <View style={styles.panelHeader}>
                     <Text style={styles.panelTitle}>Subscription List</Text>
                     <Text style={styles.panelSubtitle}>
@@ -5541,18 +6604,29 @@ export function PharmacyScreen() {
                       activeOpacity={0.85}
                       disabled={subscriptionPage === 1}
                       onPress={() =>
-                        setSubscriptionPage(current => Math.max(1, current - 1))
+                        setSubscriptionPage((current) =>
+                          Math.max(1, current - 1)
+                        )
                       }
                       style={[
                         styles.paginationButton,
-                        subscriptionPage === 1 && styles.paginationButtonDisabled,
+                        subscriptionPage === 1 &&
+                          styles.paginationButtonDisabled,
                       ]}
                     >
-                      <ChevronLeft size={scale(16)} color={subscriptionPage === 1 ? colors.textLight : colors.primaryBlue} />
+                      <ChevronLeft
+                        size={scale(16)}
+                        color={
+                          subscriptionPage === 1
+                            ? colors.textLight
+                            : colors.primaryBlue
+                        }
+                      />
                       <Text
                         style={[
                           styles.paginationText,
-                          subscriptionPage === 1 && styles.paginationTextDisabled,
+                          subscriptionPage === 1 &&
+                            styles.paginationTextDisabled,
                         ]}
                       >
                         Previous
@@ -5561,10 +6635,13 @@ export function PharmacyScreen() {
                     <TouchableOpacity
                       activeOpacity={0.85}
                       disabled={subscriptions.length < 20}
-                      onPress={() => setSubscriptionPage(current => current + 1)}
+                      onPress={() =>
+                        setSubscriptionPage((current) => current + 1)
+                      }
                       style={[
                         styles.paginationButton,
-                        subscriptions.length < 20 && styles.paginationButtonDisabled,
+                        subscriptions.length < 20 &&
+                          styles.paginationButtonDisabled,
                       ]}
                     >
                       <Text
@@ -5576,41 +6653,44 @@ export function PharmacyScreen() {
                       >
                         Next
                       </Text>
-                      <ChevronRight size={scale(16)} color={subscriptions.length < 20 ? colors.textLight : colors.primaryBlue} />
+                      <ChevronRight
+                        size={scale(16)}
+                        color={
+                          subscriptions.length < 20
+                            ? colors.textLight
+                            : colors.primaryBlue
+                        }
+                      />
                     </TouchableOpacity>
                   </View>
                 </View>
 
-                <View style={[styles.panel, isTablet && styles.medicineDetailPanelTablet]}>
+                <View
+                  style={[
+                    styles.panel,
+                    isTablet && styles.medicineDetailPanelTablet,
+                  ]}
+                >
                   <View style={styles.panelHeader}>
                     <Text style={styles.panelTitle}>Subscription Details</Text>
-                    <Text style={styles.panelSubtitle}>
-                      Review cadence, next refill, pause window, and reminder settings.
-                    </Text>
+                    <Text style={styles.panelSubtitle}>Refill schedule</Text>
                   </View>
                   {renderSubscriptionDetails()}
                 </View>
               </View>
             </View>
           ) : activeSection === 'wallet' ? (
-            <View style={styles.sectionCard}>
+            <View style={[styles.sectionCard, styles.sectionCardWallet]}>
               <View style={[styles.toolbar, isTablet && styles.toolbarTablet]}>
                 <View style={styles.searchBox}>
-                  <Text style={styles.searchHint}>
-                    Review wallet balance, recent transactions, and manual top-ups.
-                  </Text>
+                  <Text style={styles.searchHint}>Wallet overview</Text>
                 </View>
-                <View style={[styles.toolbarActions, isTablet && styles.toolbarActionsTabletWide]}>
-                  <TouchableOpacity
-                    activeOpacity={0.85}
-                    onPress={() => {
-                      walletSummaryQuery.refetch();
-                      walletTransactionsQuery.refetch();
-                    }}
-                    style={styles.iconAction}
-                  >
-                    <RefreshCw size={scale(18)} color={colors.primaryBlue} />
-                  </TouchableOpacity>
+                <View
+                  style={[
+                    styles.toolbarActions,
+                    isTablet && styles.toolbarActionsTabletWide,
+                  ]}
+                >
                   <PrimaryButton
                     title="Top Up Wallet"
                     onPress={openWalletTopupModal}
@@ -5625,13 +6705,17 @@ export function PharmacyScreen() {
                   label="Available Balance"
                   value={`₹${String(walletStats.balance)}`}
                   accent="rgba(21,114,183,0.10)"
-                  icon={<ShieldCheck size={scale(18)} color={colors.primaryBlue} />}
+                  icon={
+                    <ShieldCheck size={scale(18)} color={colors.primaryBlue} />
+                  }
                 />
                 <StatCard
                   label="Transactions"
                   value={String(walletStats.transactions)}
                   accent="rgba(64,179,70,0.12)"
-                  icon={<ArrowRight size={scale(18)} color={colors.primaryGreen} />}
+                  icon={
+                    <ArrowRight size={scale(18)} color={colors.primaryGreen} />
+                  }
                 />
                 <StatCard
                   label="Top-Ups"
@@ -5641,12 +6725,23 @@ export function PharmacyScreen() {
                 />
               </View>
 
-              <View style={[styles.panelLayout, isTablet && styles.panelLayoutTablet]}>
-                <View style={[styles.panel, isTablet && styles.medicineListPanelTablet]}>
+              <View
+                style={[
+                  styles.panelLayout,
+                  isTablet && styles.panelLayoutTablet,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.panel,
+                    isTablet && styles.medicineListPanelTablet,
+                  ]}
+                >
                   <View style={styles.panelHeader}>
                     <Text style={styles.panelTitle}>Transactions</Text>
                     <Text style={styles.panelSubtitle}>
-                      Page {walletTransactionPage} · {walletTransactions.length} result
+                      Page {walletTransactionPage} · {walletTransactions.length}{' '}
+                      result
                       {walletTransactions.length === 1 ? '' : 's'}
                     </Text>
                   </View>
@@ -5656,7 +6751,9 @@ export function PharmacyScreen() {
                       activeOpacity={0.85}
                       disabled={walletTransactionPage === 1}
                       onPress={() =>
-                        setWalletTransactionPage(current => Math.max(1, current - 1))
+                        setWalletTransactionPage((current) =>
+                          Math.max(1, current - 1)
+                        )
                       }
                       style={[
                         styles.paginationButton,
@@ -5664,7 +6761,14 @@ export function PharmacyScreen() {
                           styles.paginationButtonDisabled,
                       ]}
                     >
-                      <ChevronLeft size={scale(16)} color={walletTransactionPage === 1 ? colors.textLight : colors.primaryBlue} />
+                      <ChevronLeft
+                        size={scale(16)}
+                        color={
+                          walletTransactionPage === 1
+                            ? colors.textLight
+                            : colors.primaryBlue
+                        }
+                      />
                       <Text
                         style={[
                           styles.paginationText,
@@ -5678,7 +6782,9 @@ export function PharmacyScreen() {
                     <TouchableOpacity
                       activeOpacity={0.85}
                       disabled={walletTransactions.length < 20}
-                      onPress={() => setWalletTransactionPage(current => current + 1)}
+                      onPress={() =>
+                        setWalletTransactionPage((current) => current + 1)
+                      }
                       style={[
                         styles.paginationButton,
                         walletTransactions.length < 20 &&
@@ -5694,12 +6800,24 @@ export function PharmacyScreen() {
                       >
                         Next
                       </Text>
-                      <ChevronRight size={scale(16)} color={walletTransactions.length < 20 ? colors.textLight : colors.primaryBlue} />
+                      <ChevronRight
+                        size={scale(16)}
+                        color={
+                          walletTransactions.length < 20
+                            ? colors.textLight
+                            : colors.primaryBlue
+                        }
+                      />
                     </TouchableOpacity>
                   </View>
                 </View>
 
-                <View style={[styles.panel, isTablet && styles.medicineDetailPanelTablet]}>
+                <View
+                  style={[
+                    styles.panel,
+                    isTablet && styles.medicineDetailPanelTablet,
+                  ]}
+                >
                   <View style={styles.panelHeader}>
                     <Text style={styles.panelTitle}>Wallet Summary</Text>
                     <Text style={styles.panelSubtitle}>
@@ -5711,29 +6829,21 @@ export function PharmacyScreen() {
               </View>
             </View>
           ) : activeSection === 'tracking' ? (
-            <View style={styles.sectionCard}>
+            <View style={[styles.sectionCard, styles.sectionCardTracking]}>
               <View style={[styles.toolbar, isTablet && styles.toolbarTablet]}>
                 <View style={styles.searchBox}>
-                  <Text style={styles.searchHint}>
-                    Follow up patients and monitor pharmacy activity from one place.
-                  </Text>
+                  <Text style={styles.searchHint}>Patient follow-ups</Text>
                 </View>
-                <View style={[styles.toolbarActions, isTablet && styles.toolbarActionsTabletWide]}>
-                  <TouchableOpacity
-                    activeOpacity={0.85}
-                    onPress={() => {
-                      customersQuery.refetch();
-                      patientTrackingQuery.refetch();
-                      pharmacyTrackingSummaryQuery.refetch();
-                      pharmacyTrackingByIdQuery.refetch();
-                    }}
-                    style={styles.iconAction}
-                  >
-                    <RefreshCw size={scale(18)} color={colors.primaryBlue} />
-                  </TouchableOpacity>
+                <View
+                  style={[
+                    styles.toolbarActions,
+                    isTablet && styles.toolbarActionsTabletWide,
+                  ]}
+                >
                   <PrimaryButton
                     title="Update Tracking"
                     onPress={openPatientTrackingModal}
+                    icon={<RefreshCw size={scale(16)} color="#FFFFFF" />}
                     style={styles.inventoryActionButton}
                   />
                 </View>
@@ -5760,8 +6870,18 @@ export function PharmacyScreen() {
                 />
               </View>
 
-              <View style={[styles.panelLayout, isTablet && styles.panelLayoutTablet]}>
-                <View style={[styles.panel, isTablet && styles.medicineListPanelTablet]}>
+              <View
+                style={[
+                  styles.panelLayout,
+                  isTablet && styles.panelLayoutTablet,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.panel,
+                    isTablet && styles.medicineListPanelTablet,
+                  ]}
+                >
                   <View style={styles.panelHeader}>
                     <Text style={styles.panelTitle}>Patients</Text>
                     <Text style={styles.panelSubtitle}>
@@ -5771,7 +6891,12 @@ export function PharmacyScreen() {
                   {renderTrackingCustomerList()}
                 </View>
 
-                <View style={[styles.panel, isTablet && styles.medicineDetailPanelTablet]}>
+                <View
+                  style={[
+                    styles.panel,
+                    isTablet && styles.medicineDetailPanelTablet,
+                  ]}
+                >
                   <View style={styles.panelHeader}>
                     <Text style={styles.panelTitle}>Patient Tracking</Text>
                     <Text style={styles.panelSubtitle}>
@@ -5782,12 +6907,22 @@ export function PharmacyScreen() {
                 </View>
               </View>
 
-              <View style={[styles.panelLayout, isTablet && styles.panelLayoutTablet]}>
-                <View style={[styles.panel, isTablet && styles.medicineDetailPanelTablet]}>
+              <View
+                style={[
+                  styles.panelLayout,
+                  isTablet && styles.panelLayoutTablet,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.panel,
+                    isTablet && styles.medicineDetailPanelTablet,
+                  ]}
+                >
                   <View style={styles.panelHeader}>
                     <Text style={styles.panelTitle}>Pharmacy Summary</Text>
                     <Text style={styles.panelSubtitle}>
-                      Aggregated totals from pharmacy tracking summary APIs.
+                      Current pharmacy totals
                     </Text>
                   </View>
                   {renderPharmacyTrackingSummary()}
@@ -5795,7 +6930,7 @@ export function PharmacyScreen() {
               </View>
             </View>
           ) : activeSection === 'diagnostics' ? (
-            <View style={styles.sectionCard}>
+            <View style={[styles.sectionCard, styles.sectionCardDiagnostics]}>
               <View style={[styles.toolbar, isTablet && styles.toolbarTablet]}>
                 <View style={styles.searchBox}>
                   <TextInput
@@ -5806,18 +6941,12 @@ export function PharmacyScreen() {
                     style={styles.searchInput}
                   />
                 </View>
-                <View style={[styles.toolbarActions, isTablet && styles.toolbarActionsTabletWide]}>
-                  <TouchableOpacity
-                    activeOpacity={0.85}
-                    onPress={() => {
-                      if (selectedDiagnosticsBookingId) {
-                        diagnosticsPaymentDetailsQuery.refetch();
-                      }
-                    }}
-                    style={styles.iconAction}
-                  >
-                    <RefreshCw size={scale(18)} color={colors.primaryBlue} />
-                  </TouchableOpacity>
+                <View
+                  style={[
+                    styles.toolbarActions,
+                    isTablet && styles.toolbarActionsTabletWide,
+                  ]}
+                >
                   <PrimaryButton
                     title="New Booking"
                     onPress={openDiagnosticsModal}
@@ -5832,7 +6961,9 @@ export function PharmacyScreen() {
                   label="Selected Booking"
                   value={String(diagnosticsStats.selected)}
                   accent="rgba(21,114,183,0.10)"
-                  icon={<CircleAlert size={scale(18)} color={colors.primaryBlue} />}
+                  icon={
+                    <CircleAlert size={scale(18)} color={colors.primaryBlue} />
+                  }
                 />
                 <StatCard
                   label="Tests in Form"
@@ -5853,33 +6984,51 @@ export function PharmacyScreen() {
                   title="Retry Payment"
                   onPress={() => openDiagnosticsActionModal('retry')}
                   variant="outline"
+                  icon={
+                    <RefreshCw size={scale(16)} color={colors.primaryBlue} />
+                  }
                   style={styles.inventoryActionButton}
                 />
                 <PrimaryButton
                   title="Reschedule"
                   onPress={() => openDiagnosticsActionModal('reschedule')}
                   variant="outline"
+                  icon={<Clock3 size={scale(16)} color={colors.primaryBlue} />}
                   style={styles.inventoryActionButton}
                 />
                 <PrimaryButton
                   title="Cancel"
                   onPress={() => openDiagnosticsActionModal('cancel')}
                   variant="outline"
+                  icon={<CircleAlert size={scale(16)} color="#B45309" />}
                   style={styles.inventoryActionButton}
                 />
                 <PrimaryButton
                   title="Verify Payment"
                   onPress={openPaymentVerificationModal}
+                  icon={<ShieldCheck size={scale(16)} color="#FFFFFF" />}
                   style={styles.inventoryActionButton}
                 />
               </View>
 
-              <View style={[styles.panelLayout, isTablet && styles.panelLayoutTablet]}>
-                <View style={[styles.panel, isTablet && styles.medicineDetailPanelTablet]}>
+              <View
+                style={[
+                  styles.panelLayout,
+                  isTablet && styles.panelLayoutTablet,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.panel,
+                    isTablet && styles.medicineDetailPanelTablet,
+                  ]}
+                >
                   <View style={styles.panelHeader}>
-                    <Text style={styles.panelTitle}>Diagnostics Payment Details</Text>
+                    <Text style={styles.panelTitle}>
+                      Diagnostics Payment Details
+                    </Text>
                     <Text style={styles.panelSubtitle}>
-                      Create a booking, retry payment, cancel, reschedule, or verify Razorpay completion.
+                      Selected booking and payment status
                     </Text>
                   </View>
                   {renderDiagnosticsDetails()}
@@ -5887,7 +7036,7 @@ export function PharmacyScreen() {
               </View>
             </View>
           ) : (
-            <View style={styles.sectionCard}>
+            <View style={[styles.sectionCard, styles.sectionCardCustomers]}>
               <View style={[styles.toolbar, isTablet && styles.toolbarTablet]}>
                 <View style={styles.searchBox}>
                   <Search size={scale(18)} color={colors.textLight} />
@@ -5899,7 +7048,12 @@ export function PharmacyScreen() {
                     style={styles.searchInput}
                   />
                 </View>
-                <View style={[styles.toolbarActions, isTablet && styles.toolbarActionsTablet]}>
+                <View
+                  style={[
+                    styles.toolbarActions,
+                    isTablet && styles.toolbarActionsTablet,
+                  ]}
+                >
                   <PrimaryButton
                     title="Add Customer"
                     onPress={() => {
@@ -5930,7 +7084,9 @@ export function PharmacyScreen() {
                   label="Recurring medicine"
                   value={String(customerStats.recurring)}
                   accent="rgba(64,179,70,0.12)"
-                  icon={<ArrowRight size={scale(18)} color={colors.primaryGreen} />}
+                  icon={
+                    <ArrowRight size={scale(18)} color={colors.primaryGreen} />
+                  }
                 />
               </View>
 
@@ -5959,12 +7115,14 @@ export function PharmacyScreen() {
           >
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={styles.modalTitle}>
-                {medicineFormMode === 'create' ? 'Add Medicine' : 'Edit Medicine'}
+                {medicineFormMode === 'create'
+                  ? 'Add Medicine'
+                  : 'Edit Medicine'}
               </Text>
               <Text style={styles.modalSubtitle}>
                 {medicineFormMode === 'create'
-                  ? 'Bind the POST pharmacy medicine API to a clean form.'
-                  : 'Update brand and prescription fields with the PUT endpoint.'}
+                  ? 'Add medicine details.'
+                  : 'Update medicine details.'}
               </Text>
 
               {medicineFormMode === 'create' ? (
@@ -5972,8 +7130,11 @@ export function PharmacyScreen() {
                   <LabeledField
                     label="Medicine Name"
                     value={medicineCreateForm.name}
-                    onChangeText={text =>
-                      setMedicineCreateForm(current => ({ ...current, name: text }))
+                    onChangeText={(text) =>
+                      setMedicineCreateForm((current) => ({
+                        ...current,
+                        name: text,
+                      }))
                     }
                     placeholder="Paracetamol 650"
                     error={medicineErrors.name}
@@ -5981,8 +7142,8 @@ export function PharmacyScreen() {
                   <LabeledField
                     label="Generic Name"
                     value={medicineCreateForm.genericName}
-                    onChangeText={text =>
-                      setMedicineCreateForm(current => ({
+                    onChangeText={(text) =>
+                      setMedicineCreateForm((current) => ({
                         ...current,
                         genericName: text,
                       }))
@@ -5992,16 +7153,19 @@ export function PharmacyScreen() {
                   <LabeledField
                     label="Category"
                     value={medicineCreateForm.category}
-                    onChangeText={text =>
-                      setMedicineCreateForm(current => ({ ...current, category: text }))
+                    onChangeText={(text) =>
+                      setMedicineCreateForm((current) => ({
+                        ...current,
+                        category: text,
+                      }))
                     }
                     placeholder="Pain Relief"
                   />
                   <LabeledField
                     label="Dosage Form"
                     value={medicineCreateForm.dosageForm}
-                    onChangeText={text =>
-                      setMedicineCreateForm(current => ({
+                    onChangeText={(text) =>
+                      setMedicineCreateForm((current) => ({
                         ...current,
                         dosageForm: text,
                       }))
@@ -6012,16 +7176,19 @@ export function PharmacyScreen() {
                   <LabeledField
                     label="Strength"
                     value={medicineCreateForm.strength}
-                    onChangeText={text =>
-                      setMedicineCreateForm(current => ({ ...current, strength: text }))
+                    onChangeText={(text) =>
+                      setMedicineCreateForm((current) => ({
+                        ...current,
+                        strength: text,
+                      }))
                     }
                     placeholder="650 mg"
                   />
                   <LabeledField
                     label="Manufacturer"
                     value={medicineCreateForm.manufacturer}
-                    onChangeText={text =>
-                      setMedicineCreateForm(current => ({
+                    onChangeText={(text) =>
+                      setMedicineCreateForm((current) => ({
                         ...current,
                         manufacturer: text,
                       }))
@@ -6032,8 +7199,8 @@ export function PharmacyScreen() {
                     label="Prescription Required"
                     hint="Turn this on when the medicine should be dispensed only with a valid prescription."
                     value={medicineCreateForm.prescriptionRequired}
-                    onValueChange={value =>
-                      setMedicineCreateForm(current => ({
+                    onValueChange={(value) =>
+                      setMedicineCreateForm((current) => ({
                         ...current,
                         prescriptionRequired: value,
                       }))
@@ -6045,16 +7212,19 @@ export function PharmacyScreen() {
                   <LabeledField
                     label="Brand Name"
                     value={medicineEditForm.brandName}
-                    onChangeText={text =>
-                      setMedicineEditForm(current => ({ ...current, brandName: text }))
+                    onChangeText={(text) =>
+                      setMedicineEditForm((current) => ({
+                        ...current,
+                        brandName: text,
+                      }))
                     }
                     placeholder="PCM 650"
                   />
                   <LabeledField
                     label="Manufacturer"
                     value={medicineEditForm.manufacturer}
-                    onChangeText={text =>
-                      setMedicineEditForm(current => ({
+                    onChangeText={(text) =>
+                      setMedicineEditForm((current) => ({
                         ...current,
                         manufacturer: text,
                       }))
@@ -6065,8 +7235,8 @@ export function PharmacyScreen() {
                     label="Prescription Required"
                     hint="Keep this aligned with the medicine’s current dispensing rules."
                     value={medicineEditForm.prescriptionRequired}
-                    onValueChange={value =>
-                      setMedicineEditForm(current => ({
+                    onValueChange={(value) =>
+                      setMedicineEditForm((current) => ({
                         ...current,
                         prescriptionRequired: value,
                       }))
@@ -6083,10 +7253,15 @@ export function PharmacyScreen() {
                   style={styles.modalActionButton}
                 />
                 <PrimaryButton
-                  title={medicineFormMode === 'create' ? 'Save Medicine' : 'Update Medicine'}
+                  title={
+                    medicineFormMode === 'create'
+                      ? 'Save Medicine'
+                      : 'Update Medicine'
+                  }
                   onPress={() => setMedicineModalVisible(false)}
                   loading={
-                    createMedicineMutation.isPending || updateMedicineMutation.isPending
+                    createMedicineMutation.isPending ||
+                    updateMedicineMutation.isPending
                   }
                   style={styles.modalActionButton}
                 />
@@ -6116,20 +7291,25 @@ export function PharmacyScreen() {
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={styles.modalTitle}>Add Customer</Text>
               <Text style={styles.modalSubtitle}>
-                Create a pharmacy customer profile with proper validation and feedback.
+                Create a pharmacy customer profile with proper validation and
+                feedback.
               </Text>
 
               <LabeledField
                 label="Customer Name"
                 value={customerForm.name}
-                onChangeText={text => setCustomerForm(current => ({ ...current, name: text }))}
+                onChangeText={(text) =>
+                  setCustomerForm((current) => ({ ...current, name: text }))
+                }
                 placeholder="Ravi Sharma"
                 error={customerErrors.name}
               />
               <LabeledField
                 label="Phone"
                 value={customerForm.phone}
-                onChangeText={text => setCustomerForm(current => ({ ...current, phone: text }))}
+                onChangeText={(text) =>
+                  setCustomerForm((current) => ({ ...current, phone: text }))
+                }
                 placeholder="9876543210"
                 keyboardType="phone-pad"
                 error={customerErrors.phone}
@@ -6137,7 +7317,9 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Age"
                 value={customerForm.age}
-                onChangeText={text => setCustomerForm(current => ({ ...current, age: text }))}
+                onChangeText={(text) =>
+                  setCustomerForm((current) => ({ ...current, age: text }))
+                }
                 placeholder="34"
                 keyboardType="number-pad"
                 error={customerErrors.age}
@@ -6145,8 +7327,11 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Disease Notes"
                 value={customerForm.diseaseNotes}
-                onChangeText={text =>
-                  setCustomerForm(current => ({ ...current, diseaseNotes: text }))
+                onChangeText={(text) =>
+                  setCustomerForm((current) => ({
+                    ...current,
+                    diseaseNotes: text,
+                  }))
                 }
                 placeholder="Diabetes type 2"
                 multiline
@@ -6156,8 +7341,11 @@ export function PharmacyScreen() {
                 label="Chronic Condition"
                 hint="Use this for long-term conditions that need repeated attention."
                 value={customerForm.chronicCondition}
-                onValueChange={value =>
-                  setCustomerForm(current => ({ ...current, chronicCondition: value }))
+                onValueChange={(value) =>
+                  setCustomerForm((current) => ({
+                    ...current,
+                    chronicCondition: value,
+                  }))
                 }
               />
 
@@ -6165,11 +7353,13 @@ export function PharmacyScreen() {
                 label="Recurring Medicine"
                 hint="Turn this on when you need a refill cycle for the customer."
                 value={customerForm.recurringMedicine}
-                onValueChange={value =>
-                  setCustomerForm(current => ({
+                onValueChange={(value) =>
+                  setCustomerForm((current) => ({
                     ...current,
                     recurringMedicine: value,
-                    recurringIntervalDays: value ? current.recurringIntervalDays : '',
+                    recurringIntervalDays: value
+                      ? current.recurringIntervalDays
+                      : '',
                   }))
                 }
               />
@@ -6178,8 +7368,8 @@ export function PharmacyScreen() {
                 <LabeledField
                   label="Recurring Interval (Days)"
                   value={customerForm.recurringIntervalDays}
-                  onChangeText={text =>
-                    setCustomerForm(current => ({
+                  onChangeText={(text) =>
+                    setCustomerForm((current) => ({
                       ...current,
                       recurringIntervalDays: text,
                     }))
@@ -6229,14 +7419,18 @@ export function PharmacyScreen() {
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={styles.modalTitle}>Add Inventory Stock</Text>
               <Text style={styles.modalSubtitle}>
-                Create a stock entry with pricing, rack, batch, and reorder data.
+                Create a stock entry with pricing, rack, batch, and reorder
+                data.
               </Text>
 
               <LabeledField
                 label="Medicine ID"
                 value={inventoryCreateForm.medicineId}
-                onChangeText={text =>
-                  setInventoryCreateForm(current => ({ ...current, medicineId: text }))
+                onChangeText={(text) =>
+                  setInventoryCreateForm((current) => ({
+                    ...current,
+                    medicineId: text,
+                  }))
                 }
                 placeholder="64f100000000000000000002"
                 error={inventoryErrors.medicineId}
@@ -6244,8 +7438,11 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Quantity"
                 value={inventoryCreateForm.quantity}
-                onChangeText={text =>
-                  setInventoryCreateForm(current => ({ ...current, quantity: text }))
+                onChangeText={(text) =>
+                  setInventoryCreateForm((current) => ({
+                    ...current,
+                    quantity: text,
+                  }))
                 }
                 placeholder="100"
                 keyboardType="number-pad"
@@ -6254,8 +7451,8 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Reorder Threshold"
                 value={inventoryCreateForm.reorderThreshold}
-                onChangeText={text =>
-                  setInventoryCreateForm(current => ({
+                onChangeText={(text) =>
+                  setInventoryCreateForm((current) => ({
                     ...current,
                     reorderThreshold: text,
                   }))
@@ -6267,16 +7464,19 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Rack Location"
                 value={inventoryCreateForm.rackLocation}
-                onChangeText={text =>
-                  setInventoryCreateForm(current => ({ ...current, rackLocation: text }))
+                onChangeText={(text) =>
+                  setInventoryCreateForm((current) => ({
+                    ...current,
+                    rackLocation: text,
+                  }))
                 }
                 placeholder="A-12"
               />
               <LabeledField
                 label="Purchase Price"
                 value={inventoryCreateForm.purchasePrice}
-                onChangeText={text =>
-                  setInventoryCreateForm(current => ({
+                onChangeText={(text) =>
+                  setInventoryCreateForm((current) => ({
                     ...current,
                     purchasePrice: text,
                   }))
@@ -6288,8 +7488,11 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Retail Price"
                 value={inventoryCreateForm.retailPrice}
-                onChangeText={text =>
-                  setInventoryCreateForm(current => ({ ...current, retailPrice: text }))
+                onChangeText={(text) =>
+                  setInventoryCreateForm((current) => ({
+                    ...current,
+                    retailPrice: text,
+                  }))
                 }
                 placeholder="18"
                 keyboardType="number-pad"
@@ -6298,8 +7501,8 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Wholesale Price"
                 value={inventoryCreateForm.wholesalePrice}
-                onChangeText={text =>
-                  setInventoryCreateForm(current => ({
+                onChangeText={(text) =>
+                  setInventoryCreateForm((current) => ({
                     ...current,
                     wholesalePrice: text,
                   }))
@@ -6311,16 +7514,22 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Batch Number"
                 value={inventoryCreateForm.batchNumber}
-                onChangeText={text =>
-                  setInventoryCreateForm(current => ({ ...current, batchNumber: text }))
+                onChangeText={(text) =>
+                  setInventoryCreateForm((current) => ({
+                    ...current,
+                    batchNumber: text,
+                  }))
                 }
                 placeholder="BATCH-001"
               />
               <LabeledField
                 label="Expiry Date"
                 value={inventoryCreateForm.expiryDate}
-                onChangeText={text =>
-                  setInventoryCreateForm(current => ({ ...current, expiryDate: text }))
+                onChangeText={(text) =>
+                  setInventoryCreateForm((current) => ({
+                    ...current,
+                    expiryDate: text,
+                  }))
                 }
                 placeholder="20271231"
                 keyboardType="number-pad"
@@ -6329,16 +7538,22 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Reason"
                 value={inventoryCreateForm.reason}
-                onChangeText={text =>
-                  setInventoryCreateForm(current => ({ ...current, reason: text }))
+                onChangeText={(text) =>
+                  setInventoryCreateForm((current) => ({
+                    ...current,
+                    reason: text,
+                  }))
                 }
                 placeholder="purchase"
               />
               <LabeledField
                 label="Notes"
                 value={inventoryCreateForm.notes}
-                onChangeText={text =>
-                  setInventoryCreateForm(current => ({ ...current, notes: text }))
+                onChangeText={(text) =>
+                  setInventoryCreateForm((current) => ({
+                    ...current,
+                    notes: text,
+                  }))
                 }
                 placeholder="Initial stock load"
                 multiline
@@ -6382,7 +7597,9 @@ export function PharmacyScreen() {
           >
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={styles.modalTitle}>
-                {inventoryActionMode === 'reserve' ? 'Reserve Stock' : 'Release Stock'}
+                {inventoryActionMode === 'reserve'
+                  ? 'Reserve Stock'
+                  : 'Release Stock'}
               </Text>
               <Text style={styles.modalSubtitle}>
                 {inventoryActionMode === 'reserve'
@@ -6393,8 +7610,11 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Medicine ID"
                 value={inventoryActionForm.medicineId}
-                onChangeText={text =>
-                  setInventoryActionForm(current => ({ ...current, medicineId: text }))
+                onChangeText={(text) =>
+                  setInventoryActionForm((current) => ({
+                    ...current,
+                    medicineId: text,
+                  }))
                 }
                 placeholder="64f100000000000000000002"
                 error={inventoryActionErrors.medicineId}
@@ -6402,8 +7622,11 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Quantity"
                 value={inventoryActionForm.quantity}
-                onChangeText={text =>
-                  setInventoryActionForm(current => ({ ...current, quantity: text }))
+                onChangeText={(text) =>
+                  setInventoryActionForm((current) => ({
+                    ...current,
+                    quantity: text,
+                  }))
                 }
                 placeholder="5"
                 keyboardType="number-pad"
@@ -6412,16 +7635,26 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Reason"
                 value={inventoryActionForm.reason}
-                onChangeText={text =>
-                  setInventoryActionForm(current => ({ ...current, reason: text }))
+                onChangeText={(text) =>
+                  setInventoryActionForm((current) => ({
+                    ...current,
+                    reason: text,
+                  }))
                 }
-                placeholder={inventoryActionMode === 'reserve' ? 'internal_hold' : 'release_hold'}
+                placeholder={
+                  inventoryActionMode === 'reserve'
+                    ? 'internal_hold'
+                    : 'release_hold'
+                }
               />
               <LabeledField
                 label="Notes"
                 value={inventoryActionForm.notes}
-                onChangeText={text =>
-                  setInventoryActionForm(current => ({ ...current, notes: text }))
+                onChangeText={(text) =>
+                  setInventoryActionForm((current) => ({
+                    ...current,
+                    notes: text,
+                  }))
                 }
                 placeholder={
                   inventoryActionMode === 'reserve'
@@ -6439,7 +7672,9 @@ export function PharmacyScreen() {
                   style={styles.modalActionButton}
                 />
                 <PrimaryButton
-                  title={inventoryActionMode === 'reserve' ? 'Reserve' : 'Release'}
+                  title={
+                    inventoryActionMode === 'reserve' ? 'Reserve' : 'Release'
+                  }
                   onPress={submitInventoryAction}
                   loading={
                     reserveInventoryMutation.isPending ||
@@ -6459,7 +7694,10 @@ export function PharmacyScreen() {
         visible={orderModalVisible}
         onRequestClose={() => setOrderModalVisible(false)}
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setOrderModalVisible(false)}>
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setOrderModalVisible(false)}
+        >
           <Pressable
             style={[
               styles.modalCard,
@@ -6473,29 +7711,167 @@ export function PharmacyScreen() {
                 Create online or walk-in orders with recurring medicine support.
               </Text>
 
-              <LabeledField label="Order Type" value={orderCreateForm.orderType} onChangeText={text => setOrderCreateForm(current => ({ ...current, orderType: text }))} placeholder="online" />
-              <LabeledField label="Customer ID" value={orderCreateForm.customerId} onChangeText={text => setOrderCreateForm(current => ({ ...current, customerId: text }))} placeholder="64f100000000000000000004" error={orderErrors.customerId} />
-              <LabeledField label="Medicine ID" value={orderCreateForm.medicineId} onChangeText={text => setOrderCreateForm(current => ({ ...current, medicineId: text }))} placeholder="64f100000000000000000002" error={orderErrors.medicineId} />
-              <LabeledField label="Medicine Name" value={orderCreateForm.medicineName} onChangeText={text => setOrderCreateForm(current => ({ ...current, medicineName: text }))} placeholder="Paracetamol 650" />
-              <LabeledField label="Ordered Quantity" value={orderCreateForm.orderedQty} onChangeText={text => setOrderCreateForm(current => ({ ...current, orderedQty: text }))} placeholder="2" keyboardType="number-pad" error={orderErrors.orderedQty} />
-              <LabeledField label="Discount" value={orderCreateForm.discount} onChangeText={text => setOrderCreateForm(current => ({ ...current, discount: text }))} placeholder="1" keyboardType="number-pad" error={orderErrors.discount} />
-              <LabeledField label="Payment Mode" value={orderCreateForm.paymentMode} onChangeText={text => setOrderCreateForm(current => ({ ...current, paymentMode: text }))} placeholder="online_payment" />
-              <LabeledField label="Delivery Mode" value={orderCreateForm.deliveryMode} onChangeText={text => setOrderCreateForm(current => ({ ...current, deliveryMode: text }))} placeholder="delivery" />
-              <LabeledField label="Delivery Address" value={orderCreateForm.deliveryAddress} onChangeText={text => setOrderCreateForm(current => ({ ...current, deliveryAddress: text }))} placeholder="221B Baker Street, Delhi" multiline />
-              <LabeledField label="Prescription URLs" value={orderCreateForm.prescriptionUrls} onChangeText={text => setOrderCreateForm(current => ({ ...current, prescriptionUrls: text }))} placeholder="https://example.com/prescription.pdf" multiline />
-              <LabeledField label="Notes" value={orderCreateForm.notes} onChangeText={text => setOrderCreateForm(current => ({ ...current, notes: text }))} placeholder="Urgent delivery" multiline />
-              <LabeledField label="Linked Consultation ID" value={orderCreateForm.linkedConsultationId} onChangeText={text => setOrderCreateForm(current => ({ ...current, linkedConsultationId: text }))} placeholder="64f100000000000000000010" />
-              <LabeledField label="Linked Diagnostic Order ID" value={orderCreateForm.linkedDiagnosticOrderId} onChangeText={text => setOrderCreateForm(current => ({ ...current, linkedDiagnosticOrderId: text }))} placeholder="diag-booking-id" />
+              <LabeledField
+                label="Order Type"
+                value={orderCreateForm.orderType}
+                onChangeText={(text) =>
+                  setOrderCreateForm((current) => ({
+                    ...current,
+                    orderType: text,
+                  }))
+                }
+                placeholder="online"
+              />
+              <LabeledField
+                label="Customer ID"
+                value={orderCreateForm.customerId}
+                onChangeText={(text) =>
+                  setOrderCreateForm((current) => ({
+                    ...current,
+                    customerId: text,
+                  }))
+                }
+                placeholder="64f100000000000000000004"
+                error={orderErrors.customerId}
+              />
+              <LabeledField
+                label="Medicine ID"
+                value={orderCreateForm.medicineId}
+                onChangeText={(text) =>
+                  setOrderCreateForm((current) => ({
+                    ...current,
+                    medicineId: text,
+                  }))
+                }
+                placeholder="64f100000000000000000002"
+                error={orderErrors.medicineId}
+              />
+              <LabeledField
+                label="Medicine Name"
+                value={orderCreateForm.medicineName}
+                onChangeText={(text) =>
+                  setOrderCreateForm((current) => ({
+                    ...current,
+                    medicineName: text,
+                  }))
+                }
+                placeholder="Paracetamol 650"
+              />
+              <LabeledField
+                label="Ordered Quantity"
+                value={orderCreateForm.orderedQty}
+                onChangeText={(text) =>
+                  setOrderCreateForm((current) => ({
+                    ...current,
+                    orderedQty: text,
+                  }))
+                }
+                placeholder="2"
+                keyboardType="number-pad"
+                error={orderErrors.orderedQty}
+              />
+              <LabeledField
+                label="Discount"
+                value={orderCreateForm.discount}
+                onChangeText={(text) =>
+                  setOrderCreateForm((current) => ({
+                    ...current,
+                    discount: text,
+                  }))
+                }
+                placeholder="1"
+                keyboardType="number-pad"
+                error={orderErrors.discount}
+              />
+              <LabeledField
+                label="Payment Mode"
+                value={orderCreateForm.paymentMode}
+                onChangeText={(text) =>
+                  setOrderCreateForm((current) => ({
+                    ...current,
+                    paymentMode: text,
+                  }))
+                }
+                placeholder="online_payment"
+              />
+              <LabeledField
+                label="Delivery Mode"
+                value={orderCreateForm.deliveryMode}
+                onChangeText={(text) =>
+                  setOrderCreateForm((current) => ({
+                    ...current,
+                    deliveryMode: text,
+                  }))
+                }
+                placeholder="delivery"
+              />
+              <LabeledField
+                label="Delivery Address"
+                value={orderCreateForm.deliveryAddress}
+                onChangeText={(text) =>
+                  setOrderCreateForm((current) => ({
+                    ...current,
+                    deliveryAddress: text,
+                  }))
+                }
+                placeholder="221B Baker Street, Delhi"
+                multiline
+              />
+              <LabeledField
+                label="Prescription URLs"
+                value={orderCreateForm.prescriptionUrls}
+                onChangeText={(text) =>
+                  setOrderCreateForm((current) => ({
+                    ...current,
+                    prescriptionUrls: text,
+                  }))
+                }
+                placeholder="https://example.com/prescription.pdf"
+                multiline
+              />
+              <LabeledField
+                label="Notes"
+                value={orderCreateForm.notes}
+                onChangeText={(text) =>
+                  setOrderCreateForm((current) => ({ ...current, notes: text }))
+                }
+                placeholder="Urgent delivery"
+                multiline
+              />
+              <LabeledField
+                label="Linked Consultation ID"
+                value={orderCreateForm.linkedConsultationId}
+                onChangeText={(text) =>
+                  setOrderCreateForm((current) => ({
+                    ...current,
+                    linkedConsultationId: text,
+                  }))
+                }
+                placeholder="64f100000000000000000010"
+              />
+              <LabeledField
+                label="Linked Diagnostic Order ID"
+                value={orderCreateForm.linkedDiagnosticOrderId}
+                onChangeText={(text) =>
+                  setOrderCreateForm((current) => ({
+                    ...current,
+                    linkedDiagnosticOrderId: text,
+                  }))
+                }
+                placeholder="diag-booking-id"
+              />
 
               <ToggleRow
                 label="Recurring Medicine"
                 hint="Enable a refill subscription for this medicine order."
                 value={orderCreateForm.recurring}
-                onValueChange={value =>
-                  setOrderCreateForm(current => ({
+                onValueChange={(value) =>
+                  setOrderCreateForm((current) => ({
                     ...current,
                     recurring: value,
-                    subscriptionIntervalDays: value ? current.subscriptionIntervalDays : '',
+                    subscriptionIntervalDays: value
+                      ? current.subscriptionIntervalDays
+                      : '',
                   }))
                 }
               />
@@ -6503,23 +7879,80 @@ export function PharmacyScreen() {
                 label="Walk-in Order"
                 hint="Turn this on for counter orders collected directly at the pharmacy."
                 value={orderCreateForm.isWalkIn}
-                onValueChange={value =>
-                  setOrderCreateForm(current => ({ ...current, isWalkIn: value }))
+                onValueChange={(value) =>
+                  setOrderCreateForm((current) => ({
+                    ...current,
+                    isWalkIn: value,
+                  }))
                 }
               />
 
               {orderCreateForm.recurring ? (
                 <>
-                  <LabeledField label="Subscription Interval (Days)" value={orderCreateForm.subscriptionIntervalDays} onChangeText={text => setOrderCreateForm(current => ({ ...current, subscriptionIntervalDays: text }))} placeholder="30" keyboardType="number-pad" error={orderErrors.subscriptionIntervalDays} />
-                  <LabeledField label="Subscription Frequency" value={orderCreateForm.subscriptionFrequency} onChangeText={text => setOrderCreateForm(current => ({ ...current, subscriptionFrequency: text }))} placeholder="Daily after dinner" />
-                  <LabeledField label="Next Refill Date" value={orderCreateForm.subscriptionNextRefillDate} onChangeText={text => setOrderCreateForm(current => ({ ...current, subscriptionNextRefillDate: text }))} placeholder="20260810" keyboardType="number-pad" error={orderErrors.subscriptionNextRefillDate} />
-                  <LabeledField label="Reminder Channel" value={orderCreateForm.subscriptionReminderChannel} onChangeText={text => setOrderCreateForm(current => ({ ...current, subscriptionReminderChannel: text }))} placeholder="both" />
+                  <LabeledField
+                    label="Subscription Interval (Days)"
+                    value={orderCreateForm.subscriptionIntervalDays}
+                    onChangeText={(text) =>
+                      setOrderCreateForm((current) => ({
+                        ...current,
+                        subscriptionIntervalDays: text,
+                      }))
+                    }
+                    placeholder="30"
+                    keyboardType="number-pad"
+                    error={orderErrors.subscriptionIntervalDays}
+                  />
+                  <LabeledField
+                    label="Subscription Frequency"
+                    value={orderCreateForm.subscriptionFrequency}
+                    onChangeText={(text) =>
+                      setOrderCreateForm((current) => ({
+                        ...current,
+                        subscriptionFrequency: text,
+                      }))
+                    }
+                    placeholder="Daily after dinner"
+                  />
+                  <LabeledField
+                    label="Next Refill Date"
+                    value={orderCreateForm.subscriptionNextRefillDate}
+                    onChangeText={(text) =>
+                      setOrderCreateForm((current) => ({
+                        ...current,
+                        subscriptionNextRefillDate: text,
+                      }))
+                    }
+                    placeholder="20260810"
+                    keyboardType="number-pad"
+                    error={orderErrors.subscriptionNextRefillDate}
+                  />
+                  <LabeledField
+                    label="Reminder Channel"
+                    value={orderCreateForm.subscriptionReminderChannel}
+                    onChangeText={(text) =>
+                      setOrderCreateForm((current) => ({
+                        ...current,
+                        subscriptionReminderChannel: text,
+                      }))
+                    }
+                    placeholder="both"
+                  />
                 </>
               ) : null}
 
               <View style={styles.modalActions}>
-                <PrimaryButton title="Cancel" onPress={() => setOrderModalVisible(false)} variant="outline" style={styles.modalActionButton} />
-                <PrimaryButton title="Create Order" onPress={submitCreateOrder} loading={createOrderMutation.isPending} style={styles.modalActionButton} />
+                <PrimaryButton
+                  title="Cancel"
+                  onPress={() => setOrderModalVisible(false)}
+                  variant="outline"
+                  style={styles.modalActionButton}
+                />
+                <PrimaryButton
+                  title="Create Order"
+                  onPress={submitCreateOrder}
+                  loading={createOrderMutation.isPending}
+                  style={styles.modalActionButton}
+                />
               </View>
             </ScrollView>
           </Pressable>
@@ -6532,7 +7965,10 @@ export function PharmacyScreen() {
         visible={orderActionModalVisible}
         onRequestClose={() => setOrderActionModalVisible(false)}
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setOrderActionModalVisible(false)}>
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setOrderActionModalVisible(false)}
+        >
           <Pressable
             style={[
               styles.modalCard,
@@ -6562,36 +7998,168 @@ export function PharmacyScreen() {
 
               {orderActionMode === 'update' ? (
                 <>
-                  <LabeledField label="Notes" value={orderActionForm.notes} onChangeText={text => setOrderActionForm(current => ({ ...current, notes: text }))} placeholder="Deliver after 6 PM" multiline />
-                  <LabeledField label="Delivery Address" value={orderActionForm.deliveryAddress} onChangeText={text => setOrderActionForm(current => ({ ...current, deliveryAddress: text }))} placeholder="Updated address, Delhi" multiline />
-                  <LabeledField label="Payment Mode" value={orderActionForm.paymentMode} onChangeText={text => setOrderActionForm(current => ({ ...current, paymentMode: text }))} placeholder="cash_on_delivery" />
-                  <LabeledField label="Linked Consultation ID" value={orderActionForm.linkedConsultationId} onChangeText={text => setOrderActionForm(current => ({ ...current, linkedConsultationId: text }))} placeholder="64f100000000000000000010" />
-                  <LabeledField label="Linked Diagnostic Order ID" value={orderActionForm.linkedDiagnosticOrderId} onChangeText={text => setOrderActionForm(current => ({ ...current, linkedDiagnosticOrderId: text }))} placeholder="diag-booking-id" />
+                  <LabeledField
+                    label="Notes"
+                    value={orderActionForm.notes}
+                    onChangeText={(text) =>
+                      setOrderActionForm((current) => ({
+                        ...current,
+                        notes: text,
+                      }))
+                    }
+                    placeholder="Deliver after 6 PM"
+                    multiline
+                  />
+                  <LabeledField
+                    label="Delivery Address"
+                    value={orderActionForm.deliveryAddress}
+                    onChangeText={(text) =>
+                      setOrderActionForm((current) => ({
+                        ...current,
+                        deliveryAddress: text,
+                      }))
+                    }
+                    placeholder="Updated address, Delhi"
+                    multiline
+                  />
+                  <LabeledField
+                    label="Payment Mode"
+                    value={orderActionForm.paymentMode}
+                    onChangeText={(text) =>
+                      setOrderActionForm((current) => ({
+                        ...current,
+                        paymentMode: text,
+                      }))
+                    }
+                    placeholder="cash_on_delivery"
+                  />
+                  <LabeledField
+                    label="Linked Consultation ID"
+                    value={orderActionForm.linkedConsultationId}
+                    onChangeText={(text) =>
+                      setOrderActionForm((current) => ({
+                        ...current,
+                        linkedConsultationId: text,
+                      }))
+                    }
+                    placeholder="64f100000000000000000010"
+                  />
+                  <LabeledField
+                    label="Linked Diagnostic Order ID"
+                    value={orderActionForm.linkedDiagnosticOrderId}
+                    onChangeText={(text) =>
+                      setOrderActionForm((current) => ({
+                        ...current,
+                        linkedDiagnosticOrderId: text,
+                      }))
+                    }
+                    placeholder="diag-booking-id"
+                  />
                 </>
               ) : null}
 
               {orderActionMode === 'status' ? (
                 <>
-                  <LabeledField label="Status" value={orderActionForm.status} onChangeText={text => setOrderActionForm(current => ({ ...current, status: text }))} placeholder="accepted" />
-                  <LabeledField label="Notes" value={orderActionForm.notes} onChangeText={text => setOrderActionForm(current => ({ ...current, notes: text }))} placeholder="Order accepted and being prepared" multiline />
+                  <LabeledField
+                    label="Status"
+                    value={orderActionForm.status}
+                    onChangeText={(text) =>
+                      setOrderActionForm((current) => ({
+                        ...current,
+                        status: text,
+                      }))
+                    }
+                    placeholder="accepted"
+                  />
+                  <LabeledField
+                    label="Notes"
+                    value={orderActionForm.notes}
+                    onChangeText={(text) =>
+                      setOrderActionForm((current) => ({
+                        ...current,
+                        notes: text,
+                      }))
+                    }
+                    placeholder="Order accepted and being prepared"
+                    multiline
+                  />
                 </>
               ) : null}
 
               {orderActionMode === 'cancel' ? (
-                <LabeledField label="Notes" value={orderActionForm.notes} onChangeText={text => setOrderActionForm(current => ({ ...current, notes: text }))} placeholder="Cancelled by pharmacy" multiline />
+                <LabeledField
+                  label="Notes"
+                  value={orderActionForm.notes}
+                  onChangeText={(text) =>
+                    setOrderActionForm((current) => ({
+                      ...current,
+                      notes: text,
+                    }))
+                  }
+                  placeholder="Cancelled by pharmacy"
+                  multiline
+                />
               ) : null}
 
               {orderActionMode === 'markPaid' ? (
                 <>
-                  <LabeledField label="Payment Source" value={orderActionForm.paymentSource} onChangeText={text => setOrderActionForm(current => ({ ...current, paymentSource: text }))} placeholder="counter_cash" />
-                  <LabeledField label="Paid Date" value={orderActionForm.paidDate} onChangeText={text => setOrderActionForm(current => ({ ...current, paidDate: text }))} placeholder="20260705" keyboardType="number-pad" error={orderActionErrors.paidDate} />
-                  <LabeledField label="Paid Time" value={orderActionForm.paidTime} onChangeText={text => setOrderActionForm(current => ({ ...current, paidTime: text }))} placeholder="18:30" />
-                  <LabeledField label="Notes" value={orderActionForm.notes} onChangeText={text => setOrderActionForm(current => ({ ...current, notes: text }))} placeholder="Collected at counter" multiline />
+                  <LabeledField
+                    label="Payment Source"
+                    value={orderActionForm.paymentSource}
+                    onChangeText={(text) =>
+                      setOrderActionForm((current) => ({
+                        ...current,
+                        paymentSource: text,
+                      }))
+                    }
+                    placeholder="counter_cash"
+                  />
+                  <LabeledField
+                    label="Paid Date"
+                    value={orderActionForm.paidDate}
+                    onChangeText={(text) =>
+                      setOrderActionForm((current) => ({
+                        ...current,
+                        paidDate: text,
+                      }))
+                    }
+                    placeholder="20260705"
+                    keyboardType="number-pad"
+                    error={orderActionErrors.paidDate}
+                  />
+                  <LabeledField
+                    label="Paid Time"
+                    value={orderActionForm.paidTime}
+                    onChangeText={(text) =>
+                      setOrderActionForm((current) => ({
+                        ...current,
+                        paidTime: text,
+                      }))
+                    }
+                    placeholder="18:30"
+                  />
+                  <LabeledField
+                    label="Notes"
+                    value={orderActionForm.notes}
+                    onChangeText={(text) =>
+                      setOrderActionForm((current) => ({
+                        ...current,
+                        notes: text,
+                      }))
+                    }
+                    placeholder="Collected at counter"
+                    multiline
+                  />
                 </>
               ) : null}
 
               <View style={styles.modalActions}>
-                <PrimaryButton title="Cancel" onPress={() => setOrderActionModalVisible(false)} variant="outline" style={styles.modalActionButton} />
+                <PrimaryButton
+                  title="Cancel"
+                  onPress={() => setOrderActionModalVisible(false)}
+                  variant="outline"
+                  style={styles.modalActionButton}
+                />
                 <PrimaryButton
                   title={
                     orderActionMode === 'update'
@@ -6647,8 +8215,11 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Systolic BP"
                 value={healthCheckForm.systolicBP}
-                onChangeText={text =>
-                  setHealthCheckForm(current => ({ ...current, systolicBP: text }))
+                onChangeText={(text) =>
+                  setHealthCheckForm((current) => ({
+                    ...current,
+                    systolicBP: text,
+                  }))
                 }
                 placeholder="120"
                 keyboardType="number-pad"
@@ -6657,8 +8228,11 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Diastolic BP"
                 value={healthCheckForm.diastolicBP}
-                onChangeText={text =>
-                  setHealthCheckForm(current => ({ ...current, diastolicBP: text }))
+                onChangeText={(text) =>
+                  setHealthCheckForm((current) => ({
+                    ...current,
+                    diastolicBP: text,
+                  }))
                 }
                 placeholder="80"
                 keyboardType="number-pad"
@@ -6667,8 +8241,11 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Fasting Sugar"
                 value={healthCheckForm.fastingSugar}
-                onChangeText={text =>
-                  setHealthCheckForm(current => ({ ...current, fastingSugar: text }))
+                onChangeText={(text) =>
+                  setHealthCheckForm((current) => ({
+                    ...current,
+                    fastingSugar: text,
+                  }))
                 }
                 placeholder="95"
                 keyboardType="number-pad"
@@ -6677,8 +8254,8 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Post Meal Sugar"
                 value={healthCheckForm.postMealSugar}
-                onChangeText={text =>
-                  setHealthCheckForm(current => ({
+                onChangeText={(text) =>
+                  setHealthCheckForm((current) => ({
                     ...current,
                     postMealSugar: text,
                   }))
@@ -6690,8 +8267,8 @@ export function PharmacyScreen() {
               <LabeledField
                 label="HbA1c"
                 value={healthCheckForm.hba1c}
-                onChangeText={text =>
-                  setHealthCheckForm(current => ({ ...current, hba1c: text }))
+                onChangeText={(text) =>
+                  setHealthCheckForm((current) => ({ ...current, hba1c: text }))
                 }
                 placeholder="5.8"
                 keyboardType="number-pad"
@@ -6700,8 +8277,8 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Notes"
                 value={healthCheckForm.notes}
-                onChangeText={text =>
-                  setHealthCheckForm(current => ({ ...current, notes: text }))
+                onChangeText={(text) =>
+                  setHealthCheckForm((current) => ({ ...current, notes: text }))
                 }
                 placeholder="All values normal"
                 multiline
@@ -6715,7 +8292,9 @@ export function PharmacyScreen() {
                   style={styles.modalActionButton}
                 />
                 <PrimaryButton
-                  title={healthCheckMode === 'create' ? 'Save Check' : 'Update Check'}
+                  title={
+                    healthCheckMode === 'create' ? 'Save Check' : 'Update Check'
+                  }
                   onPress={submitHealthCheck}
                   loading={
                     createOrderHealthCheckMutation.isPending ||
@@ -6755,8 +8334,11 @@ export function PharmacyScreen() {
               <LabeledField
                 label="User ID"
                 value={subscriptionCreateForm.userId}
-                onChangeText={text =>
-                  setSubscriptionCreateForm(current => ({ ...current, userId: text }))
+                onChangeText={(text) =>
+                  setSubscriptionCreateForm((current) => ({
+                    ...current,
+                    userId: text,
+                  }))
                 }
                 placeholder="64f100000000000000000004"
                 error={subscriptionErrors.userId}
@@ -6764,8 +8346,8 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Medicine ID"
                 value={subscriptionCreateForm.medicineId}
-                onChangeText={text =>
-                  setSubscriptionCreateForm(current => ({
+                onChangeText={(text) =>
+                  setSubscriptionCreateForm((current) => ({
                     ...current,
                     medicineId: text,
                   }))
@@ -6776,8 +8358,8 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Medicine Name"
                 value={subscriptionCreateForm.medicineName}
-                onChangeText={text =>
-                  setSubscriptionCreateForm(current => ({
+                onChangeText={(text) =>
+                  setSubscriptionCreateForm((current) => ({
                     ...current,
                     medicineName: text,
                   }))
@@ -6787,16 +8369,19 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Frequency"
                 value={subscriptionCreateForm.frequency}
-                onChangeText={text =>
-                  setSubscriptionCreateForm(current => ({ ...current, frequency: text }))
+                onChangeText={(text) =>
+                  setSubscriptionCreateForm((current) => ({
+                    ...current,
+                    frequency: text,
+                  }))
                 }
                 placeholder="Daily after dinner"
               />
               <LabeledField
                 label="Interval Days"
                 value={subscriptionCreateForm.intervalDays}
-                onChangeText={text =>
-                  setSubscriptionCreateForm(current => ({
+                onChangeText={(text) =>
+                  setSubscriptionCreateForm((current) => ({
                     ...current,
                     intervalDays: text,
                   }))
@@ -6808,8 +8393,8 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Next Refill Date"
                 value={subscriptionCreateForm.nextRefillDate}
-                onChangeText={text =>
-                  setSubscriptionCreateForm(current => ({
+                onChangeText={(text) =>
+                  setSubscriptionCreateForm((current) => ({
                     ...current,
                     nextRefillDate: text,
                   }))
@@ -6821,8 +8406,8 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Reminder Channel"
                 value={subscriptionCreateForm.reminderChannel}
-                onChangeText={text =>
-                  setSubscriptionCreateForm(current => ({
+                onChangeText={(text) =>
+                  setSubscriptionCreateForm((current) => ({
                     ...current,
                     reminderChannel: text,
                   }))
@@ -6879,7 +8464,7 @@ export function PharmacyScreen() {
                   ? 'Adjust interval, refill date, and reminder channel.'
                   : subscriptionActionMode === 'pause'
                   ? 'Temporarily pause refills until a future date.'
-                  : 'Remove the recurring refill plan from the pharmacy workspace.'}
+                  : 'Remove this refill plan.'}
               </Text>
 
               {subscriptionActionMode === 'update' ? (
@@ -6887,8 +8472,8 @@ export function PharmacyScreen() {
                   <LabeledField
                     label="Interval Days"
                     value={subscriptionActionForm.intervalDays}
-                    onChangeText={text =>
-                      setSubscriptionActionForm(current => ({
+                    onChangeText={(text) =>
+                      setSubscriptionActionForm((current) => ({
                         ...current,
                         intervalDays: text,
                       }))
@@ -6900,8 +8485,8 @@ export function PharmacyScreen() {
                   <LabeledField
                     label="Next Refill Date"
                     value={subscriptionActionForm.nextRefillDate}
-                    onChangeText={text =>
-                      setSubscriptionActionForm(current => ({
+                    onChangeText={(text) =>
+                      setSubscriptionActionForm((current) => ({
                         ...current,
                         nextRefillDate: text,
                       }))
@@ -6913,8 +8498,8 @@ export function PharmacyScreen() {
                   <LabeledField
                     label="Reminder Channel"
                     value={subscriptionActionForm.reminderChannel}
-                    onChangeText={text =>
-                      setSubscriptionActionForm(current => ({
+                    onChangeText={(text) =>
+                      setSubscriptionActionForm((current) => ({
                         ...current,
                         reminderChannel: text,
                       }))
@@ -6928,8 +8513,8 @@ export function PharmacyScreen() {
                 <LabeledField
                   label="Paused Until"
                   value={subscriptionActionForm.pausedUntil}
-                  onChangeText={text =>
-                    setSubscriptionActionForm(current => ({
+                  onChangeText={(text) =>
+                    setSubscriptionActionForm((current) => ({
                       ...current,
                       pausedUntil: text,
                     }))
@@ -7001,8 +8586,11 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Amount"
                 value={walletTopupForm.amount}
-                onChangeText={text =>
-                  setWalletTopupForm(current => ({ ...current, amount: text }))
+                onChangeText={(text) =>
+                  setWalletTopupForm((current) => ({
+                    ...current,
+                    amount: text,
+                  }))
                 }
                 placeholder="1500"
                 keyboardType="number-pad"
@@ -7011,8 +8599,8 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Notes"
                 value={walletTopupForm.notes}
-                onChangeText={text =>
-                  setWalletTopupForm(current => ({ ...current, notes: text }))
+                onChangeText={(text) =>
+                  setWalletTopupForm((current) => ({ ...current, notes: text }))
                 }
                 placeholder="Manual top-up"
                 multiline
@@ -7057,14 +8645,15 @@ export function PharmacyScreen() {
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={styles.modalTitle}>Update Patient Tracking</Text>
               <Text style={styles.modalSubtitle}>
-                Capture follow-up preferences and chronic refill notes for the selected patient.
+                Capture follow-up preferences and chronic refill notes for the
+                selected patient.
               </Text>
 
               <LabeledField
                 label="Disease Notes"
                 value={patientTrackingForm.diseaseNotes}
-                onChangeText={text =>
-                  setPatientTrackingForm(current => ({
+                onChangeText={(text) =>
+                  setPatientTrackingForm((current) => ({
                     ...current,
                     diseaseNotes: text,
                   }))
@@ -7077,8 +8666,8 @@ export function PharmacyScreen() {
                 label="Chronic Condition"
                 hint="Enable when the patient requires ongoing disease tracking."
                 value={patientTrackingForm.chronicCondition}
-                onValueChange={value =>
-                  setPatientTrackingForm(current => ({
+                onValueChange={(value) =>
+                  setPatientTrackingForm((current) => ({
                     ...current,
                     chronicCondition: value,
                   }))
@@ -7089,8 +8678,8 @@ export function PharmacyScreen() {
                 label="Recurring Medicine"
                 hint="Enable when the patient needs recurring refill follow-up."
                 value={patientTrackingForm.recurringMedicine}
-                onValueChange={value =>
-                  setPatientTrackingForm(current => ({
+                onValueChange={(value) =>
+                  setPatientTrackingForm((current) => ({
                     ...current,
                     recurringMedicine: value,
                   }))
@@ -7100,8 +8689,8 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Recurring Interval Days"
                 value={patientTrackingForm.recurringIntervalDays}
-                onChangeText={text =>
-                  setPatientTrackingForm(current => ({
+                onChangeText={(text) =>
+                  setPatientTrackingForm((current) => ({
                     ...current,
                     recurringIntervalDays: text,
                   }))
@@ -7113,8 +8702,8 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Preferred Follow-Up Date"
                 value={patientTrackingForm.preferredFollowUpDate}
-                onChangeText={text =>
-                  setPatientTrackingForm(current => ({
+                onChangeText={(text) =>
+                  setPatientTrackingForm((current) => ({
                     ...current,
                     preferredFollowUpDate: text,
                   }))
@@ -7126,8 +8715,8 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Pharmacy Notes"
                 value={patientTrackingForm.pharmacyNotes}
-                onChangeText={text =>
-                  setPatientTrackingForm(current => ({
+                onChangeText={(text) =>
+                  setPatientTrackingForm((current) => ({
                     ...current,
                     pharmacyNotes: text,
                   }))
@@ -7181,16 +8770,22 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Integration"
                 value={diagnosticsCreateForm.integration}
-                onChangeText={text =>
-                  setDiagnosticsCreateForm(current => ({ ...current, integration: text }))
+                onChangeText={(text) =>
+                  setDiagnosticsCreateForm((current) => ({
+                    ...current,
+                    integration: text,
+                  }))
                 }
                 placeholder="labstack"
               />
               <LabeledField
                 label="Booking Date"
                 value={diagnosticsCreateForm.bookingDate}
-                onChangeText={text =>
-                  setDiagnosticsCreateForm(current => ({ ...current, bookingDate: text }))
+                onChangeText={(text) =>
+                  setDiagnosticsCreateForm((current) => ({
+                    ...current,
+                    bookingDate: text,
+                  }))
                 }
                 placeholder="20260702"
                 keyboardType="number-pad"
@@ -7199,8 +8794,11 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Booking Time"
                 value={diagnosticsCreateForm.bookingTime}
-                onChangeText={text =>
-                  setDiagnosticsCreateForm(current => ({ ...current, bookingTime: text }))
+                onChangeText={(text) =>
+                  setDiagnosticsCreateForm((current) => ({
+                    ...current,
+                    bookingTime: text,
+                  }))
                 }
                 placeholder="10:30"
                 error={diagnosticsErrors.bookingTime}
@@ -7208,8 +8806,11 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Patient Name"
                 value={diagnosticsCreateForm.patientName}
-                onChangeText={text =>
-                  setDiagnosticsCreateForm(current => ({ ...current, patientName: text }))
+                onChangeText={(text) =>
+                  setDiagnosticsCreateForm((current) => ({
+                    ...current,
+                    patientName: text,
+                  }))
                 }
                 placeholder="Ravi Sharma"
                 error={diagnosticsErrors.patientName}
@@ -7217,8 +8818,11 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Patient Phone"
                 value={diagnosticsCreateForm.patientPhone}
-                onChangeText={text =>
-                  setDiagnosticsCreateForm(current => ({ ...current, patientPhone: text }))
+                onChangeText={(text) =>
+                  setDiagnosticsCreateForm((current) => ({
+                    ...current,
+                    patientPhone: text,
+                  }))
                 }
                 placeholder="9876543210"
                 keyboardType="phone-pad"
@@ -7227,8 +8831,11 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Pincode"
                 value={diagnosticsCreateForm.pincode}
-                onChangeText={text =>
-                  setDiagnosticsCreateForm(current => ({ ...current, pincode: text }))
+                onChangeText={(text) =>
+                  setDiagnosticsCreateForm((current) => ({
+                    ...current,
+                    pincode: text,
+                  }))
                 }
                 placeholder="110001"
                 keyboardType="number-pad"
@@ -7237,8 +8844,11 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Address"
                 value={diagnosticsCreateForm.addressLine}
-                onChangeText={text =>
-                  setDiagnosticsCreateForm(current => ({ ...current, addressLine: text }))
+                onChangeText={(text) =>
+                  setDiagnosticsCreateForm((current) => ({
+                    ...current,
+                    addressLine: text,
+                  }))
                 }
                 placeholder="221B Baker Street"
                 multiline
@@ -7247,16 +8857,22 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Payment Option"
                 value={diagnosticsCreateForm.paymentOption}
-                onChangeText={text =>
-                  setDiagnosticsCreateForm(current => ({ ...current, paymentOption: text }))
+                onChangeText={(text) =>
+                  setDiagnosticsCreateForm((current) => ({
+                    ...current,
+                    paymentOption: text,
+                  }))
                 }
                 placeholder="prepaid"
               />
               <LabeledField
                 label="Test IDs"
                 value={diagnosticsCreateForm.testIds}
-                onChangeText={text =>
-                  setDiagnosticsCreateForm(current => ({ ...current, testIds: text }))
+                onChangeText={(text) =>
+                  setDiagnosticsCreateForm((current) => ({
+                    ...current,
+                    testIds: text,
+                  }))
                 }
                 placeholder="CBC001"
                 error={diagnosticsErrors.testIds}
@@ -7264,8 +8880,11 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Test Names"
                 value={diagnosticsCreateForm.testNames}
-                onChangeText={text =>
-                  setDiagnosticsCreateForm(current => ({ ...current, testNames: text }))
+                onChangeText={(text) =>
+                  setDiagnosticsCreateForm((current) => ({
+                    ...current,
+                    testNames: text,
+                  }))
                 }
                 placeholder="Complete Blood Count"
                 error={diagnosticsErrors.testNames}
@@ -7275,8 +8894,8 @@ export function PharmacyScreen() {
                 label="Use Wallet Balance"
                 hint="Enable when diagnostics payment should use pharmacy wallet funds."
                 value={diagnosticsCreateForm.useWalletBalance}
-                onValueChange={value =>
-                  setDiagnosticsCreateForm(current => ({
+                onValueChange={(value) =>
+                  setDiagnosticsCreateForm((current) => ({
                     ...current,
                     useWalletBalance: value,
                   }))
@@ -7340,8 +8959,8 @@ export function PharmacyScreen() {
                   <LabeledField
                     label="Coupon Code"
                     value={diagnosticsActionForm.couponCode}
-                    onChangeText={text =>
-                      setDiagnosticsActionForm(current => ({
+                    onChangeText={(text) =>
+                      setDiagnosticsActionForm((current) => ({
                         ...current,
                         couponCode: text,
                       }))
@@ -7352,8 +8971,8 @@ export function PharmacyScreen() {
                     label="Use Wallet Balance"
                     hint="Apply wallet balance during payment retry."
                     value={diagnosticsActionForm.useWalletBalance}
-                    onValueChange={value =>
-                      setDiagnosticsActionForm(current => ({
+                    onValueChange={(value) =>
+                      setDiagnosticsActionForm((current) => ({
                         ...current,
                         useWalletBalance: value,
                       }))
@@ -7366,8 +8985,8 @@ export function PharmacyScreen() {
                 <LabeledField
                   label="Cancellation Reason"
                   value={diagnosticsActionForm.cancellationReason}
-                  onChangeText={text =>
-                    setDiagnosticsActionForm(current => ({
+                  onChangeText={(text) =>
+                    setDiagnosticsActionForm((current) => ({
                       ...current,
                       cancellationReason: text,
                     }))
@@ -7383,8 +9002,8 @@ export function PharmacyScreen() {
                   <LabeledField
                     label="Booking Date"
                     value={diagnosticsActionForm.bookingDate}
-                    onChangeText={text =>
-                      setDiagnosticsActionForm(current => ({
+                    onChangeText={(text) =>
+                      setDiagnosticsActionForm((current) => ({
                         ...current,
                         bookingDate: text,
                       }))
@@ -7396,8 +9015,8 @@ export function PharmacyScreen() {
                   <LabeledField
                     label="Booking Time"
                     value={diagnosticsActionForm.bookingTime}
-                    onChangeText={text =>
-                      setDiagnosticsActionForm(current => ({
+                    onChangeText={(text) =>
+                      setDiagnosticsActionForm((current) => ({
                         ...current,
                         bookingTime: text,
                       }))
@@ -7463,8 +9082,8 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Payment Transaction ID"
                 value={paymentVerificationForm.paymentTransactionId}
-                onChangeText={text =>
-                  setPaymentVerificationForm(current => ({
+                onChangeText={(text) =>
+                  setPaymentVerificationForm((current) => ({
                     ...current,
                     paymentTransactionId: text,
                   }))
@@ -7475,8 +9094,8 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Razorpay Order ID"
                 value={paymentVerificationForm.razorpayOrderId}
-                onChangeText={text =>
-                  setPaymentVerificationForm(current => ({
+                onChangeText={(text) =>
+                  setPaymentVerificationForm((current) => ({
                     ...current,
                     razorpayOrderId: text,
                   }))
@@ -7487,8 +9106,8 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Razorpay Payment ID"
                 value={paymentVerificationForm.razorpayPaymentId}
-                onChangeText={text =>
-                  setPaymentVerificationForm(current => ({
+                onChangeText={(text) =>
+                  setPaymentVerificationForm((current) => ({
                     ...current,
                     razorpayPaymentId: text,
                   }))
@@ -7499,8 +9118,8 @@ export function PharmacyScreen() {
               <LabeledField
                 label="Razorpay Signature"
                 value={paymentVerificationForm.razorpaySignature}
-                onChangeText={text =>
-                  setPaymentVerificationForm(current => ({
+                onChangeText={(text) =>
+                  setPaymentVerificationForm((current) => ({
                     ...current,
                     razorpaySignature: text,
                   }))
@@ -7538,62 +9157,12 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: scale(12),
-    paddingTop: verticalScale(16),
-    paddingBottom: verticalScale(28),
+    paddingTop: verticalScale(10),
+    paddingBottom: verticalScale(20),
     alignItems: 'center',
   },
   innerContainer: {
-    gap: verticalScale(16),
-  },
-  heroCard: {
-    backgroundColor: '#0D4977',
-    borderRadius: scale(24),
-    padding: scale(20),
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    shadowColor: '#0B3E65',
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.18,
-    shadowRadius: 24,
-    elevation: 6,
-  },
-  heroTextWrap: {
-    marginBottom: verticalScale(18),
-  },
-  heroEyebrow: {
-    fontFamily: typography.fontFamily.semiBold,
-    fontSize: typography.fontSize.sm,
-    color: '#BFDFF5',
-    letterSpacing: 0.6,
-    marginBottom: verticalScale(8),
-    textTransform: 'uppercase',
-  },
-  heroTitle: {
-    fontFamily: typography.fontFamily.bold,
-    fontSize: moderateScale(24, 0.3),
-    color: '#FFFFFF',
-    lineHeight: moderateScale(32, 0.3),
-    marginBottom: verticalScale(10),
-  },
-  heroDescription: {
-    fontFamily: typography.fontFamily.regular,
-    fontSize: typography.fontSize.md,
-    color: '#D6E7F6',
-    lineHeight: scale(22),
-    maxWidth: scale(680),
-  },
-  heroActionRow: {
-    marginBottom: verticalScale(18),
-  },
-  heroActionButton: {
-    marginVertical: 0,
-    alignSelf: 'flex-start',
-    minWidth: scale(190),
-  },
-  heroStatsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    gap: verticalScale(10),
   },
   statCard: {
     width: '48%',
@@ -7629,7 +9198,7 @@ const styles = StyleSheet.create({
   },
   sectionToggleRow: {
     backgroundColor: '#E8EFF6',
-    borderRadius: scale(18),
+    borderRadius: scale(15),
     marginBottom: verticalScale(2),
   },
   sectionToggleRowContent: {
@@ -7637,9 +9206,9 @@ const styles = StyleSheet.create({
     paddingRight: scale(10),
   },
   sectionToggle: {
-    minHeight: verticalScale(52),
-    minWidth: scale(126),
-    borderRadius: scale(14),
+    minHeight: verticalScale(44),
+    minWidth: scale(108),
+    borderRadius: scale(12),
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -7674,6 +9243,111 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     elevation: 3,
   },
+  sectionCardMedicines: {
+    backgroundColor: '#F7FBFF',
+    borderColor: '#D7EAFB',
+  },
+  medicinesControlDeck: {
+    position: 'relative',
+    borderRadius: scale(18),
+    borderWidth: 1,
+    borderColor: '#D8EAF8',
+    backgroundColor: '#FFFFFF',
+    padding: scale(14),
+    marginBottom: verticalScale(10),
+    overflow: 'hidden',
+    shadowColor: '#84BFEA',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    elevation: 4,
+  },
+  medicinesControlGlow: {
+    position: 'absolute',
+    width: scale(170),
+    height: scale(170),
+    borderRadius: scale(85),
+    backgroundColor: 'rgba(77, 177, 255, 0.12)',
+    top: -scale(70),
+    right: -scale(50),
+  },
+  medicinesSearchHero: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F4FAFF',
+    borderRadius: scale(14),
+    paddingHorizontal: scale(10),
+    paddingVertical: verticalScale(6),
+    borderWidth: 1,
+    borderColor: '#DCECF9',
+    marginBottom: verticalScale(8),
+  },
+  medicinesSearchBadge: {
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(12),
+    backgroundColor: '#E0F0FD',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: scale(12),
+  },
+  medicinesSearchTextWrap: {
+    flex: 1,
+  },
+  medicinesSearchInput: {
+    fontFamily: typography.fontFamily.medium,
+    fontSize: moderateScale(18, 0.2),
+    color: colors.textHeader,
+    minHeight: verticalScale(36),
+    paddingVertical: 0,
+  },
+  medicinesActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(12),
+  },
+  medicinesActionRowTablet: {
+    justifyContent: 'space-between',
+  },
+  medicinesPrimaryAction: {
+    flex: 1,
+    borderRadius: scale(12),
+    minHeight: verticalScale(44),
+    marginVertical: 0,
+    shadowColor: '#0E71B9',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    elevation: 4,
+  },
+  sectionCardInventory: {
+    backgroundColor: '#FFFCF5',
+    borderColor: '#F3E2BF',
+  },
+  sectionCardCustomers: {
+    backgroundColor: '#FAF8FF',
+    borderColor: '#E8DFFD',
+  },
+  sectionCardOrders: {
+    backgroundColor: '#FFF8F2',
+    borderColor: '#F6DAC1',
+  },
+  sectionCardSubscriptions: {
+    backgroundColor: '#FBF7FF',
+    borderColor: '#E8DBFB',
+  },
+  sectionCardWallet: {
+    backgroundColor: '#F4FCF7',
+    borderColor: '#D4EEDC',
+  },
+  sectionCardTracking: {
+    backgroundColor: '#F6FCF9',
+    borderColor: '#D6EFE4',
+  },
+  sectionCardDiagnostics: {
+    backgroundColor: '#FFF7F9',
+    borderColor: '#F5D7DF',
+  },
   toolbar: {
     marginBottom: verticalScale(14),
   },
@@ -7682,8 +9356,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   searchBox: {
-    minHeight: verticalScale(54),
-    borderRadius: scale(18),
+    minHeight: verticalScale(44),
+    borderRadius: scale(14),
     borderWidth: 1,
     borderColor: '#D9E3EE',
     backgroundColor: '#F8FBFE',
@@ -7697,8 +9371,8 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily.regular,
     fontSize: typography.fontSize.md,
     color: colors.textHeader,
-    minHeight: verticalScale(50),
-    paddingVertical: verticalScale(10),
+    minHeight: verticalScale(42),
+    paddingVertical: verticalScale(6),
   },
   searchHint: {
     fontFamily: typography.fontFamily.medium,
@@ -7738,14 +9412,16 @@ const styles = StyleSheet.create({
     marginVertical: 0,
   },
   filterAction: {
-    minHeight: verticalScale(44),
-    paddingHorizontal: scale(14),
-    borderRadius: scale(14),
+    minHeight: verticalScale(40),
+    paddingHorizontal: scale(12),
+    borderRadius: scale(12),
     borderWidth: 1,
     borderColor: '#D9E3EE',
     backgroundColor: '#F8FBFE',
     alignItems: 'center',
     justifyContent: 'center',
+    flexDirection: 'row',
+    gap: scale(6),
     marginRight: scale(10),
     marginBottom: verticalScale(10),
   },
@@ -7766,38 +9442,11 @@ const styles = StyleSheet.create({
     minWidth: 0,
     marginRight: 0,
   },
-  iconAction: {
-    width: scale(54),
-    height: scale(54),
-    borderRadius: scale(16),
-    backgroundColor: '#F1F7FD',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  sectionIntroCard: {
-    borderRadius: scale(18),
-    backgroundColor: '#F5F9FD',
-    borderWidth: 1,
-    borderColor: '#E4EDF6',
-    paddingHorizontal: scale(16),
-    paddingVertical: verticalScale(14),
-    marginBottom: verticalScale(16),
-  },
-  sectionIntroTitle: {
-    fontFamily: typography.fontFamily.semiBold,
-    fontSize: typography.fontSize.md,
-    color: colors.textHeader,
-    marginBottom: verticalScale(4),
-  },
-  sectionIntroText: {
-    fontFamily: typography.fontFamily.regular,
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-    lineHeight: scale(19),
-  },
   panelLayout: {
     gap: verticalScale(16),
+  },
+  medicinesShowcase: {
+    gap: verticalScale(18),
   },
   panelLayoutTablet: {
     flexDirection: 'row',
@@ -7805,6 +9454,30 @@ const styles = StyleSheet.create({
   },
   panel: {
     flex: 1,
+  },
+  medicinesListPanel: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: scale(24),
+    borderWidth: 1,
+    borderColor: '#DCECF9',
+    padding: scale(16),
+    shadowColor: '#8BBFE5',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.08,
+    shadowRadius: 22,
+    elevation: 3,
+  },
+  medicinesDetailPanel: {
+    backgroundColor: '#F8FCFF',
+    borderRadius: scale(24),
+    borderWidth: 1,
+    borderColor: '#DCECF9',
+    padding: scale(16),
+    shadowColor: '#8BBFE5',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.06,
+    shadowRadius: 22,
+    elevation: 3,
   },
   medicineListPanelTablet: {
     marginRight: scale(12),
@@ -7815,11 +9488,19 @@ const styles = StyleSheet.create({
   panelHeader: {
     marginBottom: verticalScale(16),
   },
+  medicinesPanelHeader: {
+    paddingBottom: verticalScale(12),
+    borderBottomWidth: 1,
+    borderBottomColor: '#E8F2FA',
+  },
   panelTitle: {
     fontFamily: typography.fontFamily.bold,
     fontSize: typography.fontSize.xl,
     color: colors.textHeader,
     marginBottom: verticalScale(4),
+  },
+  medicinesPanelSubtitle: {
+    color: '#6C8AA3',
   },
   panelSubtitle: {
     fontFamily: typography.fontFamily.regular,
@@ -7842,7 +9523,9 @@ const styles = StyleSheet.create({
   },
   listCardSelected: {
     borderColor: colors.primaryBlue,
-    backgroundColor: '#F2F8FD',
+    backgroundColor: '#EEF7FF',
+    shadowColor: '#6EB2E2',
+    shadowOpacity: 0.12,
   },
   listCardTop: {
     flexDirection: 'row',
@@ -7977,6 +9660,368 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily.semiBold,
     fontSize: typography.fontSize.md,
     color: colors.textHeader,
+  },
+  medicineCartHero: {
+    borderRadius: scale(20),
+    borderWidth: 1,
+    borderColor: '#D9EAF8',
+    backgroundColor: '#EEF7FF',
+    padding: scale(16),
+    marginBottom: verticalScale(18),
+  },
+  medicineCartHeroCopy: {
+    marginBottom: verticalScale(14),
+  },
+  medicineCartHeroEyebrow: {
+    fontFamily: typography.fontFamily.semiBold,
+    fontSize: scale(11),
+    color: colors.primaryBlue,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: verticalScale(4),
+  },
+  medicineCartHeroTitle: {
+    fontFamily: typography.fontFamily.bold,
+    fontSize: typography.fontSize.lg,
+    color: colors.textHeader,
+    marginBottom: verticalScale(4),
+  },
+  medicineCartHeroActionWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: scale(10),
+  },
+  medicineCartStepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: scale(16),
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D9EAF8',
+    padding: scale(6),
+  },
+  medicineCartStepButton: {
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(12),
+    backgroundColor: '#EDF6FD',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  medicineCartStepButtonFilled: {
+    backgroundColor: colors.primaryBlue,
+  },
+  medicineCartQuantityBadge: {
+    minWidth: scale(54),
+    paddingHorizontal: scale(10),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  medicineCartQuantityText: {
+    fontFamily: typography.fontFamily.bold,
+    fontSize: typography.fontSize.lg,
+    color: colors.textHeader,
+  },
+  medicineCartAddButton: {
+    minHeight: verticalScale(48),
+    paddingHorizontal: scale(16),
+    borderRadius: scale(16),
+    backgroundColor: colors.primaryBlue,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  medicineCartAddButtonText: {
+    marginLeft: scale(8),
+    fontFamily: typography.fontFamily.semiBold,
+    fontSize: typography.fontSize.sm,
+    color: '#FFFFFF',
+  },
+  medicineCartRemoveButton: {
+    minHeight: verticalScale(46),
+    paddingHorizontal: scale(14),
+    borderRadius: scale(14),
+    borderWidth: 1,
+    borderColor: '#F5D6A6',
+    backgroundColor: '#FFF7E8',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  medicineCartRemoveButtonText: {
+    marginLeft: scale(8),
+    fontFamily: typography.fontFamily.semiBold,
+    fontSize: typography.fontSize.sm,
+    color: '#A16207',
+  },
+  availabilitySection: {
+    marginTop: verticalScale(8),
+    borderTopWidth: 1,
+    borderTopColor: '#E5EDF5',
+    paddingTop: verticalScale(18),
+  },
+  availabilityHeader: {
+    marginBottom: verticalScale(14),
+  },
+  availabilityTitle: {
+    fontFamily: typography.fontFamily.semiBold,
+    fontSize: typography.fontSize.md,
+    color: colors.textHeader,
+    marginBottom: verticalScale(4),
+  },
+  availabilitySubtitle: {
+    fontFamily: typography.fontFamily.regular,
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+  },
+  availabilityBlockedCard: {
+    marginBottom: 0,
+  },
+  availabilityActionRow: {
+    flexDirection: 'row',
+    gap: scale(10),
+    marginTop: verticalScale(12),
+    flexWrap: 'wrap',
+  },
+  availabilitySecondaryButton: {
+    minHeight: verticalScale(40),
+    paddingHorizontal: scale(14),
+    borderRadius: scale(12),
+    borderWidth: 1,
+    borderColor: '#D9E3EE',
+    backgroundColor: '#F8FBFE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  availabilitySecondaryButtonText: {
+    fontFamily: typography.fontFamily.semiBold,
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+  },
+  availabilityList: {
+    gap: verticalScale(12),
+  },
+  availabilityCard: {
+    borderWidth: 1,
+    borderColor: '#E5EDF5',
+    borderRadius: scale(16),
+    padding: scale(14),
+    backgroundColor: '#FFFFFF',
+  },
+  cartWorkspace: {
+    marginTop: verticalScale(18),
+    borderRadius: scale(26),
+    borderWidth: 1,
+    borderColor: '#D7EAFB',
+    backgroundColor: '#FFFFFF',
+    padding: scale(16),
+    shadowColor: '#84BFEA',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 4,
+  },
+  cartWorkspaceHeader: {
+    marginBottom: verticalScale(16),
+  },
+  cartWorkspaceTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: verticalScale(12),
+  },
+  cartWorkspaceIcon: {
+    width: scale(46),
+    height: scale(46),
+    borderRadius: scale(16),
+    backgroundColor: '#E7F3FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: scale(12),
+  },
+  cartWorkspaceCopy: {
+    flex: 1,
+  },
+  cartWorkspaceTitle: {
+    fontFamily: typography.fontFamily.bold,
+    fontSize: typography.fontSize.xl,
+    color: colors.textHeader,
+    marginBottom: verticalScale(4),
+  },
+  cartWorkspaceSubtitle: {
+    fontFamily: typography.fontFamily.regular,
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+    lineHeight: scale(18),
+  },
+  cartWorkspaceClearButton: {
+    minHeight: verticalScale(44),
+    borderRadius: scale(14),
+    borderWidth: 1,
+    borderColor: '#F5D6A6',
+    backgroundColor: '#FFF9ED',
+    paddingHorizontal: scale(14),
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    justifyContent: 'center',
+  },
+  cartWorkspaceClearButtonDisabled: {
+    borderColor: '#E5E9EF',
+    backgroundColor: '#F5F7FA',
+  },
+  cartWorkspaceClearButtonText: {
+    marginLeft: scale(8),
+    fontFamily: typography.fontFamily.semiBold,
+    fontSize: typography.fontSize.sm,
+    color: '#A16207',
+  },
+  cartWorkspaceClearButtonTextDisabled: {
+    color: colors.textLight,
+  },
+  cartSummaryRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: scale(12),
+    marginBottom: verticalScale(16),
+  },
+  cartSummaryCard: {
+    flex: 1,
+    minWidth: scale(140),
+    borderRadius: scale(18),
+    borderWidth: 1,
+    borderColor: '#E3EDF7',
+    backgroundColor: '#F8FBFE',
+    paddingHorizontal: scale(16),
+    paddingVertical: verticalScale(14),
+  },
+  cartSummaryCardPrimary: {
+    backgroundColor: '#EEF7FF',
+    borderColor: '#D7EAFB',
+  },
+  cartSummaryLabel: {
+    fontFamily: typography.fontFamily.medium,
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+    marginBottom: verticalScale(6),
+  },
+  cartSummaryValue: {
+    fontFamily: typography.fontFamily.bold,
+    fontSize: moderateScale(20, 0.2),
+    color: colors.textHeader,
+  },
+  cartEmptyState: {
+    borderRadius: scale(20),
+    borderWidth: 1,
+    borderColor: '#E5EDF5',
+    backgroundColor: '#FBFDFF',
+    paddingHorizontal: scale(18),
+    paddingVertical: verticalScale(20),
+  },
+  cartEmptyTitle: {
+    fontFamily: typography.fontFamily.semiBold,
+    fontSize: typography.fontSize.md,
+    color: colors.textHeader,
+    marginBottom: verticalScale(4),
+  },
+  cartEmptyText: {
+    fontFamily: typography.fontFamily.regular,
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+    lineHeight: scale(19),
+  },
+  cartItemsStack: {
+    gap: verticalScale(12),
+  },
+  cartItemCard: {
+    borderRadius: scale(18),
+    borderWidth: 1,
+    borderColor: '#E3EDF7',
+    backgroundColor: '#FBFDFF',
+    padding: scale(14),
+  },
+  cartItemHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: verticalScale(12),
+  },
+  cartItemCopy: {
+    flex: 1,
+    marginRight: scale(12),
+  },
+  cartItemTitle: {
+    fontFamily: typography.fontFamily.semiBold,
+    fontSize: typography.fontSize.md,
+    color: colors.textHeader,
+    marginBottom: verticalScale(4),
+  },
+  cartItemSubtitle: {
+    fontFamily: typography.fontFamily.regular,
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+  },
+  cartItemPricePill: {
+    borderRadius: scale(999),
+    backgroundColor: '#EAF8ED',
+    paddingHorizontal: scale(10),
+    paddingVertical: verticalScale(6),
+  },
+  cartItemPriceText: {
+    fontFamily: typography.fontFamily.semiBold,
+    fontSize: scale(11),
+    color: '#2E8E43',
+  },
+  cartItemFooter: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: scale(10),
+  },
+  cartItemStepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: scale(14),
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D9EAF8',
+    padding: scale(5),
+  },
+  cartItemStepButton: {
+    width: scale(34),
+    height: scale(34),
+    borderRadius: scale(11),
+    backgroundColor: '#EDF6FD',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cartItemStepButtonAccent: {
+    backgroundColor: colors.primaryBlue,
+  },
+  cartItemQuantityText: {
+    minWidth: scale(46),
+    textAlign: 'center',
+    fontFamily: typography.fontFamily.bold,
+    fontSize: typography.fontSize.md,
+    color: colors.textHeader,
+  },
+  cartItemDeleteButton: {
+    minHeight: verticalScale(40),
+    borderRadius: scale(12),
+    borderWidth: 1,
+    borderColor: '#F5D6A6',
+    backgroundColor: '#FFF8EC',
+    paddingHorizontal: scale(12),
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cartItemDeleteText: {
+    marginLeft: scale(8),
+    fontFamily: typography.fontFamily.semiBold,
+    fontSize: typography.fontSize.sm,
+    color: '#A16207',
   },
   detailStatusBanner: {
     borderRadius: scale(18),
@@ -8215,7 +10260,7 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily.medium,
     fontSize: typography.fontSize.sm,
     color: colors.textSecondary,
-    marginBottom: verticalScale(6),
+    marginBottom: verticalScale(4),
   },
   customerNotes: {
     fontFamily: typography.fontFamily.regular,
@@ -8252,7 +10297,7 @@ const styles = StyleSheet.create({
     lineHeight: scale(18),
   },
   loadingCard: {
-    minHeight: verticalScale(220),
+    minHeight: verticalScale(140),
     borderRadius: scale(18),
     borderWidth: 1,
     borderColor: '#E5EDF5',
@@ -8309,24 +10354,24 @@ const styles = StyleSheet.create({
     color: colors.primaryBlue,
   },
   emptyState: {
-    minHeight: verticalScale(220),
+    minHeight: verticalScale(150),
     borderRadius: scale(18),
     borderWidth: 1,
     borderColor: '#E5EDF5',
     backgroundColor: '#FBFDFF',
     paddingHorizontal: scale(20),
-    paddingVertical: verticalScale(28),
+    paddingVertical: verticalScale(20),
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyStateIcon: {
-    width: scale(56),
-    height: scale(56),
-    borderRadius: scale(18),
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(14),
     backgroundColor: '#EAF4FC',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: verticalScale(16),
+    marginBottom: verticalScale(10),
   },
   emptyStateTitle: {
     fontFamily: typography.fontFamily.semiBold,
@@ -8379,7 +10424,7 @@ const styles = StyleSheet.create({
     marginBottom: verticalScale(8),
   },
   textInput: {
-    minHeight: verticalScale(50),
+    minHeight: verticalScale(44),
     borderRadius: scale(14),
     borderWidth: 1,
     borderColor: '#D9E3EE',
@@ -8404,13 +10449,13 @@ const styles = StyleSheet.create({
     color: colors.error,
   },
   toggleRow: {
-    minHeight: verticalScale(68),
-    borderRadius: scale(18),
+    minHeight: verticalScale(54),
+    borderRadius: scale(14),
     borderWidth: 1,
     borderColor: '#E2EAF2',
     backgroundColor: '#FBFDFF',
     paddingHorizontal: scale(14),
-    paddingVertical: verticalScale(12),
+    paddingVertical: verticalScale(8),
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

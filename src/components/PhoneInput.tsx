@@ -24,7 +24,13 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
   return (
     <View style={styles.container}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
-      <View style={styles.phoneInputRow}>
+      <View
+        style={[
+          styles.phoneInputRow,
+          isFocused && styles.inputFocused,
+          error ? styles.inputError : null,
+        ]}
+      >
         <View style={styles.countryCodeBox}>
           <View style={styles.flagContainer}>
             <CountryFlag isoCode="IN" size={scale(16)} style={styles.flagImage} />
@@ -32,13 +38,9 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
           <Text style={styles.countryCodeText}>+91</Text>
         </View>
 
-        <View
-          style={[
-            styles.inputContainer,
-            isFocused && styles.inputFocused,
-            error ? styles.inputError : null,
-          ]}
-        >
+        <View style={styles.divider} />
+
+        <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
             placeholder="Enter your number"
@@ -74,17 +76,19 @@ const styles = StyleSheet.create({
   phoneInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    height: verticalScale(56),
+    borderWidth: 1,
+    borderColor: '#DCE7EE',
+    borderRadius: scale(15),
+    backgroundColor: '#F9FCFE',
+    overflow: 'hidden',
   },
   countryCodeBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: verticalScale(52),
-    borderWidth: 1,
-    borderColor: '#EEE9FC',
-    borderRadius: scale(12),
-    backgroundColor: '#FCFBFF',
-    paddingHorizontal: scale(10),
-    marginRight: scale(10),
+    height: '100%',
+    paddingLeft: scale(14),
+    paddingRight: scale(12),
   },
   flagContainer: {
     width: scale(24),
@@ -102,20 +106,26 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.md,
     color: colors.textSecondary,
     marginLeft: scale(4),
-    marginRight: scale(4),
+  },
+  divider: {
+    width: 1,
+    height: verticalScale(25),
+    backgroundColor: '#DCE7EE',
   },
   inputContainer: {
     flex: 1,
-    height: verticalScale(52),
-    borderWidth: 1,
-    borderColor: '#EEE9FC',
-    borderRadius: scale(12),
-    backgroundColor: '#FCFBFF',
-    paddingHorizontal: scale(16),
+    height: '100%',
+    paddingHorizontal: scale(14),
     justifyContent: 'center',
   },
   inputFocused: {
     borderColor: colors.primaryBlue,
+    backgroundColor: '#FFFFFF',
+    shadowColor: colors.primaryBlue,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
   },
   inputError: {
     borderColor: colors.error,

@@ -28,14 +28,6 @@ export const profileMenu: ProfileMenuItem[] = [
   },
   {
     id: 'm2',
-    title: 'Doctor Consultation',
-    subtitle: 'Find and book doctors',
-    emoji: '🩺',
-    section: 'care',
-    route: 'FindDoctor',
-  },
-  {
-    id: 'm3',
     title: 'My Appointments',
     subtitle: '1 upcoming',
     emoji: '📅',
@@ -43,7 +35,7 @@ export const profileMenu: ProfileMenuItem[] = [
     route: 'Appointments',
   },
   {
-    id: 'm4',
+    id: 'm3',
     title: 'My Orders',
     subtitle: '7 total orders',
     emoji: '📦',
@@ -51,20 +43,12 @@ export const profileMenu: ProfileMenuItem[] = [
     route: 'Orders',
   },
   {
-    id: 'm5',
+    id: 'm4',
     title: 'Health Vault',
     subtitle: '4 reports stored',
     emoji: '🗂️',
     section: 'care',
     route: 'HealthVault',
-  },
-  {
-    id: 'm6',
-    title: 'My Members',
-    subtitle: 'Family & Dependents',
-    emoji: '👨‍👩‍👧‍👦',
-    section: 'care',
-    route: 'MyMembers',
   },
   {
     id: 'm7',
@@ -121,14 +105,6 @@ export const profileMenu: ProfileMenuItem[] = [
     emoji: '🧪',
     section: 'pharmacy',
     route: 'Diagnostics',
-  },
-  {
-    id: 'm15',
-    title: 'Refer & Earn',
-    subtitle: 'Earn ₹200 per referral',
-    emoji: '🎁',
-    section: 'account',
-    route: 'ReferEarn',
   },
   {
     id: 'm16',

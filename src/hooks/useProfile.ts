@@ -1,5 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { defaultOpeningHours, mapPharmacyProfileToUser } from '../api/pharmyx';
+import {
+  defaultOpeningHours,
+  hasCompletedPharmacyProfile,
+  mapPharmacyProfileToUser,
+} from '../api/pharmyx';
 import { pharmacyService } from '../api/pharmacyService';
 import { useAuthStore } from '../state/authStore';
 
@@ -116,8 +120,10 @@ export const useProfile = () => {
         openingHours: defaultOpeningHours,
       };
 
-      const createdProfile = await pharmacyService.updateMyProfile(payload);
-      const mappedUser = mapPharmacyProfileToUser(createdProfile);
+      const updateResponse = await pharmacyService.updateMyProfile(payload);
+      const refreshedProfile = await pharmacyService.getMyProfile();
+      const updatedProfile = refreshedProfile || updateResponse;
+      const mappedUser = mapPharmacyProfileToUser(updatedProfile);
       if (mappedUser) {
         setUser({
           ...user,
@@ -126,7 +132,9 @@ export const useProfile = () => {
           mobile: mappedUser.mobile || user?.mobile || user?.phone || '',
         });
       }
-      await useAuthStore.getState().setProfileComplete(true);
+      await useAuthStore
+        .getState()
+        .setProfileComplete(hasCompletedPharmacyProfile(updatedProfile));
       await fetchProfile();
       return true;
     } catch (error) {

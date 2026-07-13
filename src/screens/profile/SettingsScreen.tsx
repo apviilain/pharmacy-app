@@ -144,7 +144,7 @@ export const SettingsScreen = () => {
         <Row 
           title="Privacy Policy" 
           onPress={() => {
-            Linking.openURL('https://www.atharvhealthcare.com/privacy-policy').catch(err => {
+            Linking.openURL('https://pharmyx.etryx.in/privacy-policy').catch(err => {
               console.error('Failed to open Privacy Policy:', err);
               Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to open Privacy Policy' });
             });
@@ -153,7 +153,7 @@ export const SettingsScreen = () => {
         <Row 
           title="Terms of Service" 
           onPress={() => {
-            Linking.openURL('https://www.atharvhealthcare.com/privacy-policy').catch(err => {
+            Linking.openURL('https://pharmyx.etryx.in/terms-of-service').catch(err => {
               console.error('Failed to open Terms of Service:', err);
               Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to open Terms of Service' });
             });

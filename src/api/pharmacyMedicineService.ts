@@ -2,6 +2,8 @@ import { apiClient } from './apiClient';
 import { endpoints } from './endpoints';
 import type {
   CreateMedicineRequest,
+  MedicineAvailabilityItem,
+  MedicineAvailabilityParams,
   PharmyxMedicine,
   UpdateMedicineRequest,
 } from './pharmyx';
@@ -31,6 +33,21 @@ export const pharmacyMedicineService = {
       endpoints.pharmacyMedicines.details(id),
     );
     return response || null;
+  },
+
+  getAvailability: async (
+    params: MedicineAvailabilityParams,
+  ): Promise<MedicineAvailabilityItem[]> => {
+    const response: any = await apiClient.get(
+      endpoints.pharmacies.medicineAvailability,
+      { params },
+    );
+
+    if (Array.isArray(response)) return response;
+    if (Array.isArray(response?.items)) return response.items;
+    if (Array.isArray(response?.data)) return response.data;
+    if (Array.isArray(response?.results)) return response.results;
+    return [];
   },
 
   update: async (

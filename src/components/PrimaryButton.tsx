@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
-import { scale, hp, verticalScale } from '../theme/responsive';
+import { scale, verticalScale } from '../theme/responsive';
 
 type PrimaryButtonProps = {
   title: string;
@@ -102,21 +102,20 @@ export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
 const styles = StyleSheet.create({
   button: {
     width: '100%',
-    height: verticalScale(52),
-    borderRadius: scale(12),
+    height: verticalScale(44),
+    borderRadius: scale(11),
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: verticalScale(8),
-    // Added box-shadow: 0px 4px 10px 0px #6224E124
-    shadowColor: '#6224E1',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.14, // 24 hex is roughly 14%
-    shadowRadius: 10,
-    elevation: 4, // for Android
+    marginVertical: verticalScale(5),
+    shadowColor: colors.primaryBlue,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 7,
+    elevation: 2,
   },
   text: {
     fontFamily: typography.fontFamily.semiBold,
-    fontSize: typography.fontSize.lg,
+    fontSize: typography.fontSize.md,
   },
 });

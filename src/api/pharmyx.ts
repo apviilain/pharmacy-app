@@ -69,6 +69,7 @@ export type UpdateMyPharmacyProfileRequest = {
   name: string;
   nickname?: string;
   ownerName: string;
+  phone?: string;
   email?: string;
   address?: string;
   city?: string;
@@ -128,6 +129,79 @@ export type UpdateMedicineRequest = {
   brandName?: string;
   manufacturer?: string;
   prescriptionRequired?: boolean;
+};
+
+export type PharmyxCartItem = {
+  id?: string;
+  _id?: string;
+  medicineId?: string;
+  pharmacyId?: string;
+  quantity?: number;
+  price?: number;
+  totalPrice?: number;
+  subtotal?: number;
+  medicine?: PharmyxMedicine | null;
+  name?: string;
+  genericName?: string;
+  manufacturer?: string;
+  [key: string]: unknown;
+};
+
+export type PharmyxCart = {
+  id?: string;
+  _id?: string;
+  pharmacyId?: string;
+  items: PharmyxCartItem[];
+  totalItems?: number;
+  totalQuantity?: number;
+  subtotal?: number;
+  totalAmount?: number;
+  grandTotal?: number;
+  updatedAt?: string;
+  createdAt?: string;
+  [key: string]: unknown;
+};
+
+export type UpdatePharmacyCartItemRequest = {
+  pharmacyId: string;
+  medicineId: string;
+  quantity: number;
+};
+
+export type MedicineAvailabilityParams = {
+  medicineId: string;
+  latitude: number;
+  longitude: number;
+  radiusKm?: number;
+  page?: number;
+  limit?: number;
+};
+
+export type MedicineAvailabilityItem = {
+  id?: string;
+  _id?: string;
+  pharmacyId?: string;
+  medicineId?: string;
+  pharmacyName?: string;
+  name?: string;
+  distanceKm?: number;
+  distance?: number;
+  availableQuantity?: number;
+  quantity?: number;
+  stock?: number;
+  availableStock?: number;
+  retailPrice?: number;
+  price?: number;
+  address?: string;
+  city?: string;
+  state?: string;
+  pharmacy?: PharmyxPharmacyProfile | null;
+  inventory?: {
+    availableQuantity?: number;
+    retailPrice?: number;
+    [key: string]: unknown;
+  } | null;
+  [key: string]: unknown;
 };
 
 export type PharmyxCustomer = {
@@ -586,7 +660,7 @@ export const hasCompletedPharmacyProfile = (
   profile: PharmyxPharmacyProfile | null | undefined,
 ): boolean => {
   if (!profile) return false;
-  return Boolean(profile.name && profile.ownerName && profile.phone);
+  return Boolean(profile.name?.trim() && profile.ownerName?.trim());
 };
 
 export const mapPharmacyProfileToUser = (

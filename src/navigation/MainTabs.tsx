@@ -3,37 +3,29 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Home,
-  CalendarDays,
   ClipboardList,
-  ShieldPlus,
+  Pill,
+  Boxes,
   User,
 } from 'lucide-react-native';
-import { useQuery } from '@tanstack/react-query';
 
 import HomeScreen from '../screens/HomeScreen';
-import { AppointmentsScreen } from '../screens/main/AppointmentsScreen';
-import { OrdersScreen } from '../screens/main/OrdersScreen';
-import { HealthVaultScreen } from '../screens/main/HealthVaultScreen';
+import { PharmacyScreen } from '../screens/main/PharmacyScreen';
 import { ProfileScreen } from '../screens/main/ProfileScreen';
 
-import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { scale, verticalScale } from '../theme/responsive';
-import { appointmentService } from '../api/appointmentService';
 import { useBadgeStore } from '../state/badgeStore';
 
 import { AppHeader } from '../components/AppHeader';
 const Tab = createBottomTabNavigator();
 const ICON_SIZE = scale(22);
+const ACTIVE_TAB_COLOR = '#1572B7';
+const INACTIVE_TAB_COLOR = '#9CA3AF';
 
 export function MainTabs() {
   const insets = useSafeAreaInsets();
   const bottomInset = insets.bottom > 0 ? insets.bottom : verticalScale(10);
-
-  const { data: appts } = useQuery({
-    queryKey: ['appointments', 'all'],
-    queryFn: () => appointmentService.getAppointments({ status: 'All' }),
-  });
 
   const { ordersBadgeCount, clearOrdersBadgeCount } = useBadgeStore();
 
@@ -43,7 +35,9 @@ export function MainTabs() {
         headerShown: true,
         header: () => {
           let title = route.name;
-          if (route.name === 'HealthVault') title = 'Health Vault';
+          if (route.name === 'Appointments') title = 'Pharmacy Medicines';
+          if (route.name === 'Orders') title = 'Pharmacy Orders';
+          if (route.name === 'HealthVault') title = 'Pharmacy Inventory';
           return (
             <AppHeader title={title} showBack={false} backgroundColor="#fff" />
           );
@@ -61,8 +55,8 @@ export function MainTabs() {
           shadowOpacity: 0.04,
           shadowRadius: 6,
         },
-        tabBarActiveTintColor: colors.primaryBlue,
-        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarActiveTintColor: ACTIVE_TAB_COLOR,
+        tabBarInactiveTintColor: INACTIVE_TAB_COLOR,
         tabBarLabelStyle: {
           fontFamily: typography.fontFamily.medium,
           fontSize: scale(10),
@@ -79,44 +73,46 @@ export function MainTabs() {
           tabBarIcon: ({ color, focused }) => (
             <Home
               size={ICON_SIZE}
-              color={color}
+              color={focused ? ACTIVE_TAB_COLOR : INACTIVE_TAB_COLOR}
               strokeWidth={focused ? 2.2 : 1.8}
-              fill={focused ? color : 'none'}
+              fill={focused ? ACTIVE_TAB_COLOR : 'none'}
             />
           ),
         }}
       />
       <Tab.Screen
         name="Appointments"
-        component={AppointmentsScreen}
+        component={PharmacyScreen}
+        initialParams={{ section: 'medicines', lockedSection: true }}
         options={{
-          tabBarLabel: 'Appointments',
+          tabBarLabel: 'Medicines',
           tabBarIcon: ({ color, focused }) => (
-            <CalendarDays
+            <Pill
               size={ICON_SIZE}
-              color={color}
+              color={focused ? ACTIVE_TAB_COLOR : INACTIVE_TAB_COLOR}
               strokeWidth={focused ? 2.2 : 1.8}
-              fill={focused ? color : 'none'}
+              fill={focused ? ACTIVE_TAB_COLOR : 'none'}
             />
           ),
         }}
       />
       <Tab.Screen
         name="Orders"
-        component={OrdersScreen}
+        component={PharmacyScreen}
+        initialParams={{ section: 'orders', lockedSection: true }}
         options={{
           tabBarLabel: 'Orders',
           tabBarIcon: ({ color, focused }) => (
             <ClipboardList
               size={ICON_SIZE}
-              color={color}
+              color={focused ? ACTIVE_TAB_COLOR : INACTIVE_TAB_COLOR}
               strokeWidth={focused ? 2.2 : 1.8}
-              fill={focused ? color : 'none'}
+              fill={focused ? ACTIVE_TAB_COLOR : 'none'}
             />
           ),
           tabBarBadge: ordersBadgeCount > 0 ? ordersBadgeCount : undefined,
           tabBarBadgeStyle: {
-            backgroundColor: colors.primaryGreen,
+            backgroundColor: ACTIVE_TAB_COLOR,
             color: '#fff',
             fontSize: scale(9),
             minWidth: scale(16),
@@ -133,15 +129,16 @@ export function MainTabs() {
       />
       <Tab.Screen
         name="HealthVault"
-        component={HealthVaultScreen}
+        component={PharmacyScreen}
+        initialParams={{ section: 'inventory', lockedSection: true }}
         options={{
-          tabBarLabel: 'Health Vault',
+          tabBarLabel: 'Inventory',
           tabBarIcon: ({ color, focused }) => (
-            <ShieldPlus
+            <Boxes
               size={ICON_SIZE}
-              color={color}
+              color={focused ? ACTIVE_TAB_COLOR : INACTIVE_TAB_COLOR}
               strokeWidth={focused ? 2.2 : 1.8}
-              fill={focused ? color : 'none'}
+              fill={focused ? ACTIVE_TAB_COLOR : 'none'}
             />
           ),
         }}
@@ -155,9 +152,9 @@ export function MainTabs() {
           tabBarIcon: ({ color, focused }) => (
             <User
               size={ICON_SIZE}
-              color={color}
+              color={focused ? ACTIVE_TAB_COLOR : INACTIVE_TAB_COLOR}
               strokeWidth={focused ? 2.2 : 1.8}
-              fill={focused ? color : 'none'}
+              fill={focused ? ACTIVE_TAB_COLOR : 'none'}
             />
           ),
         }}

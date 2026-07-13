@@ -19,18 +19,11 @@ import Animated, {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
-  MapPin,
-  Bell,
-  Search,
-  Activity,
-  HeartPulse,
-  Stethoscope,
-  Beaker,
-  Truck,
+  Boxes,
+  ClipboardList,
   Pill,
-  CheckCircle2,
   ChevronRight,
-  Video,
+  Users,
 } from 'lucide-react-native';
 import Svg, {
   Defs,
@@ -40,53 +33,72 @@ import Svg, {
 } from 'react-native-svg';
 
 import HomeHeader from '../components/HomeHeader';
-import AllSpecialists from '../components/AllSpecialists';
 import { SectionHeader } from '../components/SectionHeader';
 import { RecentActivity } from '../components/RecentActivity';
 import { UpcomingConsultation } from '../components/UpcomingConsultation';
-import { DailyHealthTip } from '../components/DailyHealthTip';
 import { colors } from '../theme/colors';
 import { shadows } from '../theme/shadows';
 import { typography } from '../theme/typography';
 import { scale, verticalScale, wp } from '../theme/responsive';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HomeSkeleton } from '../components/HomeSkeleton';
+import type { RootStackParamList } from '../navigation/types';
 
-const Services = [
+type PharmacySection = Exclude<
+  NonNullable<RootStackParamList['Pharmacy']>['section'],
+  undefined
+>;
+
+interface Service {
+  id: string;
+  title: string;
+  desc: string;
+  icon: React.ComponentType<{ size?: number; color?: string }>;
+  section: PharmacySection;
+  gradient: [string, string];
+  shadowColor: string;
+  tint: string;
+}
+
+const Services: Service[] = [
   {
-    id: '1',
-    title: 'Ambulance',
-    desc: '24/7 emergency care',
-    icon: Truck,
-    gradient: ['#FF5757', '#E53E3E'],
-    shadowColor: '#E53E3E',
-    tint: '#fff',
-  },
-  {
-    id: '2',
-    title: 'Diagnostics',
-    desc: 'Home sample pickup',
-    icon: Beaker,
-    gradient: ['#1E88E5', '#1572B7'],
-    shadowColor: '#1572B7',
-    tint: '#fff',
-  },
-  {
-    id: '3',
-    title: 'Telehealth',
-    desc: 'Consult top doctors',
-    icon: Stethoscope,
-    gradient: ['#46C451', '#40B346'],
-    shadowColor: '#40B346',
-    tint: '#fff',
-  },
-  {
-    id: '4',
-    title: 'Pharmacy',
-    desc: 'Delivered in 2 hrs',
+    id: 'medicines',
+    title: 'Medicines',
+    desc: 'Catalog & availability',
     icon: Pill,
-    gradient: ['#FFB627', '#F59E0B'],
-    shadowColor: '#F59E0B',
+    section: 'medicines',
+    gradient: ['#1687D4', '#0E6FAE'],
+    shadowColor: '#0E6FAE',
+    tint: '#fff',
+  },
+  {
+    id: 'inventory',
+    title: 'Inventory',
+    desc: 'Stock & batches',
+    icon: Boxes,
+    section: 'inventory',
+    gradient: ['#20A86B', '#148452'],
+    shadowColor: '#148452',
+    tint: '#fff',
+  },
+  {
+    id: 'orders',
+    title: 'Orders',
+    desc: 'Track fulfilment',
+    icon: ClipboardList,
+    section: 'orders',
+    gradient: ['#F5A623', '#D9820B'],
+    shadowColor: '#D9820B',
+    tint: '#fff',
+  },
+  {
+    id: 'customers',
+    title: 'Customers',
+    desc: 'Profiles & refills',
+    icon: Users,
+    section: 'customers',
+    gradient: ['#ED6A67', '#D94B59'],
+    shadowColor: '#D94B59',
     tint: '#fff',
   },
 ];
@@ -96,8 +108,8 @@ const ServiceCard = React.memo(
     service,
     onPress,
   }: {
-    service: (typeof Services)[0];
-    onPress: (title: string) => void;
+    service: Service;
+    onPress: (section: PharmacySection) => void;
   }) => {
     const Icon = service.icon;
     return (
@@ -110,7 +122,9 @@ const ServiceCard = React.memo(
         <TouchableOpacity
           style={styles.serviceCardInner}
           activeOpacity={0.8}
-          onPress={() => onPress(service.title)}
+          onPress={() => onPress(service.section)}
+          accessibilityRole="button"
+          accessibilityLabel={`Open ${service.title}`}
         >
           <Svg
             height="100%"
@@ -148,6 +162,9 @@ const ServiceCard = React.memo(
           <View style={styles.serviceIconContainer}>
             <Icon size={scale(24)} color={service.tint} />
           </View>
+          <View style={styles.serviceArrow}>
+            <ChevronRight size={scale(18)} color="rgba(255,255,255,0.9)" />
+          </View>
           <View style={styles.serviceTexts}>
             <Text style={styles.serviceCardTitle}>{service.title}</Text>
             <Text style={styles.serviceCardDesc}>{service.desc}</Text>
@@ -159,7 +176,8 @@ const ServiceCard = React.memo(
 );
 
 export default function HomeScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [loading, setLoading] = React.useState(true);
   const scrollY = useSharedValue(0);
 
@@ -180,19 +198,18 @@ export default function HomeScreen() {
   const HEADER_MAX_HEIGHT = 260 + insets.top;
 
   const handleServicePress = React.useCallback(
-    (serviceTitle: string) => {
-      if (serviceTitle === 'Diagnostics') {
-        navigation.navigate('PathkindBooking');
-      } else if (serviceTitle === 'Telehealth') {
-        navigation.navigate('FindDoctor');
-      } else if (serviceTitle === 'Ambulance') {
-        navigation.navigate('Ambulance');
-      } else if (serviceTitle === 'Pharmacy') {
-        navigation.navigate('Profile');
-      }
+    (section: PharmacySection) => {
+      navigation.navigate('Pharmacy', {
+        section,
+        lockedSection: true,
+      });
     },
     [navigation],
   );
+
+  const handleViewAllServices = React.useCallback(() => {
+    navigation.navigate('PharmacyHub');
+  }, [navigation]);
 
   if (loading) {
     return <HomeSkeleton />;
@@ -212,7 +229,10 @@ export default function HomeScreen() {
         scrollEventThrottle={16}
       >
         <View style={styles.mainContent}>
-          <SectionHeader title="Our Services" onViewAll={() => {}} />
+          <SectionHeader
+            title="Our Services"
+            onViewAll={handleViewAllServices}
+          />
 
           <View style={styles.servicesGrid}>
             {Services.map(service => (
@@ -224,10 +244,8 @@ export default function HomeScreen() {
             ))}
           </View>
 
-          <AllSpecialists />
           <RecentActivity />
           <UpcomingConsultation />
-          <DailyHealthTip />
         </View>
       </Animated.ScrollView>
       <HomeHeader scrollY={scrollY} />
@@ -390,6 +408,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  serviceArrow: {
+    position: 'absolute',
+    top: verticalScale(16),
+    right: scale(14),
   },
   serviceTexts: {
     position: 'absolute',

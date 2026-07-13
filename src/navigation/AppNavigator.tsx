@@ -106,9 +106,13 @@ export function AppNavigator() {
           }
 
           const noHeaderScreens = [
-            'Splash', 
-            'MainTabs', 
-            'GlobalSearch', 
+            'Splash',
+            'SignIn',
+            'SignUp',
+            'OtpVerification',
+            'CompleteProfile',
+            'MainTabs',
+            'GlobalSearch',
             'BookingSuccess',
           ];
           const isHeaderShown = !noHeaderScreens.includes(route.name);

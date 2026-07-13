@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import PathkindWebView from '../components/PathkindWebView';
 
 const PATHKIND_URL =
-  'https://www.pathkindlabs.com/?utm_source=Atharv_Health_Care&utm_medium=iframe&utm_campaign=partner_booking';
+  'https://www.pathkindlabs.com/?utm_source=Aarogya_Medicos&utm_medium=iframe&utm_campaign=partner_booking';
 
 const PathkindBookingScreen = () => {
   return (

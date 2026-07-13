@@ -10,8 +10,7 @@ const asNumber = (value: unknown) => {
 const resolveBaseUrl = (value: unknown) => {
   const normalized = String(value || '').trim().replace(/\/+$/, '');
 
-  // Force migration away from the legacy backend host if stale env/caches still provide it.
-  if (!normalized || /atharvhealthcare\.com/i.test(normalized)) {
+  if (!normalized) {
     return PHARMYX_BASE_URL;
   }
 

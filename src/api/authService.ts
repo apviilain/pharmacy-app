@@ -1,11 +1,12 @@
 import { publicApiClient } from './apiClient';
 import { endpoints } from './endpoints';
 import {
-  hasCompletedPharmacyProfile,
   mapPharmacyProfileToUser,
+  hasCompletedPharmacyProfile,
   type VerifyOtpRequest,
   type VerifyOtpResponse,
 } from './pharmyx';
+import { pharmacyService } from './pharmacyService';
 import { useAuthStore } from '../state/authStore';
 
 const assertNonEmptyString = (value: unknown, name: string) => {
@@ -68,6 +69,41 @@ export const authService = {
     );
 
     return data;
+  },
+
+  syncProfileAndCompletion: async (fallbackPhone?: string) => {
+    const profile = await pharmacyService.getMyProfile();
+    const existingUser = useAuthStore.getState().user;
+    const mappedUser = mapPharmacyProfileToUser(profile);
+    const isProfileComplete = hasCompletedPharmacyProfile(profile);
+
+    if (mappedUser) {
+      useAuthStore.getState().setUser({
+        ...existingUser,
+        ...mappedUser,
+        phone:
+          mappedUser.phone ||
+          existingUser?.phone ||
+          existingUser?.mobile ||
+          fallbackPhone ||
+          '',
+        mobile:
+          mappedUser.mobile ||
+          existingUser?.mobile ||
+          existingUser?.phone ||
+          fallbackPhone ||
+          '',
+      });
+    } else if (fallbackPhone && !existingUser?.phone && !existingUser?.mobile) {
+      useAuthStore.getState().setUser({
+        ...existingUser,
+        phone: fallbackPhone,
+        mobile: fallbackPhone,
+      });
+    }
+
+    await useAuthStore.getState().setProfileComplete(isProfileComplete);
+    return { profile, isProfileComplete };
   },
 
   logout: async (): Promise<void> => {

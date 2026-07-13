@@ -13,6 +13,7 @@ import {
   MapPin,
   Bell,
   Search,
+  ShoppingCart,
   SignalHigh,
   Wifi,
   BatteryFull,
@@ -27,6 +28,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { useQuery } from '@tanstack/react-query';
 import { notificationApi } from '../api/notificationApi';
+import { pharmacyCartService } from '../api/pharmacyCartService';
 import Animated, {
   useAnimatedStyle,
   interpolate,
@@ -134,6 +136,16 @@ export default function HomeHeader({ scrollY }: HomeHeaderProps) {
     enabled: !!userId,
     refetchInterval: 30000, // Refetch every 30s
   });
+  const { data: pharmacyCart } = useQuery({
+    queryKey: ['pharmacyCart'],
+    queryFn: () => pharmacyCartService.getCart(),
+  });
+  const cartCount = Number(
+    pharmacyCart?.totalItems ??
+      pharmacyCart?.totalQuantity ??
+      pharmacyCart?.items?.length ??
+      0,
+  );
 
   const insets = useSafeAreaInsets();
   const HEADER_MAX_HEIGHT = 280 + insets.top;
@@ -275,7 +287,26 @@ export default function HomeHeader({ scrollY }: HomeHeaderProps) {
 
       {/* Anchor Notification unconditionally independent so it retains clickability natively */}
       <View style={[styles.absoluteRow, styles.locationRow, { right: 20, top: 20 + insets.top }]}>
-        <View style={{ flex: 1, alignItems: 'flex-end' }}>
+        <View style={styles.headerActionCluster}>
+          <TouchableOpacity
+            style={styles.notificationButton}
+            activeOpacity={0.8}
+            onPress={() =>
+              navigation.navigate('Pharmacy', {
+                section: 'medicines',
+                lockedSection: true,
+              })
+            }
+          >
+            <ShoppingCart color="#FFF" size={20} />
+            {cartCount > 0 ? (
+              <View style={styles.cartBadge}>
+                <Text style={styles.notificationBadgeText}>
+                  {cartCount > 99 ? '99+' : cartCount}
+                </Text>
+              </View>
+            ) : null}
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.notificationButton}
             activeOpacity={0.8}
@@ -411,6 +442,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  headerActionCluster: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: 10,
+  },
   iconSquareBox: {
     width: 40,
     height: 40,
@@ -449,6 +487,20 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 9,
     backgroundColor: '#FF4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: '#2169A5',
+  },
+  cartBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#F59E0B',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 4,
