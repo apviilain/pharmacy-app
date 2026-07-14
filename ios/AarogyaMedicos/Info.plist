@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Pharmacy App</string>
+	<string>Pharmyx</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -34,13 +34,13 @@
 		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>Pharmacy App needs access to your camera to take a profile photo.</string>
+	<string>Pharmyx needs access to your camera to take a profile photo.</string>
 	<key>NSFaceIDUsageDescription</key>
-	<string>Pharmacy App uses Face ID to quickly and securely unlock your app.</string>
+	<string>Pharmyx uses Face ID to quickly and securely unlock your app.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Pharmacy App needs your location to check nearby medicine availability.</string>
+	<string>Pharmyx needs your location to check nearby medicine availability.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Pharmacy App needs access to your photo library to choose a profile picture.</string>
+	<string>Pharmyx needs access to your photo library to choose a profile picture.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UIAppFonts</key>

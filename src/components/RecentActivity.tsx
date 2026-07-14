@@ -65,8 +65,84 @@ const formatDate = (dateStr?: string) => {
   }
 };
 
+const toDisplayText = (value: unknown, fallback: string): string => {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed || fallback;
+  }
 
-export const RecentActivity: React.FC = () => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  return fallback;
+};
+
+const toCurrencyValue = (value: unknown): string => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed) return trimmed.replace(/^₹/, '');
+  }
+
+  return '0';
+};
+
+const getOrderSubtitle = (order: any) => {
+  const itemCount =
+    typeof order?.itemCount === 'number' && Number.isFinite(order.itemCount)
+      ? order.itemCount
+      : Array.isArray(order?.items)
+      ? order.items.length
+      : 1;
+
+  const firstItem = Array.isArray(order?.items) ? order.items[0] : null;
+  const medicineRecord =
+    firstItem?.medicine && typeof firstItem.medicine === 'object'
+      ? firstItem.medicine
+      : null;
+
+  const medicineName = toDisplayText(
+    order?.medicationName ||
+      order?.medicineName ||
+      medicineRecord?.name ||
+      medicineRecord?.genericName,
+    '',
+  );
+
+  const amount = toCurrencyValue(
+    order?.totalAmount ?? order?.subtotal ?? order?.price,
+  );
+
+  if (medicineName) {
+    return `${medicineName} • ₹${amount}`;
+  }
+
+  return `${itemCount} items • ₹${amount}`;
+};
+
+const getActivityTitle = (activity: any, fallback: string) =>
+  toDisplayText(activity?.title ?? activity?.name, fallback);
+
+const getActivitySubtitle = (activity: any, fallback: string) =>
+  toDisplayText(activity?.sub, fallback);
+
+const getActivityDate = (activity: any) =>
+  toDisplayText(activity?.date, 'Recently');
+
+type RecentActivityProps = {
+  onViewAll?: () => void;
+  onActivityPress?: (activity: any) => void;
+};
+
+export const RecentActivity: React.FC<RecentActivityProps> = ({
+  onViewAll,
+  onActivityPress,
+}) => {
+
   const { data: labTests, isLoading: isLabsLoading } = useQuery({
     queryKey: ['lab-tests', 'me'],
     queryFn: () => patientService.getLabTests('me'),
@@ -86,8 +162,8 @@ export const RecentActivity: React.FC = () => {
       activities.push({
         id: test.id,
         type: 'LAB REPORT',
-        title: test.name || 'Lab Report',
-        sub: test.labName || 'Thyrocare Labs',
+        title: toDisplayText(test.name, 'Lab Report'),
+        sub: toDisplayText(test.labName, 'Thyrocare Labs'),
         date: formatDate(test.orderedAt || test.createdAt),
         rawDate: test.orderedAt || test.createdAt || '',
         status: statusUI.label,
@@ -109,8 +185,11 @@ export const RecentActivity: React.FC = () => {
       activities.push({
         id: order.id,
         type: 'PHARMACY ORDER',
-        title: `#${order.id?.slice(-8).toUpperCase() || 'ORDER'}`,
-        sub: `${order.itemCount || 1} items • ₹${order.totalAmount || order.price || '0'}`,
+        title:
+          typeof order?.id === 'string' && order.id.trim()
+            ? `#${order.id.slice(-8).toUpperCase()}`
+            : 'ORDER',
+        sub: getOrderSubtitle(order),
         date: formatDate(order.orderedAt || order.createdAt),
         rawDate: order.orderedAt || order.createdAt || '',
         status: statusUI.label,
@@ -143,7 +222,7 @@ export const RecentActivity: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <SectionHeader title="Recent Activity" onViewAll={() => {}} />
+      <SectionHeader title="Recent Activity" onViewAll={onViewAll} />
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -186,6 +265,9 @@ export const RecentActivity: React.FC = () => {
           mergedActivities.map((activity) => {
             const Graphic = activity.iconGraphic;
             const StatusIcon = activity.icon;
+            const safeTitle = getActivityTitle(activity, 'Activity');
+            const safeSubtitle = getActivitySubtitle(activity, 'Details unavailable');
+            const safeDate = getActivityDate(activity);
             return (
               <View key={activity.id} style={styles.activityCard}>
                 <View style={styles.activityCardHeader}>
@@ -201,12 +283,12 @@ export const RecentActivity: React.FC = () => {
                     <Graphic size={scale(18)} color={activity.iconColor} />
                   </View>
                   <View style={styles.activityDetails}>
-                    <Text style={styles.activityTitle}>{activity.title}</Text>
-                    <Text style={styles.activitySub}>{activity.sub}</Text>
+                    <Text style={styles.activityTitle}>{safeTitle}</Text>
+                    <Text style={styles.activitySub}>{safeSubtitle}</Text>
                   </View>
                 </View>
                 <View style={styles.activityStatusRow}>
-                  <Text style={styles.activityDate}>{activity.date}</Text>
+                  <Text style={styles.activityDate}>{safeDate}</Text>
                   <View
                     style={[
                       styles.statusBadge,
@@ -230,6 +312,7 @@ export const RecentActivity: React.FC = () => {
                     { backgroundColor: activity.buttonBg },
                   ]}
                   activeOpacity={0.7}
+                  onPress={() => onActivityPress?.(activity)}
                 >
                   <Text
                     style={[

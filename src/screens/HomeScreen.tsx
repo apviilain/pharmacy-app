@@ -211,6 +211,22 @@ export default function HomeScreen() {
     navigation.navigate('PharmacyHub');
   }, [navigation]);
 
+  const handleViewAllActivity = React.useCallback(() => {
+    navigation.navigate('HealthVault');
+  }, [navigation]);
+
+  const handleRecentActivityPress = React.useCallback(
+    (activity: any) => {
+      if (activity.type === 'PHARMACY ORDER') {
+        navigation.navigate('PharmacyOrders');
+        return;
+      }
+
+      navigation.navigate('HealthVault');
+    },
+    [navigation],
+  );
+
   if (loading) {
     return <HomeSkeleton />;
   }
@@ -244,7 +260,10 @@ export default function HomeScreen() {
             ))}
           </View>
 
-          <RecentActivity />
+          <RecentActivity
+            onViewAll={handleViewAllActivity}
+            onActivityPress={handleRecentActivityPress}
+          />
           <UpcomingConsultation />
         </View>
       </Animated.ScrollView>

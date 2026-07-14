@@ -387,7 +387,7 @@ export const BookingConfirmationScreen: React.FC<Props> = ({
           currency: payment.currency || 'INR',
           key: razorpayKey,
           amount: amountInPaise,
-          name: 'Pharmacy App',
+          name: 'Pharmyx',
           order_id: payment.razorpayOrderId,
           theme: { color: colors.primaryBlue },
           prefill: {

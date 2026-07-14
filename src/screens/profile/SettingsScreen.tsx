@@ -100,7 +100,7 @@ export const SettingsScreen = () => {
 
   const handleHelpSupport = async () => {
     const phone = '917857955595';
-    const message = 'Hello Pharmacy App team, I need help with the app.';
+    const message = 'Hello Pharmyx team, I need help with the app.';
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `whatsapp://send?phone=${phone}&text=${encodedMessage}`;
     const fallbackUrl = `https://wa.me/${phone}?text=${encodedMessage}`;
@@ -167,7 +167,7 @@ export const SettingsScreen = () => {
       </View>
 
       <Text style={[styles.version, { marginBottom: insets.bottom + verticalScale(14) }]}>
-        {`Pharmacy App v${APP_VERSION}`}
+        {`Pharmyx v${APP_VERSION}`}
       </Text>
     </View>
   );

@@ -76,7 +76,6 @@ import type {
   PharmyxMedicine,
   PharmyxOrder,
   InventoryActionRequest,
-  PharmyxCartItem,
   PausePharmacySubscriptionRequest,
   UpdatePatientTrackingRequest,
   UpdatePharmacyCartItemRequest,
@@ -432,6 +431,36 @@ const DEFAULT_PAYMENT_VERIFICATION_FORM: PaymentVerificationForm = {
 
 const getEntityId = (entity: { id?: string; _id?: string }) =>
   entity.id || entity._id || '';
+
+const getInventoryItemKey = (item: PharmyxInventoryItem, index: number) =>
+  getEntityId(item) ||
+  [
+    item.medicineId || item.medicine?.id || item.medicine?._id || 'medicine',
+    item.batchNumber || 'batch',
+    item.rackLocation || 'rack',
+    index,
+  ].join('-');
+
+const getInventoryAdjustmentKey = (
+  item: PharmyxInventoryAdjustment,
+  index: number
+) =>
+  getEntityId(item) ||
+  [
+    item.medicineId || item.medicine?.id || item.medicine?._id || 'medicine',
+    item.type || 'adjustment',
+    item.createdAt || 'created-at',
+    index,
+  ].join('-');
+
+const getInventoryImportKey = (item: PharmyxInventoryImport, index: number) =>
+  getEntityId(item) ||
+  [
+    item.fileName || item.originalFileName || 'inventory-import',
+    item.createdAt || 'created-at',
+    item.importMode || 'mode',
+    index,
+  ].join('-');
 
 const getDiagnosticsBookingId = (
   entity: { id?: string; _id?: string; bookingId?: string } | null | undefined
@@ -927,12 +956,27 @@ export function PharmacyScreen() {
   const cartTotalItems = Number(
     pharmacyCart?.totalItems ?? pharmacyCart?.totalQuantity ?? cartItems.length
   );
-  const cartSubtotal = Number(
-    pharmacyCart?.subtotal ??
-      pharmacyCart?.totalAmount ??
-      pharmacyCart?.grandTotal ??
-      0
-  );
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('PharmacyCart')}
+          style={styles.headerCartButton}
+        >
+          <ShoppingCart size={scale(20)} color={colors.primaryBlue} />
+          {cartTotalItems > 0 ? (
+            <View style={styles.headerCartBadge}>
+              <Text style={styles.headerCartBadgeText}>
+                {cartTotalItems > 99 ? '99+' : cartTotalItems}
+              </Text>
+            </View>
+          ) : null}
+        </TouchableOpacity>
+      ),
+    });
+  }, [cartTotalItems, navigation]);
 
   const medicineAvailabilityQuery = useQuery({
     queryKey: [
@@ -1304,25 +1348,6 @@ export function PharmacyScreen() {
     },
   });
 
-  const clearCartMutation = useMutation({
-    mutationFn: () => pharmacyCartService.clearCart(),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['pharmacyCart'] });
-      Toast.show({
-        type: 'success',
-        text1: 'Cart cleared',
-        text2: 'All cart items have been removed.',
-      });
-    },
-    onError: (error) => {
-      Toast.show({
-        type: 'error',
-        text1: 'Unable to clear cart',
-        text2: getErrorMessage(error, 'Please try again.'),
-      });
-    },
-  });
-
   const updateSelectedMedicineCart = (quantity: number) => {
     if (!selectedMedicineId || !pharmacyId) {
       Toast.show({
@@ -1339,16 +1364,6 @@ export function PharmacyScreen() {
       quantity,
     });
   };
-
-  const getCartMedicineLabel = (item: PharmyxCartItem) =>
-    String(
-      item.medicine?.name ||
-        item.medicine?.brandName ||
-        item.name ||
-        item.genericName ||
-        item.medicineId ||
-        'Medicine'
-    );
 
   const updateMedicineMutation = useMutation({
     mutationFn: ({
@@ -3841,190 +3856,6 @@ export function PharmacyScreen() {
     );
   };
 
-  const renderCartWorkspace = () => {
-    if (pharmacyCartQuery.isLoading && !pharmacyCart) {
-      return (
-        <View style={styles.cartWorkspace}>
-          <View style={styles.loadingCard}>
-            <ActivityIndicator color={colors.primaryBlue} />
-            <Text style={styles.loadingText}>Loading pharmacy cart...</Text>
-          </View>
-        </View>
-      );
-    }
-
-    return (
-      <View style={styles.cartWorkspace}>
-        <View style={styles.cartWorkspaceHeader}>
-          <View style={styles.cartWorkspaceTitleWrap}>
-            <View style={styles.cartWorkspaceIcon}>
-              <ShoppingCart size={scale(20)} color={colors.primaryBlue} />
-            </View>
-            <View style={styles.cartWorkspaceCopy}>
-              <Text style={styles.cartWorkspaceTitle}>Cart</Text>
-              <Text style={styles.cartWorkspaceSubtitle}>
-                {cartItems.length
-                  ? `${cartItems.length} medicines`
-                  : 'No items'}
-              </Text>
-            </View>
-          </View>
-
-          <TouchableOpacity
-            activeOpacity={0.85}
-            disabled={!cartItems.length || clearCartMutation.isPending}
-            onPress={() => clearCartMutation.mutate()}
-            style={[
-              styles.cartWorkspaceClearButton,
-              !cartItems.length && styles.cartWorkspaceClearButtonDisabled,
-            ]}
-          >
-            <Trash2
-              size={scale(16)}
-              color={!cartItems.length ? colors.textLight : '#A16207'}
-            />
-            <Text
-              style={[
-                styles.cartWorkspaceClearButtonText,
-                !cartItems.length &&
-                  styles.cartWorkspaceClearButtonTextDisabled,
-              ]}
-            >
-              Clear Cart
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.cartSummaryRow}>
-          <View style={[styles.cartSummaryCard, styles.cartSummaryCardPrimary]}>
-            <Text style={styles.cartSummaryLabel}>Total Items</Text>
-            <Text style={styles.cartSummaryValue}>{cartTotalItems || 0}</Text>
-          </View>
-          <View style={styles.cartSummaryCard}>
-            <Text style={styles.cartSummaryLabel}>Subtotal</Text>
-            <Text style={styles.cartSummaryValue}>
-              {cartSubtotal > 0 ? `₹${cartSubtotal.toFixed(2)}` : '₹0.00'}
-            </Text>
-          </View>
-        </View>
-
-        {pharmacyCartQuery.error ? (
-          <InlineError
-            message={getErrorMessage(
-              pharmacyCartQuery.error,
-              'Unable to load pharmacy cart right now.'
-            )}
-            onRetry={() => pharmacyCartQuery.refetch()}
-          />
-        ) : null}
-
-        {!cartItems.length ? (
-          <View style={styles.cartEmptyState}>
-            <Text style={styles.cartEmptyTitle}>Your cart is empty</Text>
-            <Text style={styles.cartEmptyText}>
-              Select a medicine and use the cart controls above to prepare order
-              quantities.
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.cartItemsStack}>
-            {cartItems.map((item) => {
-              const itemMedicineId = String(
-                item.medicineId || item.medicine?._id || item.medicine?.id || ''
-              );
-              const itemQuantity = Number(item.quantity || 0) || 0;
-              const itemPrice =
-                Number(item.totalPrice ?? item.subtotal ?? item.price ?? 0) ||
-                0;
-
-              return (
-                <View
-                  key={itemMedicineId || getCartMedicineLabel(item)}
-                  style={styles.cartItemCard}
-                >
-                  <View style={styles.cartItemHeader}>
-                    <View style={styles.cartItemCopy}>
-                      <Text style={styles.cartItemTitle}>
-                        {getCartMedicineLabel(item)}
-                      </Text>
-                      <Text style={styles.cartItemSubtitle}>
-                        {String(
-                          item.medicine?.genericName ||
-                            item.genericName ||
-                            item.medicine?.manufacturer ||
-                            item.manufacturer ||
-                            'Pharmacy medicine'
-                        )}
-                      </Text>
-                    </View>
-                    <View style={styles.cartItemPricePill}>
-                      <Text style={styles.cartItemPriceText}>
-                        {itemPrice > 0
-                          ? `₹${itemPrice.toFixed(2)}`
-                          : 'No price'}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.cartItemFooter}>
-                    <View style={styles.cartItemStepper}>
-                      <TouchableOpacity
-                        activeOpacity={0.85}
-                        disabled={updateCartItemMutation.isPending}
-                        onPress={() =>
-                          updateCartItemMutation.mutate({
-                            pharmacyId,
-                            medicineId: itemMedicineId,
-                            quantity: -1,
-                          })
-                        }
-                        style={styles.cartItemStepButton}
-                      >
-                        <Minus size={scale(15)} color={colors.primaryBlue} />
-                      </TouchableOpacity>
-                      <Text style={styles.cartItemQuantityText}>
-                        {itemQuantity}
-                      </Text>
-                      <TouchableOpacity
-                        activeOpacity={0.85}
-                        disabled={updateCartItemMutation.isPending}
-                        onPress={() =>
-                          updateCartItemMutation.mutate({
-                            pharmacyId,
-                            medicineId: itemMedicineId,
-                            quantity: 1,
-                          })
-                        }
-                        style={[
-                          styles.cartItemStepButton,
-                          styles.cartItemStepButtonAccent,
-                        ]}
-                      >
-                        <Plus size={scale(15)} color="#FFFFFF" />
-                      </TouchableOpacity>
-                    </View>
-
-                    <TouchableOpacity
-                      activeOpacity={0.85}
-                      disabled={removeCartItemMutation.isPending}
-                      onPress={() =>
-                        removeCartItemMutation.mutate(itemMedicineId)
-                      }
-                      style={styles.cartItemDeleteButton}
-                    >
-                      <Trash2 size={scale(15)} color="#B45309" />
-                      <Text style={styles.cartItemDeleteText}>Delete</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        )}
-      </View>
-    );
-  };
-
   const renderInventoryList = () => {
     if (inventoryListQuery.isLoading) {
       return (
@@ -4056,7 +3887,7 @@ export function PharmacyScreen() {
       );
     }
 
-    return inventoryItems.map((item) => {
+    return inventoryItems.map((item, index) => {
       const entityId = getEntityId(item);
       const isSelected = entityId === selectedInventoryId;
       const medicineName =
@@ -4068,7 +3899,7 @@ export function PharmacyScreen() {
 
       return (
         <TouchableOpacity
-          key={entityId}
+          key={getInventoryItemKey(item, index)}
           activeOpacity={0.88}
           onPress={() => setSelectedInventoryId(entityId)}
           style={[styles.listCard, isSelected && styles.listCardSelected]}
@@ -4257,8 +4088,11 @@ export function PharmacyScreen() {
       );
     }
 
-    return inventoryAdjustments.map((item) => (
-      <View key={getEntityId(item)} style={styles.adjustmentCard}>
+    return inventoryAdjustments.map((item, index) => (
+      <View
+        key={getInventoryAdjustmentKey(item, index)}
+        style={styles.adjustmentCard}
+      >
         <View style={styles.listCardTop}>
           <View style={styles.listTitleWrap}>
             <Text style={styles.listTitle}>
@@ -4394,12 +4228,12 @@ export function PharmacyScreen() {
       );
     }
 
-    return inventoryImports.map((item) => {
+    return inventoryImports.map((item, index) => {
       const entityId = getEntityId(item);
       const isSelected = entityId === selectedInventoryImportId;
       return (
         <TouchableOpacity
-          key={entityId}
+          key={getInventoryImportKey(item, index)}
           activeOpacity={0.88}
           onPress={() => setSelectedInventoryImportId(entityId)}
           style={[styles.listCard, isSelected && styles.listCardSelected]}
@@ -5926,8 +5760,6 @@ export function PharmacyScreen() {
                   {renderMedicineDetails()}
                 </View>
               </View>
-
-              {renderCartWorkspace()}
             </View>
           ) : activeSection === 'inventory' ? (
             <View style={[styles.sectionCard, styles.sectionCardInventory]}>
@@ -9296,7 +9128,7 @@ const styles = StyleSheet.create({
   },
   medicinesSearchInput: {
     fontFamily: typography.fontFamily.medium,
-    fontSize: moderateScale(18, 0.2),
+    fontSize: moderateScale(16, 0.2),
     color: colors.textHeader,
     minHeight: verticalScale(36),
     paddingVertical: 0,
@@ -9369,7 +9201,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: scale(12),
     fontFamily: typography.fontFamily.regular,
-    fontSize: typography.fontSize.md,
+    fontSize: typography.fontSize.sm,
     color: colors.textHeader,
     minHeight: verticalScale(42),
     paddingVertical: verticalScale(6),
@@ -10295,6 +10127,30 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     color: colors.textSecondary,
     lineHeight: scale(18),
+  },
+  headerCartButton: {
+    width: scale(44),
+    height: scale(44),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerCartBadge: {
+    position: 'absolute',
+    top: scale(6),
+    right: scale(4),
+    minWidth: scale(18),
+    height: scale(18),
+    borderRadius: scale(9),
+    backgroundColor: '#E11D48',
+    paddingHorizontal: scale(4),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerCartBadgeText: {
+    color: '#FFFFFF',
+    fontFamily: typography.fontFamily.bold,
+    fontSize: typography.fontSize.xs,
+    lineHeight: scale(12),
   },
   loadingCard: {
     minHeight: verticalScale(140),

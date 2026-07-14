@@ -1,8 +1,10 @@
 import axios, { type AxiosError, type AxiosInstance, type AxiosRequestConfig } from 'axios';
 
 import { env } from '../config/env';
+import { useNetworkStore } from '../network/networkStore';
 import { useAuthStore } from '../state/authStore';
 import { handleApiResponse, maskToken, toApiError, ApiError } from './errorHandler';
+import { logger } from '../utils/logger';
 
 const baseURL = env.BASE_URL;
 if (!/^https:\/\//i.test(baseURL)) {
@@ -17,6 +19,31 @@ type RetryableRequestConfig = AxiosRequestConfig & {
   skipAuth?: boolean;
 };
 
+const pendingGetRequests = new Map<string, AbortController>();
+
+const stableStringify = (value: unknown): string => {
+  if (value === undefined) return '';
+  try {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return JSON.stringify(
+        value,
+        Object.keys(value as Record<string, unknown>).sort(),
+      );
+    }
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+};
+
+const buildRequestKey = (config: AxiosRequestConfig) =>
+  [
+    (config.method || 'get').toLowerCase(),
+    config.url || '',
+    stableStringify(config.params),
+    stableStringify(config.data),
+  ].join('|');
+
 const createAxiosClient = (): AxiosInstance => {
   const client = axios.create({
     baseURL,
@@ -27,7 +54,15 @@ const createAxiosClient = (): AxiosInstance => {
     },
   });
 
-  client.interceptors.response.use(response => handleApiResponse(response.data));
+  client.interceptors.response.use(response => {
+    const requestKey = (response.config as any)?.__requestKey as
+      | string
+      | undefined;
+    if (requestKey) {
+      pendingGetRequests.delete(requestKey);
+    }
+    return handleApiResponse(response.data);
+  });
 
   return client;
 };
@@ -67,9 +102,29 @@ const cleanPayload = (data: any): any => {
 
 apiClient.interceptors.request.use((config: any) => {
   const cfg = config as RetryableRequestConfig;
+  const networkState = useNetworkStore.getState();
+
+  if (!networkState.isConnected || !networkState.isInternetReachable) {
+    throw new ApiError({
+      message: 'No internet connection',
+      userMessage: 'No internet connection. Please reconnect and try again.',
+      code: 'OFFLINE',
+    });
+  }
   
   if (cfg.data && typeof cfg.data === 'object') {
     cfg.data = cleanPayload(cfg.data);
+  }
+
+  const method = (cfg.method || 'get').toLowerCase();
+  if (method === 'get') {
+    const requestKey = buildRequestKey(cfg);
+    pendingGetRequests.get(requestKey)?.abort();
+
+    const controller = new AbortController();
+    cfg.signal = controller.signal;
+    (cfg as any).__requestKey = requestKey;
+    pendingGetRequests.set(requestKey, controller);
   }
 
   if (cfg.skipAuth) return cfg;
@@ -82,7 +137,7 @@ apiClient.interceptors.request.use((config: any) => {
 
   // Development logging: never log tokens or sensitive payloads.
   if (__DEV__) {
-    const method = (cfg.method || 'GET').toUpperCase();
+    const requestMethod = (cfg.method || 'GET').toUpperCase();
     const url = `${cfg.baseURL ?? ''}${cfg.url ?? ''}`;
     const headers = cfg.headers as Record<string, any> | undefined;
     const safeHeaders = headers
@@ -93,7 +148,11 @@ apiClient.interceptors.request.use((config: any) => {
       : undefined;
 
     // eslint-disable-next-line no-console
-    console.log('[API]', method, url, safeHeaders);
+    logger.debug('API request', {
+      method: requestMethod,
+      url,
+      headers: safeHeaders,
+    });
   }
 
   return cfg as any;
@@ -108,12 +167,21 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = (error as any)?.config as RetryableRequestConfig | undefined;
     const apiError = error instanceof ApiError ? error : toApiError(error);
+    const requestKey = (originalRequest as any)?.__requestKey as string | undefined;
+
+    if (requestKey) {
+      pendingGetRequests.delete(requestKey);
+    }
 
     // If we don't have request config, we can't retry/refresh.
     if (!originalRequest) throw apiError;
 
     // Pharmyx v1 currently provides OTP auth only; refresh can be added later.
     if (apiError.httpStatus === 401) {
+      logger.warn('Unauthorized API response. Logging out user.', {
+        url: originalRequest.url,
+        status: apiError.httpStatus,
+      });
       await useAuthStore.getState().logout();
       throw apiError;
     }
@@ -130,10 +198,22 @@ apiClient.interceptors.response.use(
     if (shouldRetry) {
       originalRequest.__retryCount = retryCount + 1;
       const backoffMs = 300 * (retryCount + 1);
+      logger.warn('Retrying failed API request', {
+        url: originalRequest.url,
+        retryCount: originalRequest.__retryCount,
+        status: apiError.httpStatus,
+      });
       await delay(backoffMs);
       return apiClient(originalRequest);
     }
 
+    logger.error('API request failed', {
+      url: originalRequest.url,
+      method: originalRequest.method,
+      status: apiError.httpStatus,
+      code: apiError.code,
+      message: apiError.message,
+    });
     throw apiError;
   }
 );

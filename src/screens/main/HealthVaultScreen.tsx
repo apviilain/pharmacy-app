@@ -198,7 +198,7 @@ export const HealthVaultScreen = () => {
     const { config, fs } = ReactNativeBlobUtil;
     const date = new Date();
     const ext = fullUrl.split('.').pop() || 'pdf';
-    const filePath = `${fs.dirs.DownloadDir}/Pharmacy App_${title?.replace(
+    const filePath = `${fs.dirs.DownloadDir}/Pharmyx_${title?.replace(
       /\s+/g,
       '_',
     )}_${Math.floor(date.getTime() + date.getSeconds() / 2)}.${ext}`;

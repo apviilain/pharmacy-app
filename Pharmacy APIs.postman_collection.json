@@ -1,0 +1,2082 @@
+{
+  "info": {
+    "_postman_id": "03d01fbb-3e97-4a7a-8fc2-f24ef37dc1e0",
+    "name": "Pharmacy APIs",
+    "description": "Clean pharmacy module Postman collection aligned with the current backend routes.\n\nSuggested publish flow:\n1. Import this collection into Postman.\n2. Add environment variables like `baseUrl`, `authToken`, `adminToken`, `pharmacyId`, `userId`, and medicine IDs.\n3. Open collection documentation or publish with Postman Documenter.\n\nRole notes:\n- `adminToken`: admin-only operations.\n- `authToken`: pharmacy or user token depending on the request you are testing.\n- Some GET APIs return different fields based on the token role, especially pharmacy inventory and medicine availability APIs.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "46606183",
+    "_collection_link": "https://go.postman.co/collection/46606183-03d01fbb-3e97-4a7a-8fc2-f24ef37dc1e0?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Pharmacy Signup Or Login - Send OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{pharmacyPhone}}\",\n  \"email\": \"{{pharmacyEmail}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/pharmacy/send",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "pharmacy",
+                "send"
+              ]
+            },
+            "description": "If the pharmacy does not exist yet, backend creates an unverified pharmacy profile and sends OTP. If it already exists, this works as pharmacy login OTP."
+          },
+          "response": []
+        },
+        {
+          "name": "Pharmacy Signup Or Login - Verify OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response?.data?.token) {",
+                  "  pm.collectionVariables.set('authToken', response.data.token);",
+                  "}",
+                  "if (response?.data?.user?.pharmacyId) {",
+                  "  pm.collectionVariables.set('pharmacyId', response.data.user.pharmacyId);",
+                  "}",
+                  "if (response?.data?.user?._id) {",
+                  "  pm.collectionVariables.set('pharmacyUserId', response.data.user._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{pharmacyPhone}}\",\n  \"otp\": \"{{otp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/pharmacy/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "pharmacy",
+                "verify"
+              ]
+            },
+            "description": "Verifies the pharmacy OTP, returns auth token, and stores token/pharmacy IDs into collection variables."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Auth Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "profile"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Pharmacies",
+      "item": [
+        {
+          "name": "List Pharmacies",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacies?search=health&city=Delhi&isVerified=true&page=1&limit=20&sortBy=createdAt&sortOrder=desc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacies"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "health"
+                },
+                {
+                  "key": "city",
+                  "value": "Delhi"
+                },
+                {
+                  "key": "isVerified",
+                  "value": "true"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "createdAt"
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "desc"
+                }
+              ]
+            },
+            "description": "Main pharmacy listing API. Use query parameters instead of separate verified/nearby endpoints wherever possible. For user-facing screens, pass filters like city, search, and verified status. Admin can use broader filters."
+          },
+          "response": []
+        },
+        {
+          "name": "Medicine Availability By Nearby Pharmacies",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacies/medicine-availability?medicineId={{medicineId}}&latitude=28.6139&longitude=77.2090&radiusKm=5&page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacies",
+                "medicine-availability"
+              ],
+              "query": [
+                {
+                  "key": "medicineId",
+                  "value": "{{medicineId}}"
+                },
+                {
+                  "key": "latitude",
+                  "value": "28.6139"
+                },
+                {
+                  "key": "longitude",
+                  "value": "77.2090"
+                },
+                {
+                  "key": "radiusKm",
+                  "value": "5"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Shows pharmacies near the supplied coordinates that currently have the requested medicine in stock.\n\nRole-based pricing:\n- user: retail price only\n- pharmacy/admin: retail and wholesale price\n\nUse latitude/longitude/radius for accurate local search."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Pharmacy By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacies/{{pharmacyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacies",
+                "{{pharmacyId}}"
+              ]
+            },
+            "description": "Get pharmacy details by ID. Access is restricted by backend rules. Use this when opening a pharmacy profile screen from list/search results."
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Pharmacy Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacies/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacies",
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Pharmacy self-profile. Requires a pharmacy token."
+          },
+          "response": []
+        },
+        {
+          "name": "Update My Pharmacy Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Pharmyx\",\n  \"nickname\": \"Pharmyx\",\n  \"ownerName\": \"Shubham Goyal\",\n  \"phone\": \"{{pharmacyPhone}}\",\n  \"email\": \"{{pharmacyEmail}}\",\n  \"address\": \"12 Main Market, Connaught Place\",\n  \"city\": \"Delhi\",\n  \"state\": \"Delhi\",\n  \"pincode\": \"110001\",\n  \"latitude\": 28.6315,\n  \"longitude\": 77.2167,\n  \"gstNumber\": \"07ABCDE1234F1Z5\",\n  \"drugLicenseNumber\": \"DL-DEL-2026-001234\",\n  \"gstCertificateUrl\": \"https://cdn.example.com/pharmacy/gst-certificate.pdf\",\n  \"drugLicenseDocumentUrl\": \"https://cdn.example.com/pharmacy/drug-license.pdf\",\n  \"ownerIdProofUrl\": \"https://cdn.example.com/pharmacy/owner-id.pdf\",\n  \"shopFrontPhotoUrl\": \"https://cdn.example.com/pharmacy/shop-front.jpg\",\n  \"openingHours\": {\n    \"monday\": { \"open\": \"09:00\", \"close\": \"21:00\", \"isClosed\": false },\n    \"tuesday\": { \"open\": \"09:00\", \"close\": \"21:00\", \"isClosed\": false },\n    \"wednesday\": { \"open\": \"09:00\", \"close\": \"21:00\", \"isClosed\": false },\n    \"thursday\": { \"open\": \"09:00\", \"close\": \"21:00\", \"isClosed\": false },\n    \"friday\": { \"open\": \"09:00\", \"close\": \"21:00\", \"isClosed\": false },\n    \"saturday\": { \"open\": \"10:00\", \"close\": \"20:00\", \"isClosed\": false },\n    \"sunday\": { \"isClosed\": true }\n  },\n  \"pickupAvailable\": true,\n  \"deliveryAvailable\": true,\n  \"profilePictureUrl\": \"https://cdn.example.com/pharmacy/profile.jpg\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacies/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacies",
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Pharmacy self-profile update. Use this after OTP signup to complete the profile and upload operational details/documents."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Pharmacy Medicines",
+      "item": [
+        {
+          "name": "Create Medicine",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Paracetamol 650\",\n  \"genericName\": \"Paracetamol\",\n  \"category\": \"Pain Relief\",\n  \"dosageForm\": \"tablet\",\n  \"strength\": \"650 mg\",\n  \"manufacturer\": \"ABC Pharma\",\n  \"prescriptionRequired\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-medicines",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-medicines"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Medicines",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-medicines?search=para&page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-medicines"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "para"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Browse the medicine master catalog. This is not pharmacy stock; it is the shared medicine list used before inventory is attached to a pharmacy."
+          },
+          "response": []
+        },
+        {
+          "name": "Nearby Medicines",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-medicines/nearby?latitude=28.6139&longitude=77.2090&radiusKm=5&search=para&page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-medicines",
+                "nearby"
+              ],
+              "query": [
+                {
+                  "key": "latitude",
+                  "value": "28.6139"
+                },
+                {
+                  "key": "longitude",
+                  "value": "77.2090"
+                },
+                {
+                  "key": "radiusKm",
+                  "value": "5"
+                },
+                {
+                  "key": "search",
+                  "value": "para"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Lists medicines available around the supplied coordinates, grouped at medicine level. Helpful for the user-facing `Medicines near me` tab.\n\nRole-based pricing:\n- user: returns retail-facing pricing summary\n- pharmacy/admin: can also receive wholesale-facing summary\n\nUse this first, then open pharmacy availability for a selected medicine."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Medicine By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-medicines/{{medicineId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-medicines",
+                "{{medicineId}}"
+              ]
+            },
+            "description": "Get a single medicine from the shared medicine catalog."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Medicine",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"brandName\": \"PCM 650\",\n  \"manufacturer\": \"XYZ Pharma\",\n  \"prescriptionRequired\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-medicines/{{medicineId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-medicines",
+                "{{medicineId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Pharmacy Customers",
+      "item": [
+        {
+          "name": "Create Or Link Customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ravi Sharma\",\n  \"phone\": \"9876543210\",\n  \"age\": 34,\n  \"diseaseNotes\": \"Diabetes type 2\",\n  \"chronicCondition\": true,\n  \"recurringMedicine\": true,\n  \"recurringIntervalDays\": 30\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-customers"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Pharmacy Customers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-customers"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Doctor Consultation By Pharmacy",
+      "item": [
+        {
+          "name": "Create Specialist Consultation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"specialistId\": \"{{specialistId}}\",\n  \"primaryConcern\": \"Fever and body ache\",\n  \"consultationMode\": \"video\",\n  \"slotId\": \"{{slotId}}\",\n  \"bookingDate\": \"20260710\",\n  \"bookingTime\": \"10:30 AM\",\n  \"contactNo\": \"9876543210\",\n  \"alternateContactNo\": \"9876543211\",\n  \"couponCode\": \"NEW100\",\n  \"useWalletBalance\": false,\n  \"notes\": \"Booked by pharmacy for walk-in customer\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/specialist",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "specialist"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Retry Specialist Consultation Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"useWalletBalance\": false,\n  \"couponCode\": \"NEW100\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{bookingId}}/retry-payment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{bookingId}}",
+                "retry-payment"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Specialist Consultation Payment Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{bookingId}}/payment-details",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{bookingId}}",
+                "payment-details"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Specialist Consultation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cancellationReason\": \"Cancelled by pharmacy\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{bookingId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{bookingId}}",
+                "cancel"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reschedule Specialist Consultation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookingDate\": \"20260712\",\n  \"selectedSlotTime\": \"11:00 AM\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{bookingId}}/reschedule",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{bookingId}}",
+                "reschedule"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Pharmacy Inventory",
+      "item": [
+        {
+          "name": "Upsert Inventory Items",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"medicineId\": \"{{medicineId}}\",\n      \"quantity\": 100,\n      \"reorderThreshold\": 15,\n      \"rackLocation\": \"A-12\",\n      \"purchasePrice\": 12.5,\n      \"retailPrice\": 18,\n      \"wholesalePrice\": 15,\n      \"batchNumber\": \"BATCH-001\",\n      \"expiryDate\": \"20271231\",\n      \"reason\": \"purchase\",\n      \"notes\": \"Initial stock load\"\n    },\n    {\n      \"medicineId\": \"{{medicineId2}}\",\n      \"quantity\": 50,\n      \"reorderThreshold\": 10,\n      \"rackLocation\": \"A-13\",\n      \"purchasePrice\": 20,\n      \"retailPrice\": 28,\n      \"wholesalePrice\": 24,\n      \"batchNumber\": \"BATCH-002\",\n      \"expiryDate\": \"20280115\",\n      \"reason\": \"purchase\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-inventory",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-inventory"
+              ]
+            },
+            "description": "Single inventory upsert API for pharmacy stock. Pass one or many items in `items`.\n\nBehavior:\n- creates inventory row if missing\n- updates metadata if row exists\n- applies quantity movement using positive or negative `quantity`\n- no separate PUT needed for normal stock changes"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Inventory",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-inventory?pharmacyId={{pharmacyId}}&medicineId={{medicineId}}&isActive=true&lowStock=false&page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-inventory"
+              ],
+              "query": [
+                {
+                  "key": "pharmacyId",
+                  "value": "{{pharmacyId}}"
+                },
+                {
+                  "key": "medicineId",
+                  "value": "{{medicineId}}"
+                },
+                {
+                  "key": "isActive",
+                  "value": "true"
+                },
+                {
+                  "key": "lowStock",
+                  "value": "false"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Role-based inventory listing.\n\nBehavior by token:\n- admin: can query any pharmacy using `pharmacyId`, gets full internal inventory details\n- pharmacy: sees its own internal inventory, `pharmacyId` optional if token is linked to pharmacy\n- user: must pass `pharmacyId`, sees sanitized inventory only\n\nUser-facing fields are limited to medicine basics, available quantity, retail price, batch number, expiry date, and active status."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Low Stock Inventory",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-inventory/low-stock?pharmacyId={{pharmacyId}}&page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-inventory",
+                "low-stock"
+              ],
+              "query": [
+                {
+                  "key": "pharmacyId",
+                  "value": "{{pharmacyId}}"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Internal operational API for admin/pharmacy to find stock below reorder threshold."
+          },
+          "response": []
+        },
+        {
+          "name": "Manual Reserve Stock",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"medicineId\": \"{{medicineId}}\",\n      \"quantity\": 5\n    }\n  ],\n  \"reason\": \"internal_hold\",\n  \"notes\": \"Reserved for internal use\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-inventory/reserve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-inventory",
+                "reserve"
+              ]
+            },
+            "description": "Manual medicine-level reserve for pharmacy internal use only. This is separate from order lifecycle logic."
+          },
+          "response": []
+        },
+        {
+          "name": "Manual Release Stock",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"medicineId\": \"{{medicineId}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"reason\": \"release_hold\",\n  \"notes\": \"Released internal hold\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-inventory/release",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-inventory",
+                "release"
+              ]
+            },
+            "description": "Release manual medicine-level reserve created by pharmacy internal operations."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Inventory Item By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-inventory/{{inventoryItemId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-inventory",
+                "{{inventoryItemId}}"
+              ]
+            },
+            "description": "Fetch one internal inventory row by its inventory item ID. Mainly for admin/pharmacy detail/debug screens."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Pharmacy Cart",
+      "item": [
+        {
+          "name": "Get Cart",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-cart"
+              ]
+            },
+            "description": "Returns the current cart for the authenticated user or pharmacy user. Cart pricing is role-aware:\n- user sees retail pricing\n- pharmacy sees wholesale pricing when available, otherwise retail"
+          },
+          "response": []
+        },
+        {
+          "name": "Add Or Update Cart Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pharmacyId\": \"{{pharmacyId}}\",\n  \"medicineId\": \"{{medicineId}}\",\n  \"quantity\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-cart/items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-cart",
+                "items"
+              ]
+            },
+            "description": "Adds or updates one medicine in cart.\n\nQuantity rules:\n- positive quantity adds/increases\n- negative quantity reduces\n- if resulting quantity becomes 0 or below, item is removed\n- quantity cannot be 0\n\nCart rule:\n- cart accepts items from only one pharmacy\n- adding from another pharmacy returns a clear mismatch error asking to clear cart first"
+          },
+          "response": []
+        },
+        {
+          "name": "Reduce Cart Item Quantity",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pharmacyId\": \"{{pharmacyId}}\",\n  \"medicineId\": \"{{medicineId}}\",\n  \"quantity\": -1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-cart/items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-cart",
+                "items"
+              ]
+            },
+            "description": "Example for reducing quantity using a negative value. If quantity drops to 0, backend removes the item automatically."
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Item From Cart",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-cart/items/{{medicineId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-cart",
+                "items",
+                "{{medicineId}}"
+              ]
+            },
+            "description": "Removes one medicine from cart completely."
+          },
+          "response": []
+        },
+        {
+          "name": "Clear Cart",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-cart"
+              ]
+            },
+            "description": "Clears the whole cart. Use this before adding medicines from another pharmacy."
+          },
+          "response": []
+        }
+      ],
+      "description": "Single-pharmacy cart for user or pharmacy ordering. Cart enforces one pharmacy at a time."
+    },
+    {
+      "name": "Pharmacy Inventory Imports",
+      "item": [
+        {
+          "name": "Preview Inventory Import",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "value": ""
+                },
+                {
+                  "key": "importMode",
+                  "value": "upsert",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-inventory-imports/preview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-inventory-imports",
+                "preview"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Commit Inventory Import",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"importId\": \"{{inventoryImportId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-inventory-imports/commit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-inventory-imports",
+                "commit"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Inventory Imports",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-inventory-imports?page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-inventory-imports"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Inventory Import By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-inventory-imports/{{inventoryImportId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-inventory-imports",
+                "{{inventoryImportId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Pharmacy Orders",
+      "item": [
+        {
+          "name": "Create Pharmacy Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderType\": \"online\",\n  \"customerId\": \"{{userId}}\",\n  \"items\": [\n    {\n      \"medicineId\": \"{{medicineId}}\",\n      \"medicineName\": \"Paracetamol 650\",\n      \"orderedQty\": 2,\n      \"discount\": 1,\n      \"recurring\": true,\n      \"subscriptionIntervalDays\": 30,\n      \"subscriptionFrequency\": \"Daily after dinner\",\n      \"subscriptionNextRefillDate\": \"20260810\",\n      \"subscriptionReminderChannel\": \"both\"\n    }\n  ],\n  \"paymentMode\": \"online_payment\",\n  \"deliveryMode\": \"delivery\",\n  \"deliveryAddress\": \"221B Baker Street, Delhi\",\n  \"isWalkIn\": false,\n  \"prescriptionUrls\": [\"https://example.com/prescription.pdf\"],\n  \"notes\": \"Urgent delivery\",\n  \"linkedConsultationId\": \"{{consultationId}}\",\n  \"linkedDiagnosticOrderId\": \"{{diagnosticBookingId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-orders"
+              ]
+            },
+            "description": "Create a pharmacy order. For subscription via order, only recurring item fields are needed on the medicines that should create subscriptions. Backend calculates pricing and returns payment context for online payment flows."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Pharmacy Orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-orders?pharmacyId={{pharmacyId}}&customerId={{userId}}&orderType=online&status=placed&paymentStatus=pending&page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-orders"
+              ],
+              "query": [
+                {
+                  "key": "pharmacyId",
+                  "value": "{{pharmacyId}}"
+                },
+                {
+                  "key": "customerId",
+                  "value": "{{userId}}"
+                },
+                {
+                  "key": "orderType",
+                  "value": "online"
+                },
+                {
+                  "key": "status",
+                  "value": "placed"
+                },
+                {
+                  "key": "paymentStatus",
+                  "value": "pending"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Role-aware order listing.\n- pharmacy sees its own relevant orders through token-based access rules\n- user/customer can see only their own orders\n- admin can inspect broader order sets"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Pharmacy Order By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-orders/{{pharmacyOrderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-orders",
+                "{{pharmacyOrderId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Pharmacy Order",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Deliver after 6 PM\",\n  \"deliveryAddress\": \"Updated address, Delhi\",\n  \"paymentMode\": \"cash_on_delivery\",\n  \"linkedConsultationId\": \"{{consultationId}}\",\n  \"linkedDiagnosticOrderId\": \"{{diagnosticBookingId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-orders/{{pharmacyOrderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-orders",
+                "{{pharmacyOrderId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Pharmacy Order Status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"accepted\",\n  \"notes\": \"Order accepted and being prepared\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-orders/{{pharmacyOrderId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-orders",
+                "{{pharmacyOrderId}}",
+                "status"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Pharmacy Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Cancelled by pharmacy\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-orders/{{pharmacyOrderId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-orders",
+                "{{pharmacyOrderId}}",
+                "cancel"
+              ]
+            },
+            "description": "Cancels a pharmacy order. Backend handles inventory rollback and downstream order effects according to current lifecycle rules."
+          },
+          "response": []
+        },
+        {
+          "name": "Mark Order Paid",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentSource\": \"counter_cash\",\n  \"paidDate\": \"20260705\",\n  \"paidTime\": \"18:30\",\n  \"notes\": \"Collected at counter\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-orders/{{pharmacyOrderId}}/mark-paid",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-orders",
+                "{{pharmacyOrderId}}",
+                "mark-paid"
+              ]
+            },
+            "description": "Marks COD/in-store style pharmacy orders as paid. Intended for admin/pharmacy operational payment confirmation, not end users."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Pharmacy Subscriptions",
+      "item": [
+        {
+          "name": "Create Subscriptions",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"items\": [\n    {\n      \"medicineId\": \"{{medicineId}}\",\n      \"medicineName\": \"Paracetamol 650\",\n      \"frequency\": \"Daily after dinner\",\n      \"intervalDays\": 30,\n      \"nextRefillDate\": \"20260730\",\n      \"reminderChannel\": \"both\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-subscriptions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-subscriptions"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Subscriptions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-subscriptions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-subscriptions"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Subscription",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"intervalDays\": 45,\n  \"nextRefillDate\": \"20260815\",\n  \"reminderChannel\": \"push\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-subscriptions/{{subscriptionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-subscriptions",
+                "{{subscriptionId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Pause Subscription",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pausedUntil\": \"20260730\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-subscriptions/{{subscriptionId}}/pause",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-subscriptions",
+                "{{subscriptionId}}",
+                "pause"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Subscription",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-subscriptions/{{subscriptionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-subscriptions",
+                "{{subscriptionId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Pharmacy Wallet",
+      "item": [
+        {
+          "name": "Get Wallet",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-wallet",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-wallet"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Wallet Transactions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-wallet/transactions?page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-wallet",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Top Up Wallet",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pharmacyId\": \"{{pharmacyId}}\",\n  \"amount\": 1500,\n  \"notes\": \"Manual top-up\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-wallet/topup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-wallet",
+                "topup"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Patient Tracking",
+      "item": [
+        {
+          "name": "Get Patient Tracking Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patient-tracking/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patient-tracking",
+                "{{userId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Patient Tracking Summary",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"diseaseNotes\": \"Updated chronic medication notes\",\n  \"chronicCondition\": true,\n  \"recurringMedicine\": true,\n  \"recurringIntervalDays\": 60,\n  \"preferredFollowUpDate\": \"20260820\",\n  \"pharmacyNotes\": \"Send reminder 3 days before refill\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patient-tracking/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patient-tracking",
+                "{{userId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Pharmacy Tracking",
+      "item": [
+        {
+          "name": "Get My Pharmacy Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-tracking/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-tracking",
+                "summary"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Pharmacy Summary By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pharmacy-tracking/summary/{{pharmacyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pharmacy-tracking",
+                "summary",
+                "{{pharmacyId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Diagnostics Payment Flow",
+      "item": [
+        {
+          "name": "Create Diagnostics Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"integration\": \"labstack\",\n  \"orderType\": \"diagnostics\",\n  \"bookingDate\": \"20260702\",\n  \"bookingTime\": \"10:30\",\n  \"patientName\": \"Ravi Sharma\",\n  \"patientPhone\": \"9876543210\",\n  \"pincode\": \"110001\",\n  \"addressLine\": \"221B Baker Street\",\n  \"paymentOption\": \"prepaid\",\n  \"testIds\": [\"CBC001\"],\n  \"testNames\": [\"Complete Blood Count\"],\n  \"useWalletBalance\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/external-bookings/diagnostics/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "external-bookings",
+                "diagnostics",
+                "bookings"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Retry Diagnostics Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"useWalletBalance\": false,\n  \"couponCode\": \"NEW100\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/external-bookings/diagnostics/bookings/{{diagnosticBookingId}}/retry-payment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "external-bookings",
+                "diagnostics",
+                "bookings",
+                "{{diagnosticBookingId}}",
+                "retry-payment"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Diagnostics Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cancellationReason\": \"Cancelled by pharmacy\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/external-bookings/diagnostics/bookings/{{diagnosticBookingId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "external-bookings",
+                "diagnostics",
+                "bookings",
+                "{{diagnosticBookingId}}",
+                "cancel"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reschedule Diagnostics Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookingDate\": \"20260712\",\n  \"bookingTime\": \"11:30\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/external-bookings/diagnostics/bookings/{{diagnosticBookingId}}/reschedule",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "external-bookings",
+                "diagnostics",
+                "bookings",
+                "{{diagnosticBookingId}}",
+                "reschedule"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get External Booking Payment Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/external-bookings/bookings/{{diagnosticBookingId}}/payment-details",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "external-bookings",
+                "bookings",
+                "{{diagnosticBookingId}}",
+                "payment-details"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentTransactionId\": \"{{paymentTransactionId}}\",\n  \"razorpayOrderId\": \"{{razorpayOrderId}}\",\n  \"razorpayPaymentId\": \"{{razorpayPaymentId}}\",\n  \"razorpaySignature\": \"{{razorpaySignature}}\",\n  \"module\": \"external-bookings\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/payments/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments",
+                "verify"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{authToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000"
+    },
+    {
+      "key": "authToken",
+      "value": ""
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
+      "key": "pharmacyUserId",
+      "value": ""
+    },
+    {
+      "key": "pharmacyPhone",
+      "value": "9876543210"
+    },
+    {
+      "key": "pharmacyEmail",
+      "value": "pharmacy@example.com"
+    },
+    {
+      "key": "otp",
+      "value": "123456"
+    },
+    {
+      "key": "pharmacyId",
+      "value": "64f100000000000000000001"
+    },
+    {
+      "key": "userId",
+      "value": "64f100000000000000000004"
+    },
+    {
+      "key": "medicineId",
+      "value": "64f100000000000000000002"
+    },
+    {
+      "key": "medicineId2",
+      "value": "64f100000000000000000003"
+    },
+    {
+      "key": "inventoryItemId",
+      "value": "64f100000000000000000050"
+    },
+    {
+      "key": "inventoryImportId",
+      "value": "64f100000000000000000051"
+    },
+    {
+      "key": "pharmacyOrderId",
+      "value": "64f100000000000000000020"
+    },
+    {
+      "key": "subscriptionId",
+      "value": "64f100000000000000000060"
+    },
+    {
+      "key": "specialistId",
+      "value": "64f100000000000000000070"
+    },
+    {
+      "key": "slotId",
+      "value": "64f100000000000000000071"
+    },
+    {
+      "key": "bookingId",
+      "value": "64f100000000000000000072"
+    },
+    {
+      "key": "consultationId",
+      "value": "64f100000000000000000010"
+    },
+    {
+      "key": "diagnosticBookingId",
+      "value": "diag-booking-id"
+    },
+    {
+      "key": "paymentTransactionId",
+      "value": "64f100000000000000000030"
+    },
+    {
+      "key": "razorpayOrderId",
+      "value": "order_example"
+    },
+    {
+      "key": "razorpayPaymentId",
+      "value": "pay_example"
+    },
+    {
+      "key": "razorpaySignature",
+      "value": "signature_example"
+    }
+  ]
+}

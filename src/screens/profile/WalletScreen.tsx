@@ -110,7 +110,7 @@ export const WalletScreen = () => {
 
       const message = `Hey there! 👋
 
-Join Pharmacy App using my referral code *${referralCode}* and get ₹200 added to your wallet instantly.
+Join Pharmyx using my referral code *${referralCode}* and get ₹200 added to your wallet instantly.
 
 Experience hassle-free healthcare services at your doorstep.
 
@@ -214,7 +214,7 @@ Download now and enjoy the benefits 🚀`;
         amount: (initRes as any)?.amount
           ? (initRes as any).amount * 100
           : amountNum * 100, // Amount in paise
-        name: 'Pharmacy App',
+        name: 'Pharmyx',
         order_id: orderId,
         theme: { color: colors.primaryBlue },
       };

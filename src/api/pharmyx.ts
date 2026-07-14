@@ -177,6 +177,15 @@ export type MedicineAvailabilityParams = {
   limit?: number;
 };
 
+export type NearbyMedicinesParams = {
+  latitude: number;
+  longitude: number;
+  radiusKm?: number;
+  search?: string;
+  page?: number;
+  limit?: number;
+};
+
 export type MedicineAvailabilityItem = {
   id?: string;
   _id?: string;

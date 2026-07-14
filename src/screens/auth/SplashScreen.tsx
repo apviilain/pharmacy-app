@@ -165,7 +165,7 @@ export const SplashScreen = () => {
   });
 
   return (
-    <View style={styles.container} accessibilityLabel="Pharmacy App is loading">
+    <View style={styles.container} accessibilityLabel="Pharmyx is loading">
       <StatusBar barStyle="dark-content" backgroundColor="#F4FAFF" />
       <View pointerEvents="none" style={styles.backgroundArt}>
         <View style={styles.topOrb} />
@@ -203,7 +203,7 @@ export const SplashScreen = () => {
         </Animated.View>
 
         <Text style={styles.brandName}>
-          Pharmacy <Text style={styles.brandAccent}>App</Text>
+          Pharm<Text style={styles.brandAccent}>yx</Text>
         </Text>
         <Text style={styles.tagline}>Care that stays close.</Text>
       </Animated.View>

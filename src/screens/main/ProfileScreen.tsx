@@ -306,12 +306,14 @@ export const ProfileScreen = () => {
                         <Text style={styles.menuSub}>
                           Balance : ₹{pharmacyWalletBalance.toLocaleString('en-IN')}
                         </Text>
-                      ) : m.id === 'm3' ? (
+                      ) : m.id === 'm2' ? (
                         <Text style={styles.menuSub}>{counts.upcoming} upcoming</Text>
-                      ) : m.id === 'm4' ? (
+                      ) : m.id === 'm3' ? (
                         <Text style={styles.menuSub}>{counts.orders} total orders</Text>
-                      ) : m.id === 'm5' ? (
+                      ) : m.id === 'm4' ? (
                         <Text style={styles.menuSub}>{counts.vault} records stored</Text>
+                      ) : m.id === 'm5' ? (
+                        <Text style={styles.menuSub}>{m.subtitle}</Text>
                       ) : (
                         <Text style={styles.menuSub}>{m.subtitle}</Text>
                       )}

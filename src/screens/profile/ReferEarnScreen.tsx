@@ -93,7 +93,7 @@ export const ReferEarnScreen = () => {
 
       const message = `Hey there! 👋
 
-Join Pharmacy App using my referral code *${referralCode}* and get ₹200 added to your wallet instantly.
+Join Pharmyx using my referral code *${referralCode}* and get ₹200 added to your wallet instantly.
 
 Experience hassle-free healthcare services at your doorstep.
 

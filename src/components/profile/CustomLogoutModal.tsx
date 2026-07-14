@@ -89,7 +89,7 @@ export const CustomLogoutModal: React.FC<LogoutModalProps> = ({
 
           <Text style={styles.title}>Logout</Text>
           <Text style={styles.subtitle}>
-            Are you sure you want to log out of your Pharmacy App account?
+            Are you sure you want to log out of your Pharmyx account?
           </Text>
 
           <View style={styles.buttonRow}>

@@ -10,6 +10,9 @@ import { navigationRef } from './navigationRef';
 // Screens
 import PathkindBookingScreen from '../screens/PathkindBookingScreen';
 import { GlobalSearchScreen } from '../screens/main/GlobalSearchScreen';
+import { NearbyMedicinesScreen } from '../screens/main/NearbyMedicinesScreen';
+import { PharmacyCartScreen } from '../screens/main/PharmacyCartScreen';
+import { AppointmentsScreen } from '../screens/main/AppointmentsScreen';
 import { AppointmentDetailsScreen } from '../screens/main/AppointmentDetailsScreen';
 import { AmbulanceScreen } from '../screens/main/AmbulanceScreen';
 import { SettingsScreen } from '../screens/profile/SettingsScreen';
@@ -38,6 +41,11 @@ import {
   PharmacyMedicineCreateScreen,
   PharmacyMedicineEditScreen,
 } from '../screens/pharmacy/PharmacyMedicineFormScreen';
+import { PharmacyHubScreen } from '../screens/pharmacy/PharmacyHubScreen';
+import {
+  PharmaciesDirectoryScreen,
+  PharmacyDetailsScreen,
+} from '../screens/pharmacy/PharmaciesDirectoryScreen';
 import { AppHeader } from '../components/AppHeader';
 
 // Auth Flow Screens
@@ -77,6 +85,15 @@ export function AppNavigator() {
             case 'HealthVault': title = 'Health Vault'; break;
             case 'Profile': title = 'My Profile'; break;
             case 'GlobalSearch': title = 'Search'; break;
+            case 'NearbyMedicines': title = 'Nearby Medicines'; break;
+            case 'PharmaciesDirectory': title = 'Pharmacies'; break;
+            case 'PharmacyDetails':
+              title =
+                (route.params as RootStackParamList['PharmacyDetails'])?.title ||
+                'Pharmacy Details';
+              break;
+            case 'PharmacyCart': title = 'Cart'; break;
+            case 'ConsultationAppointments': title = 'My Appointments'; break;
             case 'AppointmentDetails': title = 'Appointment Details'; break;
             case 'Ambulance': title = 'Ambulance Service'; break;
             case 'Wallet':
@@ -154,6 +171,11 @@ export function AppNavigator() {
         <Stack.Screen name="MyMembers" component={MyMembersScreen} />
         <Stack.Screen name="PathkindBooking" component={PathkindBookingScreen} />
         <Stack.Screen name="GlobalSearch" component={GlobalSearchScreen} options={{ animation: 'fade' }} />
+        <Stack.Screen name="NearbyMedicines" component={NearbyMedicinesScreen} />
+        <Stack.Screen name="PharmaciesDirectory" component={PharmaciesDirectoryScreen} />
+        <Stack.Screen name="PharmacyDetails" component={PharmacyDetailsScreen} />
+        <Stack.Screen name="PharmacyCart" component={PharmacyCartScreen} />
+        <Stack.Screen name="ConsultationAppointments" component={AppointmentsScreen} />
         <Stack.Screen name="AppointmentDetails" component={AppointmentDetailsScreen} />
 
         {/* Telehealth Flow */}
@@ -179,7 +201,7 @@ export function AppNavigator() {
             ),
           })}
         />
-        <Stack.Screen name="PharmacyHub" component={PharmacyScreen} />
+        <Stack.Screen name="PharmacyHub" component={PharmacyHubScreen} />
         <Stack.Screen
           name="PharmacyMedicines"
           component={PharmacyScreen}

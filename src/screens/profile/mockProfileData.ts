@@ -32,7 +32,7 @@ export const profileMenu: ProfileMenuItem[] = [
     subtitle: '1 upcoming',
     emoji: '📅',
     section: 'care',
-    route: 'Appointments',
+    route: 'ConsultationAppointments',
   },
   {
     id: 'm3',

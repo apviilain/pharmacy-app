@@ -1,6 +1,5 @@
 import { apiClient } from './apiClient';
 import { endpoints } from './endpoints';
-import { localAppointments } from './localUiData';
 
 export type Appointment = {
   id: string;
@@ -30,17 +29,8 @@ type GetAppointmentsParams = {
 
 let sessionAppointments: Appointment[] = [];
 
-const cloneAppointments = (): Appointment[] => {
-  const local = localAppointments.map(item => ({ ...item }));
-  const seen = new Set<string>();
-
-  return [...sessionAppointments, ...local].filter(item => {
-    const id = item.id || item._id;
-    if (!id || seen.has(id)) return false;
-    seen.add(id);
-    return true;
-  });
-};
+const cloneAppointments = (): Appointment[] =>
+  sessionAppointments.map(item => ({ ...item }));
 
 const matchesStatus = (item: Appointment, status?: GetAppointmentsParams['status']) => {
   if (!status || status === 'All') return true;
@@ -62,6 +52,111 @@ const formatBookingDateLabel = (bookingDate?: string) => {
   const month = bookingDate.slice(4, 6);
   const day = bookingDate.slice(6, 8);
   return `${year}-${month}-${day}`;
+};
+
+const parseAmount = (value: unknown): number | undefined => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value.replace(/[^0-9.-]/g, ''));
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
+};
+
+const normalizeAppointmentStatus = (value: unknown): Appointment['status'] | undefined => {
+  if (typeof value !== 'string') return undefined;
+
+  const status = value.toLowerCase();
+  if (['confirmed', 'booked', 'paid', 'success'].includes(status)) {
+    return 'confirmed';
+  }
+  if (['pending', 'payment_pending', 'awaiting_payment'].includes(status)) {
+    return 'pending';
+  }
+  if (['completed', 'done'].includes(status)) {
+    return 'completed';
+  }
+  return value;
+};
+
+const extractPaymentPayload = (response: any) => {
+  const payload = response?.data ?? response ?? {};
+  const booking = payload?.booking ?? payload?.data?.booking ?? payload;
+  const payment = payload?.payment ?? payload?.data?.payment ?? payload?.paymentDetails ?? {};
+
+  return { booking, payment, payload };
+};
+
+const mergePaymentDetails = (
+  appointment: Appointment,
+  response: any,
+): Appointment => {
+  const { booking, payment, payload } = extractPaymentPayload(response);
+
+  const fee =
+    parseAmount(booking?.price) ??
+    parseAmount(booking?.consultationFee) ??
+    parseAmount(payload?.totalFee) ??
+    parseAmount(payment?.totalAmount) ??
+    parseAmount(payment?.fee) ??
+    parseAmount(appointment.fee);
+
+  const walletAmount =
+    parseAmount(payment?.walletAmount) ??
+    parseAmount(payment?.walletDeduction) ??
+    parseAmount(payload?.walletAmount) ??
+    appointment.walletAmount;
+
+  const remainingAmount =
+    parseAmount(payment?.remainingAmount) ??
+    parseAmount(payment?.pendingAmount) ??
+    parseAmount(payload?.remainingAmount) ??
+    appointment.remainingAmount;
+
+  const normalizedStatus =
+    normalizeAppointmentStatus(booking?.bookingStatus) ??
+    normalizeAppointmentStatus(booking?.status) ??
+    normalizeAppointmentStatus(payment?.status) ??
+    normalizeAppointmentStatus(payload?.status);
+
+  return {
+    ...appointment,
+    id: appointment.id || booking?._id || booking?.bookingId || appointment._id || '',
+    _id:
+      appointment._id ||
+      booking?._id ||
+      booking?.bookingId ||
+      appointment.id ||
+      '',
+    fee: fee ?? appointment.fee,
+    walletAmount,
+    remainingAmount,
+    status: normalizedStatus || appointment.status,
+    dateLabel:
+      formatBookingDateLabel(booking?.bookingDate) ||
+      appointment.dateLabel,
+    timeLabel:
+      booking?.selectedSlotTime ||
+      booking?.bookingTime ||
+      appointment.timeLabel,
+    mode:
+      booking?.consultationMode ||
+      booking?.serviceMode ||
+      appointment.mode,
+    consultationMode:
+      booking?.consultationMode ||
+      booking?.serviceMode ||
+      appointment.consultationMode,
+    createdAt: booking?.createdAt || appointment.createdAt,
+    doctorName:
+      booking?.specialistName ||
+      booking?.doctorName ||
+      appointment.doctorName,
+    specialization:
+      booking?.specialization ||
+      booking?.specialty ||
+      appointment.specialization,
+  };
 };
 
 const upsertSessionAppointment = (appointment: Appointment) => {
@@ -93,8 +188,35 @@ const upsertSessionAppointment = (appointment: Appointment) => {
 };
 
 export const appointmentService = {
-  getAppointments: async (params?: GetAppointmentsParams): Promise<Appointment[]> =>
-    cloneAppointments().filter(item => matchesStatus(item, params?.status)),
+  getAppointments: async (params?: GetAppointmentsParams): Promise<Appointment[]> => {
+    const appointments = cloneAppointments().filter(item =>
+      matchesStatus(item, params?.status),
+    );
+
+    const hydratedAppointments = await Promise.all(
+      appointments.map(async item => {
+        const appointmentId = item.id || item._id;
+        const shouldRefresh =
+          !!appointmentId &&
+          (item.status === 'pending' || item.status === 'confirmed');
+
+        if (!shouldRefresh || !appointmentId) return item;
+
+        try {
+          const response = await apiClient.get(
+            endpoints.bookings.paymentDetails(appointmentId),
+          );
+          const merged = mergePaymentDetails(item, response);
+          upsertSessionAppointment(merged);
+          return merged;
+        } catch {
+          return item;
+        }
+      }),
+    );
+
+    return hydratedAppointments;
+  },
 
   getAppointmentById: async (appointmentId: string): Promise<Appointment | null> =>
     cloneAppointments().find(item => item.id === appointmentId || item._id === appointmentId) || null,
@@ -189,6 +311,15 @@ export const appointmentService = {
     const response: any = await apiClient.get(
       endpoints.bookings.paymentDetails(bookingId),
     );
+    const existing =
+      cloneAppointments().find(
+        item => item.id === bookingId || item._id === bookingId,
+      ) || null;
+
+    if (existing) {
+      upsertSessionAppointment(mergePaymentDetails(existing, response));
+    }
+
     return response;
   },
 };

@@ -291,12 +291,7 @@ export default function HomeHeader({ scrollY }: HomeHeaderProps) {
           <TouchableOpacity
             style={styles.notificationButton}
             activeOpacity={0.8}
-            onPress={() =>
-              navigation.navigate('Pharmacy', {
-                section: 'medicines',
-                lockedSection: true,
-              })
-            }
+            onPress={() => navigation.navigate('PharmacyCart')}
           >
             <ShoppingCart color="#FFF" size={20} />
             {cartCount > 0 ? (

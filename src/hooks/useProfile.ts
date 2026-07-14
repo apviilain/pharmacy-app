@@ -16,48 +16,55 @@ export const useProfile = () => {
 
   const [formData, setFormData] = useState({
     name: '',
+    nickname: '',
+    ownerName: '',
     email: '',
     phone: '',
-    gender: '',
-    dob: '',
-    height: '',
-    weight: '',
-    bloodGroup: '',
     address: '',
     city: '',
     state: '',
     pincode: '',
-    emergencyContactName: '',
-    emergencyContactPhone: '',
+    latitude: '',
+    longitude: '',
+    gstNumber: '',
+    drugLicenseNumber: '',
+    gstCertificateUrl: '',
+    drugLicenseDocumentUrl: '',
+    ownerIdProofUrl: '',
+    shopFrontPhotoUrl: '',
+    pickupAvailable: true,
+    deliveryAvailable: true,
     profilePictureUrl: '',
   });
-
-  const normalizeDob = (raw: string): string => {
-    if (!raw) return '';
-    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-    if (/^\d{8}$/.test(raw)) {
-      return `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`;
-    }
-    return raw;
-  };
 
   const populateForm = useCallback((data: any) => {
     if (!data) return;
     setFormData({
       name: data.name || '',
+      nickname: data.nickname || '',
+      ownerName: data.ownerName || '',
       email: data.email || '',
       phone: data.phone || data.mobile || '',
-      gender: data.gender || '',
-      dob: normalizeDob(data.dateOfBirth || data.dob || ''),
-      height: data.height ? String(data.height) : '',
-      weight: data.weight ? String(data.weight) : '',
-      bloodGroup: data.bloodGroup || '',
       address: data.address || '',
       city: data.city || '',
       state: data.state || '',
       pincode: data.pincode || '',
-      emergencyContactName: data.emergencyContact?.name || '',
-      emergencyContactPhone: data.emergencyContact?.phone || '',
+      latitude:
+        data.latitude !== undefined && data.latitude !== null
+          ? String(data.latitude)
+          : '',
+      longitude:
+        data.longitude !== undefined && data.longitude !== null
+          ? String(data.longitude)
+          : '',
+      gstNumber: data.gstNumber || '',
+      drugLicenseNumber: data.drugLicenseNumber || '',
+      gstCertificateUrl: data.gstCertificateUrl || '',
+      drugLicenseDocumentUrl: data.drugLicenseDocumentUrl || '',
+      ownerIdProofUrl: data.ownerIdProofUrl || '',
+      shopFrontPhotoUrl: data.shopFrontPhotoUrl || '',
+      pickupAvailable: data.pickupAvailable ?? true,
+      deliveryAvailable: data.deliveryAvailable ?? true,
       profilePictureUrl:
         data.profileImage || data.profilePicture || data.profilePictureUrl || data.avatar || '',
     });
@@ -98,8 +105,15 @@ export const useProfile = () => {
     }
   }, [user, populateForm]);
 
-  const updateField = (field: string, value: string) => {
+  const updateField = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const parseOptionalNumber = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : undefined;
   };
 
   const handleUpdate = async () => {
@@ -107,17 +121,34 @@ export const useProfile = () => {
       setSaving(true);
       const payload = {
         name: formData.name.trim() || 'My Pharmacy',
-        nickname: formData.name.trim().split(' ')[0] || 'Pharmacy',
-        ownerName: user?.ownerName || formData.name.trim() || 'Owner',
+        nickname:
+          formData.nickname.trim() ||
+          formData.name.trim().split(' ')[0] ||
+          'Pharmacy',
+        ownerName:
+          formData.ownerName.trim() ||
+          user?.ownerName ||
+          formData.name.trim() ||
+          'Owner',
+        phone: formData.phone.trim() || user?.phone || user?.mobile || undefined,
         email: formData.email.trim() || undefined,
         address: formData.address.trim() || undefined,
         city: formData.city.trim() || undefined,
         state: formData.state.trim() || undefined,
         pincode: formData.pincode.trim() || undefined,
+        latitude: parseOptionalNumber(formData.latitude),
+        longitude: parseOptionalNumber(formData.longitude),
+        gstNumber: formData.gstNumber.trim() || undefined,
+        drugLicenseNumber: formData.drugLicenseNumber.trim() || undefined,
+        gstCertificateUrl: formData.gstCertificateUrl.trim() || undefined,
+        drugLicenseDocumentUrl:
+          formData.drugLicenseDocumentUrl.trim() || undefined,
+        ownerIdProofUrl: formData.ownerIdProofUrl.trim() || undefined,
+        shopFrontPhotoUrl: formData.shopFrontPhotoUrl.trim() || undefined,
         profilePictureUrl: formData.profilePictureUrl.trim() || undefined,
-        pickupAvailable: true,
-        deliveryAvailable: true,
-        openingHours: defaultOpeningHours,
+        pickupAvailable: formData.pickupAvailable,
+        deliveryAvailable: formData.deliveryAvailable,
+        openingHours: user?.openingHours || defaultOpeningHours,
       };
 
       const updateResponse = await pharmacyService.updateMyProfile(payload);

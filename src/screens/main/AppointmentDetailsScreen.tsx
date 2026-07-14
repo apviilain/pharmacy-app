@@ -312,7 +312,7 @@ export const AppointmentDetailsScreen = () => {
           currency,
           key: razorpayKey,
           amount: amountInPaise,
-          name: 'Pharmacy App',
+          name: 'Pharmyx',
           order_id: razorpayOrderId,
           theme: { color: colors.primaryBlue },
           prefill: {

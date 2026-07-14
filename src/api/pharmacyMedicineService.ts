@@ -4,6 +4,7 @@ import type {
   CreateMedicineRequest,
   MedicineAvailabilityItem,
   MedicineAvailabilityParams,
+  NearbyMedicinesParams,
   PharmyxMedicine,
   UpdateMedicineRequest,
 } from './pharmyx';
@@ -26,6 +27,21 @@ export const pharmacyMedicineService = {
       params,
     });
     return Array.isArray(response) ? response : response?.items || response?.data || [];
+  },
+
+  getNearbyMedicines: async (
+    params: NearbyMedicinesParams,
+  ): Promise<PharmyxMedicine[]> => {
+    const response: any = await apiClient.get(
+      endpoints.pharmacyMedicines.nearby,
+      { params },
+    );
+
+    if (Array.isArray(response)) return response;
+    if (Array.isArray(response?.items)) return response.items;
+    if (Array.isArray(response?.data)) return response.data;
+    if (Array.isArray(response?.results)) return response.results;
+    return [];
   },
 
   getById: async (id: string): Promise<PharmyxMedicine | null> => {

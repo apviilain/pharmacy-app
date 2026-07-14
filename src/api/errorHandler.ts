@@ -1,4 +1,5 @@
 import type { AxiosError } from 'axios';
+import { getHttpErrorMessage } from '../error/errorMessages';
 
 export type ApiEnvelope<T = any> = {
   success: boolean;
@@ -94,15 +95,15 @@ export const toApiError = (error: unknown): ApiError => {
     code === 'ECONNABORTED' || /timeout/i.test(originalMessage || '');
 
   const userMessage = (() => {
-    if (httpStatus === 401) return 'Session expired';
-    if (httpStatus === 403) return 'Session expired';
-    if (isTimeout) return 'Server unavailable';
-    if (!httpStatus) return 'Server unavailable'; // network error / offline
-    if (httpStatus >= 500) return 'Server unavailable';
+    if (httpStatus === 401) return getHttpErrorMessage(401);
+    if (httpStatus === 403) return getHttpErrorMessage(403);
+    if (isTimeout) return getHttpErrorMessage(408);
+    if (!httpStatus) return 'No internet connection. Please try again.'; // network error / offline
+    if (httpStatus >= 500) return getHttpErrorMessage(httpStatus);
     if (httpStatus >= 400 && httpStatus < 500) {
-      return serverMessage || originalMessage || 'Request failed';
+      return serverMessage || getHttpErrorMessage(httpStatus);
     }
-    return serverMessage || originalMessage || 'Server unavailable';
+    return serverMessage || originalMessage || getHttpErrorMessage(httpStatus);
   })();
 
   return new ApiError({
@@ -113,4 +114,3 @@ export const toApiError = (error: unknown): ApiError => {
     details: payload,
   });
 };
-

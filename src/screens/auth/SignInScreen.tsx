@@ -80,7 +80,7 @@ export const SignInScreen = () => {
               <View style={styles.brandDot} />
             </View>
             <View>
-              <Text style={styles.brandName}>Pharmacy App</Text>
+              <Text style={styles.brandName}>Pharmyx</Text>
               <Text style={styles.brandCaption}>Simple care, every day</Text>
             </View>
           </View>

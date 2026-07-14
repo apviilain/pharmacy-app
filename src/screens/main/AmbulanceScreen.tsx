@@ -117,7 +117,7 @@ export const AmbulanceScreen = () => {
               <Text style={styles.heroEyebrow}>Rapid response access</Text>
               <Text style={styles.heroTitle}>Ambulance support is on the way</Text>
               <Text style={styles.heroText}>
-                We&apos;re designing a faster, simpler way to request emergency transport directly from Pharmacy App.
+                We&apos;re designing a faster, simpler way to request emergency transport directly from Pharmyx.
               </Text>
             </View>
 

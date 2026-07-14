@@ -1,87 +1,32 @@
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
+  Modal,
+  PermissionsAndroid,
+  Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
-  TextInput,
-  ActivityIndicator,
-  Platform,
-  PermissionsAndroid,
-  Modal,
-  Pressable,
 } from 'react-native';
-import {
-  ChevronRight,
-  ArrowLeft,
-  Check,
-  User,
-  X,
-  Camera,
-  ChevronDown,
-  Image as ImageIcon,
-} from 'lucide-react-native';
+import { Check, User, X, Camera, Image as ImageIcon } from 'lucide-react-native';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
-import DatePicker from 'react-native-date-picker';
 import Toast from 'react-native-toast-message';
-import { fileApi } from '../../api/fileApi';
-import { env } from '../../config/env';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { fileApi } from '../../api/fileApi';
 import { useProfile } from '../../hooks/useProfile';
-import { colors } from '../../theme/colors';
-import { typography } from '../../theme/typography';
-import { scale, verticalScale } from '../../theme/responsive';
 import type { RootStackParamList } from '../../navigation/types';
-import LinearGradient from 'react-native-linear-gradient';
+import { colors } from '../../theme/colors';
+import { scale, verticalScale } from '../../theme/responsive';
+import { typography } from '../../theme/typography';
+import { buildFullUrl } from '../../utils/urlUtils';
 
-// Selection Component for Dropdowns
-const SelectionModal = ({
-  visible,
-  title,
-  options,
-  onSelect,
-  onClose,
-}: {
-  visible: boolean;
-  title: string;
-  options: string[];
-  onSelect: (val: string) => void;
-  onClose: () => void;
-}) => (
-  <Modal visible={visible} transparent animationType="slide">
-    <TouchableOpacity
-      style={styles.modalOverlay}
-      activeOpacity={1}
-      onPress={onClose}
-    >
-      <Pressable style={styles.modalContent}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>{title}</Text>
-          <TouchableOpacity onPress={onClose}>
-            <X size={scale(20)} color={colors.textLight} />
-          </TouchableOpacity>
-        </View>
-        <ScrollView>
-          {options.map((opt: string) => (
-            <TouchableOpacity
-              key={opt}
-              style={styles.optionItem}
-              onPress={() => onSelect(opt)}
-            >
-              <Text style={styles.optionText}>{opt}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </Pressable>
-    </TouchableOpacity>
-  </Modal>
-);
-
-// Image Picker Modal
 const ImagePickerModal = ({
   visible,
   onClose,
@@ -144,18 +89,10 @@ const ImagePickerModal = ({
 export const EditProfileScreen = () => {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const insets = useSafeAreaInsets();
-
   const { user, saving, formData, updateField, handleUpdate } = useProfile();
 
-  const [dateOpen, setDateOpen] = useState(false);
-  const [genderOpen, setGenderOpen] = useState(false);
-  const [bloodOpen, setBloodOpen] = useState(false);
   const [imagePickerOpen, setImagePickerOpen] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
-
-  const genderOptions = ['Male', 'Female', 'Other'];
-  const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
 
   const checkAndRequestCameraPermission = async () => {
     if (Platform.OS === 'ios') return true;
@@ -165,7 +102,7 @@ export const EditProfileScreen = () => {
         {
           title: 'Camera Permission',
           message:
-            'Pharmacy App needs access to your camera to take a profile picture.',
+            'Pharmyx needs access to your camera to take a profile picture.',
           buttonNeutral: 'Ask Me Later',
           buttonNegative: 'Cancel',
           buttonPositive: 'OK',
@@ -188,7 +125,7 @@ export const EditProfileScreen = () => {
       const granted = await PermissionsAndroid.request(permission, {
         title: 'Gallery Permission',
         message:
-          'Pharmacy App needs access to your gallery to choose a profile picture.',
+          'Pharmyx needs access to your gallery to choose a profile picture.',
         buttonNeutral: 'Ask Me Later',
         buttonNegative: 'Cancel',
         buttonPositive: 'OK',
@@ -219,11 +156,10 @@ export const EditProfileScreen = () => {
         recordId,
       );
 
-      let finalProfileImageUrl =
+      const finalProfileImageUrl =
         uploadRes?.files?.[0]?.url || uploadRes?.url || '';
 
       if (finalProfileImageUrl) {
-        // If relative, prepend BASE_URL handled by display logic
         updateField('profilePictureUrl', finalProfileImageUrl);
         Toast.show({
           type: 'success',
@@ -297,7 +233,7 @@ export const EditProfileScreen = () => {
         </TouchableOpacity>
       ),
     });
-  }, [navigation, saving, onSave]);
+  }, [navigation, saving]);
 
   return (
     <View style={styles.container}>
@@ -316,7 +252,7 @@ export const EditProfileScreen = () => {
                 <ActivityIndicator color={colors.primaryBlue} />
               ) : formData.profilePictureUrl ? (
                 <Image
-                  source={{ uri: `${env.BASE_URL}${formData.profilePictureUrl}` }}
+                  source={{ uri: buildFullUrl(formData.profilePictureUrl) }}
                   style={styles.avatar}
                 />
               ) : (
@@ -330,14 +266,37 @@ export const EditProfileScreen = () => {
             </TouchableOpacity>
           </View>
         </View>
+
         <View style={styles.formCard}>
           <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>Full Name</Text>
+            <Text style={styles.formLabel}>Pharmacy Name</Text>
             <TextInput
               style={styles.formInput}
               value={formData.name}
               onChangeText={val => updateField('name', val)}
-              placeholder="Enter full name"
+              placeholder="Enter pharmacy name"
+              placeholderTextColor={colors.textLight}
+            />
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.formLabel}>Nickname</Text>
+            <TextInput
+              style={styles.formInput}
+              value={formData.nickname}
+              onChangeText={val => updateField('nickname', val)}
+              placeholder="Short display name"
+              placeholderTextColor={colors.textLight}
+            />
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.formLabel}>Owner Name</Text>
+            <TextInput
+              style={styles.formInput}
+              value={formData.ownerName}
+              onChangeText={val => updateField('ownerName', val)}
+              placeholder="Enter owner name"
               placeholderTextColor={colors.textLight}
             />
           </View>
@@ -345,9 +304,13 @@ export const EditProfileScreen = () => {
           <View style={styles.formGroup}>
             <Text style={styles.formLabel}>Email</Text>
             <TextInput
-              style={[styles.formInput, styles.disabledInput]}
+              style={styles.formInput}
               value={formData.email}
-              editable={false}
+              onChangeText={val => updateField('email', val)}
+              placeholder="mail@example.com"
+              placeholderTextColor={colors.textLight}
+              keyboardType="email-address"
+              autoCapitalize="none"
             />
           </View>
 
@@ -361,182 +324,201 @@ export const EditProfileScreen = () => {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>Gender</Text>
-            <TouchableOpacity
-              style={styles.formInput}
-              onPress={() => setGenderOpen(true)}
-            >
-              <Text
-                style={[
-                  styles.inputText,
-                  !formData.gender && { color: colors.textLight },
-                ]}
-              >
-                {formData.gender || 'Select Gender'}
-              </Text>
-              <ChevronDown size={scale(18)} color={colors.textLight} />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>Date of Birth</Text>
-            <TouchableOpacity
-              style={styles.formInput}
-              onPress={() => setDateOpen(true)}
-            >
-              <Text
-                style={[
-                  styles.inputText,
-                  !formData.dob && { color: colors.textLight },
-                ]}
-              >
-                {formData.dob || 'Select Date of Birth'}
-              </Text>
-              <ChevronDown size={scale(18)} color={colors.textLight} />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>Blood Group</Text>
-            <TouchableOpacity
-              style={styles.formInput}
-              onPress={() => setBloodOpen(true)}
-            >
-              <Text
-                style={[
-                  styles.inputText,
-                  !formData.bloodGroup && { color: colors.textLight },
-                ]}
-              >
-                {formData.bloodGroup || 'Select Blood Group'}
-              </Text>
-              <ChevronDown size={scale(18)} color={colors.textLight} />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>Height (cm)</Text>
-            <TextInput
-              style={styles.formInput}
-              value={formData.height}
-              onChangeText={val => updateField('height', val)}
-              placeholder="e.g., 175"
-              keyboardType="numeric"
-              maxLength={3}
-            />
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>Weight (kg)</Text>
-            <TextInput
-              style={styles.formInput}
-              value={formData.weight}
-              onChangeText={val => updateField('weight', val)}
-              placeholder="e.g., 70"
-              keyboardType="numeric"
-              maxLength={3}
-            />
-          </View>
-
-          <View style={styles.formGroup}>
             <Text style={styles.formLabel}>Address</Text>
             <TextInput
               style={styles.formInput}
               value={formData.address}
               onChangeText={val => updateField('address', val)}
-              placeholder="House No, Street, Landmark"
+              placeholder="Shop number, street, landmark"
+              placeholderTextColor={colors.textLight}
+            />
+          </View>
+
+          <View style={styles.row}>
+            <View style={[styles.formGroup, styles.halfGroup]}>
+              <Text style={styles.formLabel}>City</Text>
+              <TextInput
+                style={styles.formInput}
+                value={formData.city}
+                onChangeText={val => updateField('city', val)}
+                placeholder="City"
+                placeholderTextColor={colors.textLight}
+              />
+            </View>
+
+            <View style={[styles.formGroup, styles.halfGroup]}>
+              <Text style={styles.formLabel}>State</Text>
+              <TextInput
+                style={styles.formInput}
+                value={formData.state}
+                onChangeText={val => updateField('state', val)}
+                placeholder="State"
+                placeholderTextColor={colors.textLight}
+              />
+            </View>
+          </View>
+
+          <View style={styles.row}>
+            <View style={[styles.formGroup, styles.halfGroup]}>
+              <Text style={styles.formLabel}>Pincode</Text>
+              <TextInput
+                style={styles.formInput}
+                value={formData.pincode}
+                onChangeText={val => updateField('pincode', val)}
+                placeholder="110001"
+                placeholderTextColor={colors.textLight}
+                keyboardType="numeric"
+                maxLength={6}
+              />
+            </View>
+
+            <View style={[styles.formGroup, styles.halfGroup]}>
+              <Text style={styles.formLabel}>GST Number</Text>
+              <TextInput
+                style={styles.formInput}
+                value={formData.gstNumber}
+                onChangeText={val => updateField('gstNumber', val)}
+                placeholder="GST number"
+                placeholderTextColor={colors.textLight}
+                autoCapitalize="characters"
+              />
+            </View>
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.formLabel}>Drug License Number</Text>
+            <TextInput
+              style={styles.formInput}
+              value={formData.drugLicenseNumber}
+              onChangeText={val => updateField('drugLicenseNumber', val)}
+              placeholder="Drug license number"
+              placeholderTextColor={colors.textLight}
+            />
+          </View>
+
+          <View style={styles.row}>
+            <View style={[styles.formGroup, styles.halfGroup]}>
+              <Text style={styles.formLabel}>Latitude</Text>
+              <TextInput
+                style={styles.formInput}
+                value={formData.latitude}
+                onChangeText={val => updateField('latitude', val)}
+                placeholder="28.6315"
+                placeholderTextColor={colors.textLight}
+                keyboardType="numeric"
+              />
+            </View>
+
+            <View style={[styles.formGroup, styles.halfGroup]}>
+              <Text style={styles.formLabel}>Longitude</Text>
+              <TextInput
+                style={styles.formInput}
+                value={formData.longitude}
+                onChangeText={val => updateField('longitude', val)}
+                placeholder="77.2167"
+                placeholderTextColor={colors.textLight}
+                keyboardType="numeric"
+              />
+            </View>
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.formLabel}>GST Certificate URL</Text>
+            <TextInput
+              style={styles.formInput}
+              value={formData.gstCertificateUrl}
+              onChangeText={val => updateField('gstCertificateUrl', val)}
+              placeholder="https://..."
+              placeholderTextColor={colors.textLight}
+              autoCapitalize="none"
             />
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>City</Text>
+            <Text style={styles.formLabel}>Drug License Document URL</Text>
             <TextInput
               style={styles.formInput}
-              value={formData.city}
-              onChangeText={val => updateField('city', val)}
-              placeholder="City name"
+              value={formData.drugLicenseDocumentUrl}
+              onChangeText={val => updateField('drugLicenseDocumentUrl', val)}
+              placeholder="https://..."
+              placeholderTextColor={colors.textLight}
+              autoCapitalize="none"
             />
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>State</Text>
+            <Text style={styles.formLabel}>Owner ID Proof URL</Text>
             <TextInput
               style={styles.formInput}
-              value={formData.state}
-              onChangeText={val => updateField('state', val)}
-              placeholder="State name"
+              value={formData.ownerIdProofUrl}
+              onChangeText={val => updateField('ownerIdProofUrl', val)}
+              placeholder="https://..."
+              placeholderTextColor={colors.textLight}
+              autoCapitalize="none"
             />
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>Pincode</Text>
+            <Text style={styles.formLabel}>Shop Front Photo URL</Text>
             <TextInput
               style={styles.formInput}
-              value={formData.pincode}
-              onChangeText={val => updateField('pincode', val)}
-              placeholder="6-digit pincode"
-              keyboardType="numeric"
-              maxLength={6}
+              value={formData.shopFrontPhotoUrl}
+              onChangeText={val => updateField('shopFrontPhotoUrl', val)}
+              placeholder="https://..."
+              placeholderTextColor={colors.textLight}
+              autoCapitalize="none"
             />
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>Emergency Contact Name</Text>
+            <Text style={styles.formLabel}>Profile Picture URL</Text>
             <TextInput
               style={styles.formInput}
-              value={formData.emergencyContactName}
-              onChangeText={val => updateField('emergencyContactName', val)}
-              placeholder="Relative or friend's name"
+              value={formData.profilePictureUrl}
+              onChangeText={val => updateField('profilePictureUrl', val)}
+              placeholder="https://..."
+              placeholderTextColor={colors.textLight}
+              autoCapitalize="none"
             />
           </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>Emergency Contact Phone</Text>
-            <TextInput
-              style={styles.formInput}
-              value={formData.emergencyContactPhone}
-              onChangeText={val => updateField('emergencyContactPhone', val)}
-              placeholder="Emergency phone number"
-              keyboardType="numeric"
-              maxLength={10}
-            />
+          <View style={styles.switchCard}>
+            <View style={styles.switchRow}>
+              <View style={styles.switchCopy}>
+                <Text style={styles.switchTitle}>Pickup Available</Text>
+                <Text style={styles.switchSubtitle}>
+                  Enable in-store pickup for customers
+                </Text>
+              </View>
+              <Switch
+                value={formData.pickupAvailable}
+                onValueChange={value => updateField('pickupAvailable', value)}
+                trackColor={{ false: '#D8DEE8', true: '#BFDBFE' }}
+                thumbColor={
+                  formData.pickupAvailable ? colors.primaryBlue : '#FFFFFF'
+                }
+              />
+            </View>
+
+            <View style={[styles.switchRow, styles.switchDivider]}>
+              <View style={styles.switchCopy}>
+                <Text style={styles.switchTitle}>Delivery Available</Text>
+                <Text style={styles.switchSubtitle}>
+                  Enable delivery from your pharmacy
+                </Text>
+              </View>
+              <Switch
+                value={formData.deliveryAvailable}
+                onValueChange={value => updateField('deliveryAvailable', value)}
+                trackColor={{ false: '#D8DEE8', true: '#BFDBFE' }}
+                thumbColor={
+                  formData.deliveryAvailable ? colors.primaryBlue : '#FFFFFF'
+                }
+              />
+            </View>
           </View>
         </View>
       </ScrollView>
-
-      <DatePicker
-        modal
-        open={dateOpen}
-        date={formData.dob ? new Date(formData.dob) : new Date(2000, 0, 1)}
-        mode="date"
-        onConfirm={date => {
-          setDateOpen(false);
-          updateField('dob', date.toISOString().split('T')[0]);
-        }}
-        onCancel={() => setDateOpen(false)}
-      />
-
-      <SelectionModal
-        visible={genderOpen}
-        title="Select Gender"
-        options={genderOptions}
-        onSelect={val => {
-          updateField('gender', val);
-          setGenderOpen(false);
-        }}
-        onClose={() => setGenderOpen(false)}
-      />
-
-      <SelectionModal
-        visible={bloodOpen}
-        title="Select Blood Group"
-        options={bloodGroups}
-        onSelect={val => {
-          updateField('bloodGroup', val);
-          setBloodOpen(false);
-        }}
-        onClose={() => setBloodOpen(false)}
-      />
 
       <ImagePickerModal
         visible={imagePickerOpen}
@@ -550,37 +532,13 @@ export const EditProfileScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: {
-    paddingBottom: verticalScale(30),
-    alignItems: 'center',
-    borderBottomLeftRadius: scale(32),
-    borderBottomRightRadius: scale(32),
-  },
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-    paddingHorizontal: scale(20),
-    marginBottom: verticalScale(20),
-  },
-  headerTitle: {
-    fontFamily: typography.fontFamily.bold,
-    fontSize: scale(18),
-    color: '#fff',
-  },
-  backBtn: {
-    width: scale(40),
-    height: scale(40),
-    borderRadius: scale(20),
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   headerRightBtn: {
     padding: scale(8),
   },
-  content: { padding: scale(20), paddingBottom: verticalScale(40) },
+  content: {
+    padding: scale(20),
+    paddingBottom: verticalScale(40),
+  },
   avatarSection: {
     alignItems: 'center',
     marginVertical: verticalScale(20),
@@ -636,7 +594,16 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 2,
   },
-  formGroup: { marginBottom: verticalScale(18) },
+  row: {
+    flexDirection: 'row',
+    gap: scale(12),
+  },
+  halfGroup: {
+    flex: 1,
+  },
+  formGroup: {
+    marginBottom: verticalScale(18),
+  },
   formLabel: {
     fontFamily: typography.fontFamily.semiBold,
     fontSize: typography.fontSize.sm,
@@ -645,9 +612,6 @@ const styles = StyleSheet.create({
     marginLeft: scale(4),
   },
   formInput: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: '#F9FAFB',
     borderRadius: scale(12),
     paddingHorizontal: scale(16),
@@ -658,11 +622,42 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#F3F4F6',
   },
-  disabledInput: { backgroundColor: '#F3F4F6', color: colors.textLight },
-  inputText: {
-    fontFamily: typography.fontFamily.medium,
+  disabledInput: {
+    backgroundColor: '#F3F4F6',
+    color: colors.textLight,
+  },
+  switchCard: {
+    backgroundColor: '#F8FBFF',
+    borderRadius: scale(20),
+    borderWidth: 1,
+    borderColor: '#D9E9FB',
+    overflow: 'hidden',
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: scale(18),
+    paddingVertical: verticalScale(16),
+  },
+  switchDivider: {
+    borderTopWidth: 1,
+    borderTopColor: '#E5EEF9',
+  },
+  switchCopy: {
+    flex: 1,
+    paddingRight: scale(16),
+  },
+  switchTitle: {
+    fontFamily: typography.fontFamily.semiBold,
     fontSize: typography.fontSize.md,
     color: colors.textHeader,
+    marginBottom: verticalScale(4),
+  },
+  switchSubtitle: {
+    fontFamily: typography.fontFamily.regular,
+    fontSize: typography.fontSize.sm,
+    color: colors.textLight,
   },
   modalOverlay: {
     flex: 1,
@@ -674,7 +669,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: scale(32),
     borderTopRightRadius: scale(32),
     padding: scale(24),
-    maxHeight: '80%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -685,16 +679,6 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontFamily: typography.fontFamily.bold,
     fontSize: scale(18),
-    color: colors.textHeader,
-  },
-  optionItem: {
-    paddingVertical: verticalScale(16),
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  optionText: {
-    fontFamily: typography.fontFamily.medium,
-    fontSize: typography.fontSize.md,
     color: colors.textHeader,
   },
   imagePickerOptions: {

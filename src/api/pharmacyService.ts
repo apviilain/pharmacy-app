@@ -45,13 +45,18 @@ export const pharmacyService = {
     const response: any = await apiClient.get(endpoints.pharmacies.list, {
       params,
     });
-    return Array.isArray(response) ? response : response?.items || response?.data || [];
+    if (Array.isArray(response)) return response;
+    if (Array.isArray(response?.items)) return response.items;
+    if (Array.isArray(response?.data)) return response.data;
+    if (Array.isArray(response?.results)) return response.results;
+    if (Array.isArray(response?.pharmacies)) return response.pharmacies;
+    return [];
   },
 
   getById: async (id: string): Promise<PharmyxPharmacyProfile | null> => {
     const response: any = await apiClient.get(
       endpoints.pharmacies.details(id),
     );
-    return response || null;
+    return extractProfile(response) || response?.data || null;
   },
 };

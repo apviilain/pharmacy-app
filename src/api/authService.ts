@@ -1,4 +1,4 @@
-import { publicApiClient } from './apiClient';
+import { publicApiClient, apiClient } from './apiClient';
 import { endpoints } from './endpoints';
 import {
   mapPharmacyProfileToUser,
@@ -71,8 +71,20 @@ export const authService = {
     return data;
   },
 
+  getAuthProfile: async (): Promise<any> => {
+    try {
+      const response = await apiClient.get(endpoints.auth.profile);
+      return response;
+    } catch (error) {
+      if (error instanceof Error && (error as any).httpStatus === 404) return null;
+      throw error;
+    }
+  },
+
   syncProfileAndCompletion: async (fallbackPhone?: string) => {
-    const profile = await pharmacyService.getMyProfile();
+    const authProfile = await authService.getAuthProfile().catch(() => null);
+    const profile =
+      (await pharmacyService.getMyProfile().catch(() => null)) || authProfile;
     const existingUser = useAuthStore.getState().user;
     const mappedUser = mapPharmacyProfileToUser(profile);
     const isProfileComplete = hasCompletedPharmacyProfile(profile);

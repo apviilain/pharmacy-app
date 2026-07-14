@@ -64,6 +64,11 @@ export type RootStackParamList = {
   MainTabs: undefined;
   Home: undefined;
   GlobalSearch: undefined;
+  NearbyMedicines: undefined;
+  PharmaciesDirectory: undefined;
+  PharmacyDetails: { pharmacyId: string; title?: string };
+  PharmacyCart: undefined;
+  ConsultationAppointments: undefined;
   PathkindBooking: undefined;
   Appointments: undefined;
   AppointmentDetails: { appointmentId: string; appointment?: any; fromNotification?: boolean };

@@ -1,6 +1,7 @@
 import { apiClient } from './apiClient';
 import { endpoints } from './endpoints';
-import { localAppointments, localSpecialists } from './localUiData';
+import { appointmentService } from './appointmentService';
+import { localSpecialists } from './localUiData';
 
 export type Specialist = {
   _id: string;
@@ -86,8 +87,8 @@ export const telehealthService = {
   getSlots: async (_doctorId: string, date: string): Promise<any> => buildSlots(date),
 
   getUserBookings: async (_userId: string): Promise<any> =>
-    localAppointments.map(item => ({ ...item })),
+    appointmentService.getAppointments({ status: 'All' }),
 
   getUpcomingBookings: async (): Promise<any> =>
-    localAppointments.filter(item => item.status === 'confirmed' || item.status === 'pending'),
+    appointmentService.getAppointments({ status: 'upcoming' }),
 };

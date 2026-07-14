@@ -263,7 +263,7 @@ export const CompleteProfileScreen = () => {
         {
           title: "Camera Permission",
           message:
-            "Pharmacy App needs access to your camera to take a profile picture.",
+            "Pharmyx needs access to your camera to take a profile picture.",
           buttonNeutral: "Ask Me Later",
           buttonNegative: "Cancel",
           buttonPositive: "OK",
@@ -287,7 +287,7 @@ export const CompleteProfileScreen = () => {
       const granted = await PermissionsAndroid.request(permission, {
         title: "Gallery Permission",
         message:
-          "Pharmacy App needs access to your gallery to choose a profile picture.",
+          "Pharmyx needs access to your gallery to choose a profile picture.",
         buttonNeutral: "Ask Me Later",
         buttonNegative: "Cancel",
         buttonPositive: "OK",
