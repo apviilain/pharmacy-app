@@ -9,16 +9,17 @@
  *   - Grouped notifications for multiple appointments
  */
 
-import notifee, {
-  AndroidImportance,
-  AndroidVisibility,
-  TimestampTrigger,
-  TriggerType,
-  AuthorizationStatus,
-  AndroidCategory,
-} from '@notifee/react-native';
+import type { TimestampTrigger } from '@notifee/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+
+const getNotifeeModule = () => {
+  try {
+    return require('@notifee/react-native');
+  } catch {
+    return null;
+  }
+};
 
 /* ─────────── Types ─────────── */
 
@@ -50,6 +51,15 @@ const TEN_MINUTES_MS = 10 * 60 * 1000;
  * Must be called before any notifications are displayed.
  */
 export async function setupNotificationChannel(): Promise<void> {
+  const notifeeModule = getNotifeeModule();
+  const notifee = notifeeModule?.default;
+  const AndroidImportance = notifeeModule?.AndroidImportance;
+  const AndroidVisibility = notifeeModule?.AndroidVisibility;
+
+  if (!notifee || !AndroidImportance || !AndroidVisibility) {
+    return;
+  }
+
   if (Platform.OS === 'android') {
     await notifee.createChannel({
       id: CHANNEL_ID,
@@ -80,6 +90,14 @@ export async function setupNotificationChannel(): Promise<void> {
  * Returns true if permission was granted.
  */
 export async function requestNotificationPermission(): Promise<boolean> {
+  const notifeeModule = getNotifeeModule();
+  const notifee = notifeeModule?.default;
+  const AuthorizationStatus = notifeeModule?.AuthorizationStatus;
+
+  if (!notifee || !AuthorizationStatus) {
+    return false;
+  }
+
   const settings = await notifee.requestPermission();
 
   if (
@@ -144,6 +162,16 @@ export async function scheduleAppointmentReminders(
   appointment: AppointmentNotificationData,
 ): Promise<boolean> {
   try {
+    const notifeeModule = getNotifeeModule();
+    const notifee = notifeeModule?.default;
+    const TriggerType = notifeeModule?.TriggerType;
+    const AndroidImportance = notifeeModule?.AndroidImportance;
+    const AndroidCategory = notifeeModule?.AndroidCategory;
+
+    if (!notifee || !TriggerType || !AndroidImportance || !AndroidCategory) {
+      return false;
+    }
+
     // Check for duplicate
     const scheduled = await getScheduledIds();
     if (scheduled[appointment.id]?.length > 0) {
@@ -297,6 +325,9 @@ export async function cancelAppointmentReminders(
   appointmentId: string,
 ): Promise<void> {
   try {
+    const notifee = getNotifeeModule()?.default;
+    if (!notifee) return;
+
     const scheduled = await getScheduledIds();
     const ids = scheduled[appointmentId];
 
@@ -322,6 +353,9 @@ export async function cancelAppointmentReminders(
  */
 export async function cancelAllReminders(): Promise<void> {
   try {
+    const notifee = getNotifeeModule()?.default;
+    if (!notifee) return;
+
     await notifee.cancelAllNotifications();
     await AsyncStorage.removeItem(STORAGE_KEY);
     console.log('[NotificationService] All reminders cancelled');
@@ -346,5 +380,10 @@ export async function isReminderScheduled(
  * Returns all pending trigger notifications (for debugging).
  */
 export async function getPendingNotifications() {
+  const notifee = getNotifeeModule()?.default;
+  if (!notifee?.getTriggerNotificationIds) {
+    return [];
+  }
+
   return notifee.getTriggerNotificationIds();
 }

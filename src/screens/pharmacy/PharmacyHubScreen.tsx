@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -32,6 +31,7 @@ import { colors } from '../../theme/colors';
 import { scale, verticalScale } from '../../theme/responsive';
 import { shadows } from '../../theme/shadows';
 import { typography } from '../../theme/typography';
+import { ModuleScreen } from '../../components/ui/ModuleScreen';
 
 type PharmacyRouteName =
   | 'PharmacyMedicines'
@@ -215,10 +215,10 @@ export const PharmacyHubScreen = () => {
   );
 
   return (
-    <ScrollView
-      style={styles.container}
+    <ModuleScreen
+      title="Pharmacy workspace"
+      subtitle="Open medicines, stock, orders, customers, consultations, diagnostics, and payments from dedicated flows."
       contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator={false}
     >
       <View style={styles.grid}>
         {HUB_CARDS.map(item => (
@@ -229,18 +229,12 @@ export const PharmacyHubScreen = () => {
           />
         ))}
       </View>
-    </ScrollView>
+    </ModuleScreen>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F7FBFF',
-  },
   contentContainer: {
-    paddingHorizontal: scale(18),
-    paddingTop: verticalScale(18),
     paddingBottom: verticalScale(28),
   },
   grid: {

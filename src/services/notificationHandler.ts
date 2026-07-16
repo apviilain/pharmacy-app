@@ -7,15 +7,35 @@
  *   - default    → navigate to AppointmentDetails screen (notification body tap)
  */
 
-import notifee, { EventType, Event } from '@notifee/react-native';
+import type { Event } from '@notifee/react-native';
 import { navigationRef } from '../navigation/navigationRef';
 import { useNotificationStore } from '../state/notificationStore';
+
+const getNotifeeModule = () => {
+  try {
+    return require('@notifee/react-native').default;
+  } catch {
+    return null;
+  }
+};
+
+const getNotifeeEventType = () => {
+  try {
+    return require('@notifee/react-native').EventType;
+  } catch {
+    return null;
+  }
+};
 
 /* ─────────── Action Handler ─────────── */
 
 async function handleNotificationAction(event: Event): Promise<void> {
   const { type, detail } = event;
   const { notification, pressAction } = detail;
+  const EventType = getNotifeeEventType();
+  const notifee = getNotifeeModule();
+
+  if (!EventType) return;
 
   // Handle in-app popup when notification is delivered in foreground
   if (type === EventType.DELIVERED) {
@@ -107,6 +127,10 @@ async function handleNotificationAction(event: Event): Promise<void> {
  * Returns an unsubscribe function.
  */
 export function registerForegroundHandler(): () => void {
+  const notifee = getNotifeeModule();
+  if (!notifee?.onForegroundEvent) {
+    return () => {};
+  }
   return notifee.onForegroundEvent(handleNotificationAction);
 }
 
@@ -130,6 +154,11 @@ export async function onBackgroundEvent(event: Event): Promise<void> {
  * Call this after navigation is ready to handle cold-start deep links.
  */
 export async function handleInitialNotification(): Promise<void> {
+  const notifee = getNotifeeModule();
+  if (!notifee?.getInitialNotification) {
+    return;
+  }
+
   const initialNotification = await notifee.getInitialNotification();
 
   if (initialNotification) {

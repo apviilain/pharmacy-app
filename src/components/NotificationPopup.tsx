@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { Bell, X, Video, CheckCircle2, Calendar } from 'lucide-react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import notifee from '@notifee/react-native';
 
 import { useNotificationStore } from '../state/notificationStore';
 import { navigationRef } from '../navigation/navigationRef';
@@ -18,6 +17,14 @@ import { typography } from '../theme/typography';
 import { scale, verticalScale } from '../theme/responsive';
 
 const { width } = Dimensions.get('window');
+
+const getNotifeeModule = () => {
+  try {
+    return require('@notifee/react-native').default;
+  } catch {
+    return null;
+  }
+};
 
 export const NotificationPopup = () => {
   const { currentNotification, isVisible, hideNotification } = useNotificationStore();
@@ -52,7 +59,8 @@ export const NotificationPopup = () => {
   const closePopup = async () => {
     if (currentNotification?.id && !isSuccess) {
       try {
-        await notifee.cancelNotification(currentNotification.id);
+        const notifee = getNotifeeModule();
+        await notifee?.cancelNotification?.(currentNotification.id);
       } catch (e) {
         console.log('Error canceling notification:', e);
       }

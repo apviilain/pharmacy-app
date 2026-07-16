@@ -15,7 +15,6 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   ArrowLeft,
-  Search,
   User,
   Wallet,
   FileText,
@@ -33,6 +32,16 @@ import type { RootStackParamList } from '../../navigation/types';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { scale, verticalScale } from '../../theme/responsive';
+import { ModuleScreen } from '../../components/ui/ModuleScreen';
+import { PremiumCard } from '../../components/ui/PremiumCard';
+import { PremiumSearchField } from '../../components/ui/PremiumSearchField';
+import { SectionState } from '../../components/ui/SectionState';
+import {
+  premiumTheme,
+  premiumTypography,
+  radii,
+  spacing,
+} from '../../theme/tokens';
 
 interface AppFeature {
   id: string;
@@ -215,7 +224,6 @@ export const GlobalSearchScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      {/* Header / Search Bar */}
       <View
         style={[
           styles.header,
@@ -230,28 +238,27 @@ export const GlobalSearchScreen = () => {
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <ArrowLeft color={colors.textHeader} size={scale(24)} />
         </TouchableOpacity>
-        
-        <View style={styles.searchBar}>
-          <Search color="#888" size={scale(18)} />
-            <TextInput
-              ref={inputRef}
-              style={styles.searchInput}
-              placeholder="Search medicines, inventory, orders..."
-              placeholderTextColor="#999"
-            value={query}
-            onChangeText={setQuery}
-            autoCapitalize="none"
-            autoCorrect={false}
-            returnKeyType="search"
-          />
-        </View>
+        <PremiumSearchField
+          ref={inputRef}
+          containerStyle={styles.searchBar}
+          placeholder="Search medicines, inventory, orders..."
+          value={query}
+          onChangeText={setQuery}
+          autoCapitalize="none"
+          autoCorrect={false}
+          returnKeyType="search"
+        />
       </View>
 
-      {/* Content */}
-      <View style={styles.content}>
+      <ModuleScreen
+        title="Search workspace"
+        subtitle="Jump into medicines, inventory, pharmacies, payments, and patient tools."
+        scroll={false}
+        contentContainerStyle={styles.moduleContent}
+      >
         {query.trim() === '' ? (
           <View style={styles.emptyStateContainer}>
-            <Text style={styles.emptyStateTitle}>Quick Suggestions</Text>
+            <Text style={styles.sectionTitle}>Quick Suggestions</Text>
             <View style={styles.suggestionsWrapper}>
               {APP_FEATURES.slice(0, 5).map(feat => (
                 <TouchableOpacity
@@ -269,7 +276,7 @@ export const GlobalSearchScreen = () => {
             {recentFeatures.length > 0 ? (
               <View style={styles.recentSection}>
                 <View style={styles.recentHeaderRow}>
-                  <Text style={styles.emptyStateTitle}>Recent History</Text>
+                  <Text style={styles.sectionTitle}>Recent History</Text>
                   <TouchableOpacity
                     activeOpacity={0.7}
                     onPress={clearRecentHistory}
@@ -284,23 +291,27 @@ export const GlobalSearchScreen = () => {
                   {recentFeatures.map(feature => {
                     const Icon = feature.icon;
                     return (
-                      <TouchableOpacity
+                      <PremiumCard
                         key={`recent_${feature.id}`}
-                        style={styles.recentItem}
-                        onPress={() =>
-                          handleItemPress(
-                            feature.screen as any,
-                            feature.params,
-                            feature.id,
-                          )
-                        }
-                        activeOpacity={0.75}
+                        style={styles.recentItemCard}
                       >
-                        <View style={styles.recentIconContainer}>
-                          <Icon color={colors.primaryBlue} size={scale(16)} />
-                        </View>
-                        <Text style={styles.recentItemText}>{feature.title}</Text>
-                      </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.recentItem}
+                          onPress={() =>
+                            handleItemPress(
+                              feature.screen as any,
+                              feature.params,
+                              feature.id,
+                            )
+                          }
+                          activeOpacity={0.75}
+                        >
+                          <View style={styles.recentIconContainer}>
+                            <Icon color={colors.primaryBlue} size={scale(16)} />
+                          </View>
+                          <Text style={styles.recentItemText}>{feature.title}</Text>
+                        </TouchableOpacity>
+                      </PremiumCard>
                     );
                   })}
                 </View>
@@ -321,12 +332,13 @@ export const GlobalSearchScreen = () => {
           />
         ) : (
           <View style={styles.noResultsContainer}>
-            <Search color="#ddd" size={scale(48)} style={{ marginBottom: verticalScale(16) }} />
-            <Text style={styles.noResultsText}>No features found for "{query}"</Text>
-            <Text style={styles.noResultsSub}>Try searching for 'medicine', 'inventory', or 'orders'.</Text>
+            <SectionState
+              title={`No results for "${query}"`}
+              subtitle="Try keywords like medicine, inventory, pharmacy, wallet, or orders."
+            />
           </View>
         )}
-      </View>
+      </ModuleScreen>
     </SafeAreaView>
   );
 };
@@ -334,16 +346,14 @@ export const GlobalSearchScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: premiumTheme.screen,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: scale(16),
-    paddingBottom: verticalScale(8),
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
-    backgroundColor: '#fff',
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
+    backgroundColor: premiumTheme.screen,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -362,48 +372,29 @@ const styles = StyleSheet.create({
   },
   searchBar: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F3F6FB',
-    borderRadius: scale(12),
-    paddingHorizontal: scale(12),
-    height: verticalScale(44),
   },
-  searchInput: {
+  moduleContent: {
     flex: 1,
-    marginLeft: scale(8),
-    fontFamily: typography.fontFamily.medium,
-    fontSize: typography.fontSize.md,
-    color: colors.textHeader,
-    paddingVertical: 0, // important for Android
-  },
-  content: {
-    flex: 1,
-    backgroundColor: '#FAFAFA',
   },
   listContent: {
-    padding: scale(16),
+    paddingBottom: spacing.xl,
+    gap: spacing.sm,
   },
   resultItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: scale(16),
+    backgroundColor: premiumTheme.card,
+    padding: spacing.md,
     marginBottom: verticalScale(10),
-    borderRadius: scale(12),
+    borderRadius: radii.lg,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.03)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.02,
-    shadowRadius: 2,
-    elevation: 1,
+    borderColor: premiumTheme.cardBorder,
   },
   iconContainer: {
     width: scale(40),
     height: scale(40),
     borderRadius: scale(20),
-    backgroundColor: 'rgba(21, 114, 183, 0.08)',
+    backgroundColor: premiumTheme.blueTint,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: scale(14),
@@ -417,21 +408,18 @@ const styles = StyleSheet.create({
     color: colors.textHeader,
   },
   emptyStateContainer: {
-    padding: scale(20),
+    gap: spacing.lg,
   },
   recentSection: {
-    marginBottom: verticalScale(20),
+    marginTop: spacing.sm,
   },
   recentHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  emptyStateTitle: {
-    fontFamily: typography.fontFamily.semiBold,
-    fontSize: typography.fontSize.md,
-    color: colors.textSecondary,
-    marginBottom: verticalScale(16),
+  sectionTitle: {
+    ...premiumTypography.title,
   },
   clearHistoryButton: {
     flexDirection: 'row',
@@ -447,21 +435,20 @@ const styles = StyleSheet.create({
   recentList: {
     gap: verticalScale(10),
   },
+  recentItemCard: {
+    overflow: 'hidden',
+  },
   recentItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: scale(14),
     paddingHorizontal: scale(14),
     paddingVertical: verticalScale(12),
-    borderWidth: 1,
-    borderColor: 'rgba(18, 83, 135, 0.08)',
   },
   recentIconContainer: {
     width: scale(32),
     height: scale(32),
     borderRadius: scale(16),
-    backgroundColor: 'rgba(21, 114, 183, 0.08)',
+    backgroundColor: premiumTheme.blueTint,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: scale(12),
@@ -483,7 +470,7 @@ const styles = StyleSheet.create({
     paddingVertical: verticalScale(10),
     borderRadius: scale(20),
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.05)',
+    borderColor: premiumTheme.cardBorder,
   },
   suggestionText: {
     fontFamily: typography.fontFamily.medium,
@@ -493,20 +480,5 @@ const styles = StyleSheet.create({
   noResultsContainer: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: scale(32),
-  },
-  noResultsText: {
-    fontFamily: typography.fontFamily.semiBold,
-    fontSize: typography.fontSize.lg,
-    color: colors.textHeader,
-    textAlign: 'center',
-    marginBottom: verticalScale(8),
-  },
-  noResultsSub: {
-    fontFamily: typography.fontFamily.regular,
-    fontSize: typography.fontSize.md,
-    color: colors.textSecondary,
-    textAlign: 'center',
   },
 });

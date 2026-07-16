@@ -80,6 +80,8 @@ export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
         <>
           {icon && icon}
           <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
             style={[
               styles.text,
               {
@@ -117,5 +119,7 @@ const styles = StyleSheet.create({
   text: {
     fontFamily: typography.fontFamily.semiBold,
     fontSize: typography.fontSize.md,
+    textAlign: 'center',
+    flexShrink: 1,
   },
 });

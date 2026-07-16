@@ -21,23 +21,31 @@ import {
   CreditCard,
   FilePlus2,
   FlaskConical,
+  Check,
   RefreshCw,
 } from 'lucide-react-native';
+// @ts-ignore
+import RazorpayCheckout from 'react-native-razorpay';
 
 import type { RootStackParamList } from '../../navigation/types';
+import { diagnosticsCatalogService } from '../../api/diagnosticsCatalogService';
 import { diagnosticsBookingService } from '../../api/diagnosticsBookingService';
 import type {
   DiagnosticsBooking,
   DiagnosticsBookingRequest,
   DiagnosticsCancelRequest,
+  DiagnosticsPackage,
   DiagnosticsRescheduleRequest,
   DiagnosticsRetryPaymentRequest,
+  DiagnosticsSlot,
 } from '../../api/pharmyx';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { Screen } from '../../components/Screen';
+import { env } from '../../config/env';
 import { colors } from '../../theme/colors';
 import { scale, verticalScale } from '../../theme/responsive';
 import { typography } from '../../theme/typography';
+import { parsePaymentError } from '../../utils/paymentUtils';
 
 type DiagnosticsProps = NativeStackScreenProps<RootStackParamList, 'Diagnostics'>;
 type CreateProps = NativeStackScreenProps<
@@ -138,6 +146,34 @@ const validateCreateForm = (form: DiagnosticsForm) => {
   return errors;
 };
 
+const getDiagnosticsPaymentContext = (
+  booking: Partial<DiagnosticsBooking> | null | undefined,
+) => {
+  const payment = (booking?.payment ||
+    booking?.paymentDetails ||
+    booking?.paymentMeta ||
+    booking?.paymentContext ||
+    {}) as Record<string, unknown>;
+
+  const razorpayOrderId = String(
+    payment.razorpayOrderId || booking?.razorpayOrderId || '',
+  );
+  const paymentTransactionId = String(
+    payment.paymentTransactionId || booking?.paymentTransactionId || '',
+  );
+  const amount = Number(payment.amount ?? booking?.amount ?? 0);
+  const currency = String(payment.currency || 'INR');
+  const razorpayKeyId = String(payment.razorpayKeyId || env.RAZORPAY_KEY || '');
+
+  return {
+    razorpayOrderId,
+    paymentTransactionId,
+    amount,
+    currency,
+    razorpayKeyId,
+  };
+};
+
 const Field = ({
   label,
   value,
@@ -188,6 +224,68 @@ const EmptyState = ({
     <PrimaryButton title={actionTitle} onPress={onAction} style={styles.emptyAction} />
   </View>
 );
+
+const PackageCard = ({
+  item,
+  selected,
+  onPress,
+}: {
+  item: DiagnosticsPackage;
+  selected: boolean;
+  onPress: () => void;
+}) => {
+  const label =
+    item.packageName || item.displayName || item.name || item.code || 'Package';
+  const amount = Number(item.discountedPrice ?? item.amount ?? item.price ?? 0);
+  const testsCount = Number(item.testsCount ?? item.testCount ?? 0);
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.85}
+      onPress={onPress}
+      style={[styles.choiceCard, selected && styles.choiceCardActive]}
+    >
+      <View style={styles.choiceCardTopRow}>
+        <Text style={styles.choiceCardTitle}>{label}</Text>
+        {selected ? (
+          <View style={styles.choiceCheck}>
+            <Check size={scale(14)} color="#fff" />
+          </View>
+        ) : null}
+      </View>
+      <Text style={styles.choiceCardMeta}>
+        {testsCount > 0 ? `${testsCount} tests` : 'Labstack package'}
+      </Text>
+      <Text style={styles.choiceCardPrice}>₹{amount}</Text>
+    </TouchableOpacity>
+  );
+};
+
+const SlotChip = ({
+  item,
+  selected,
+  onPress,
+}: {
+  item: DiagnosticsSlot;
+  selected: boolean;
+  onPress: () => void;
+}) => {
+  const label = item.startTime || item.bookingTime || item.label || 'Slot';
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.85}
+      onPress={onPress}
+      style={[styles.slotOption, selected && styles.slotOptionActive]}
+    >
+      <Text
+        style={[styles.slotOptionText, selected && styles.slotOptionTextActive]}
+      >
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+};
 
 const BookingCard = ({
   booking,
@@ -374,6 +472,34 @@ export const DiagnosticsCreateBookingScreen: React.FC<CreateProps> = ({
   const queryClient = useQueryClient();
   const [form, setForm] = React.useState<DiagnosticsForm>(DEFAULT_FORM);
   const [errors, setErrors] = React.useState<Record<string, string>>({});
+  const [selectedPackageIds, setSelectedPackageIds] = React.useState<string[]>([]);
+
+  const packagesQuery = useQuery({
+    queryKey: ['diagnosticsPackages', form.integration],
+    queryFn: () =>
+      diagnosticsCatalogService.getPackages({ integration: form.integration }),
+  });
+
+  const slotsQuery = useQuery({
+    queryKey: [
+      'diagnosticsSlots',
+      form.integration,
+      form.bookingDate,
+      form.pincode,
+      selectedPackageIds.join(','),
+    ],
+    queryFn: () =>
+      diagnosticsCatalogService.getSlots({
+        integration: form.integration,
+        bookingDate: form.bookingDate.trim(),
+        pincode: form.pincode.trim(),
+        packageIds: selectedPackageIds,
+      }),
+    enabled:
+      /^\d{8}$/.test(form.bookingDate.trim()) &&
+      form.pincode.trim().length >= 6 &&
+      selectedPackageIds.length > 0,
+  });
 
   const createMutation = useMutation({
     mutationFn: (payload: DiagnosticsBookingRequest) =>
@@ -387,6 +513,10 @@ export const DiagnosticsCreateBookingScreen: React.FC<CreateProps> = ({
         text2: 'Diagnostics booking created successfully.',
       });
       if (bookingId) {
+        if (isPaymentPending(created)) {
+          navigation.replace('DiagnosticsPayment', { bookingId });
+          return;
+        }
         navigation.replace('DiagnosticsBookingDetails', { bookingId });
         return;
       }
@@ -408,6 +538,52 @@ export const DiagnosticsCreateBookingScreen: React.FC<CreateProps> = ({
     createMutation.mutate(toCreatePayload(form));
   };
 
+  const togglePackage = (pkg: DiagnosticsPackage) => {
+    const packageId = String(pkg.packageId || pkg.id || pkg._id || pkg.code || '');
+    const packageName = String(
+      pkg.packageName || pkg.displayName || pkg.name || pkg.code || '',
+    );
+
+    if (!packageId || !packageName) return;
+
+    setSelectedPackageIds(current => {
+      const exists = current.includes(packageId);
+      const nextIds = exists
+        ? current.filter(value => value !== packageId)
+        : [...current, packageId];
+
+      const selectedPackages = (packagesQuery.data || []).filter(item => {
+        const currentId = String(
+          item.packageId || item.id || item._id || item.code || '',
+        );
+        return nextIds.includes(currentId);
+      });
+
+      setForm(currentForm => ({
+        ...currentForm,
+        testIds: selectedPackages
+          .map(item => String(item.packageId || item.id || item._id || item.code || ''))
+          .filter(Boolean)
+          .join(', '),
+        testNames: selectedPackages
+          .map(item =>
+            String(item.packageName || item.displayName || item.name || item.code || ''),
+          )
+          .filter(Boolean)
+          .join(', '),
+      }));
+
+      return nextIds;
+    });
+  };
+
+  const selectSlot = (slot: DiagnosticsSlot) => {
+    setForm(current => ({
+      ...current,
+      bookingTime: String(slot.startTime || slot.bookingTime || slot.label || ''),
+    }));
+  };
+
   return (
     <Screen style={styles.screen}>
       <ScrollView contentContainerStyle={styles.formContent}>
@@ -416,6 +592,42 @@ export const DiagnosticsCreateBookingScreen: React.FC<CreateProps> = ({
           <Text style={styles.formSubtitle}>
             Fill in diagnostics booking details on a dedicated screen.
           </Text>
+
+          <View style={styles.catalogSection}>
+            <Text style={styles.catalogTitle}>Select Packages</Text>
+            <Text style={styles.catalogSubtitle}>
+              Labstack packages are loaded first. Manual entry stays available below as fallback.
+            </Text>
+            {packagesQuery.isLoading ? (
+              <View style={styles.inlineLoader}>
+                <ActivityIndicator color={colors.primaryBlue} />
+                <Text style={styles.inlineLoaderText}>Loading packages...</Text>
+              </View>
+            ) : packagesQuery.isError ? (
+              <View style={styles.inlineInfoCard}>
+                <CircleAlert size={scale(16)} color="#B45309" />
+                <Text style={styles.inlineInfoText}>
+                  Package catalog is unavailable right now. You can still enter test IDs manually.
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.choiceGrid}>
+                {(packagesQuery.data || []).map(item => {
+                  const packageId = String(
+                    item.packageId || item.id || item._id || item.code || '',
+                  );
+                  return (
+                    <PackageCard
+                      key={packageId}
+                      item={item}
+                      selected={selectedPackageIds.includes(packageId)}
+                      onPress={() => togglePackage(item)}
+                    />
+                  );
+                })}
+              </View>
+            )}
+          </View>
 
           <Field
             label="Integration"
@@ -458,6 +670,45 @@ export const DiagnosticsCreateBookingScreen: React.FC<CreateProps> = ({
             placeholder="110001"
             error={errors.pincode}
           />
+          <View style={styles.catalogSection}>
+            <Text style={styles.catalogTitle}>Select Slot</Text>
+            <Text style={styles.catalogSubtitle}>
+              Slots refresh after date, pincode, and package selection.
+            </Text>
+            {slotsQuery.isLoading ? (
+              <View style={styles.inlineLoader}>
+                <ActivityIndicator color={colors.primaryBlue} />
+                <Text style={styles.inlineLoaderText}>Loading slots...</Text>
+              </View>
+            ) : slotsQuery.data && slotsQuery.data.length > 0 ? (
+              <View style={styles.slotGrid}>
+                {slotsQuery.data.map(item => {
+                  const slotId = String(item.slotId || item.id || item._id || '');
+                  const label = String(
+                    item.startTime || item.bookingTime || item.label || '',
+                  );
+                  return (
+                    <SlotChip
+                      key={slotId}
+                      item={item}
+                      selected={form.bookingTime.trim() === label}
+                      onPress={() => selectSlot(item)}
+                    />
+                  );
+                })}
+              </View>
+            ) : slotsQuery.isFetched &&
+              /^\d{8}$/.test(form.bookingDate.trim()) &&
+              form.pincode.trim().length >= 6 &&
+              selectedPackageIds.length > 0 ? (
+              <View style={styles.inlineInfoCard}>
+                <CircleAlert size={scale(16)} color="#B45309" />
+                <Text style={styles.inlineInfoText}>
+                  No Labstack slots returned for this date yet. You can still type the booking time manually.
+                </Text>
+              </View>
+            ) : null}
+          </View>
           <Field
             label="Address"
             value={form.addressLine}
@@ -643,23 +894,99 @@ export const DiagnosticsPaymentScreen: React.FC<PaymentProps> = ({
   const queryClient = useQueryClient();
   const [couponCode, setCouponCode] = React.useState('');
   const [useWalletBalance, setUseWalletBalance] = React.useState(false);
+  const bookingQuery = useQuery({
+    queryKey: ['diagnosticsBookingPayment', bookingId],
+    queryFn: async () =>
+      diagnosticsBookingService.getSessionBookingById(bookingId) ||
+      (await diagnosticsBookingService.getPaymentDetails(bookingId)),
+    enabled: !!bookingId,
+  });
 
-  const booking = diagnosticsBookingService.getSessionBookingById(bookingId);
+  const booking = bookingQuery.data;
+  const paymentContext = getDiagnosticsPaymentContext(booking);
+
+  const completePayment = React.useCallback(
+    async (currentBooking: Partial<DiagnosticsBooking> | null | undefined) => {
+      const currentContext = getDiagnosticsPaymentContext(currentBooking);
+
+      if (!currentContext.razorpayOrderId || !currentContext.paymentTransactionId) {
+        Toast.show({
+          type: 'success',
+          text1: 'Payment updated',
+          text2: 'Diagnostics payment status has been refreshed.',
+        });
+        navigation.replace('DiagnosticsBookingDetails', { bookingId });
+        return;
+      }
+
+      const options = {
+        description: `Diagnostics booking #${bookingId}`,
+        currency: currentContext.currency || 'INR',
+        key: currentContext.razorpayKeyId || env.RAZORPAY_KEY,
+        amount: currentContext.amount || 0,
+        name: 'Pharmyx',
+        order_id: currentContext.razorpayOrderId,
+        theme: { color: colors.primaryBlue },
+        prefill: {
+          contact: booking?.patientPhone || '',
+          name: booking?.patientName || '',
+        },
+      };
+
+      try {
+        const paymentResult: any = await RazorpayCheckout.open(options);
+        await diagnosticsBookingService.verifyPayment({
+          paymentTransactionId: currentContext.paymentTransactionId,
+          razorpayOrderId: paymentResult.razorpay_order_id,
+          razorpayPaymentId: paymentResult.razorpay_payment_id,
+          razorpaySignature: paymentResult.razorpay_signature,
+          module: 'external-bookings',
+        });
+
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['diagnosticsSessionBookings'] }),
+          queryClient.invalidateQueries({ queryKey: ['diagnosticsBooking', bookingId] }),
+          queryClient.invalidateQueries({ queryKey: ['diagnosticsBookingPayment', bookingId] }),
+        ]);
+
+        Toast.show({
+          type: 'success',
+          text1: 'Payment verified',
+          text2: 'Diagnostics booking payment completed.',
+        });
+        navigation.replace('DiagnosticsBookingDetails', { bookingId });
+      } catch (error: any) {
+        Toast.show({
+          type: 'error',
+          text1: 'Payment failed',
+          text2: parsePaymentError(error),
+        });
+      }
+    },
+    [booking?.patientName, booking?.patientPhone, bookingId, navigation, queryClient],
+  );
 
   const retryMutation = useMutation({
     mutationFn: (payload: DiagnosticsRetryPaymentRequest) =>
       diagnosticsBookingService.retryPayment(bookingId, payload),
-    onSuccess: () => {
+    onSuccess: async response => {
       queryClient.invalidateQueries({ queryKey: ['diagnosticsSessionBookings'] });
       queryClient.invalidateQueries({ queryKey: ['diagnosticsBooking', bookingId] });
-      Toast.show({
-        type: 'success',
-        text1: 'Payment retry started',
-        text2: 'Payment flow has been triggered again.',
-      });
-      navigation.replace('DiagnosticsBookingDetails', { bookingId });
+      queryClient.invalidateQueries({ queryKey: ['diagnosticsBookingPayment', bookingId] });
+      await completePayment(response);
     },
   });
+
+  if (bookingQuery.isLoading) {
+    return (
+      <Screen style={styles.screen}>
+        <View style={styles.loadingCard}>
+          <ActivityIndicator color={colors.primaryBlue} />
+          <Text style={styles.loadingText}>Loading payment details...</Text>
+        </View>
+      </Screen>
+    );
+  }
 
   return (
     <Screen style={styles.screen}>
@@ -675,6 +1002,10 @@ export const DiagnosticsPaymentScreen: React.FC<PaymentProps> = ({
             <Text style={styles.paymentInfoValue}>{booking?.patientName || 'NA'}</Text>
             <Text style={styles.paymentInfoLabel}>Amount</Text>
             <Text style={styles.paymentInfoValue}>₹{String(booking?.amount ?? 0)}</Text>
+            <Text style={styles.paymentInfoLabel}>Status</Text>
+            <Text style={styles.paymentInfoValue}>
+              {String(booking?.paymentStatus || booking?.status || 'Pending')}
+            </Text>
           </View>
 
           <Field
@@ -701,6 +1032,14 @@ export const DiagnosticsPaymentScreen: React.FC<PaymentProps> = ({
             loading={retryMutation.isPending}
             icon={<ArrowRight size={scale(18)} color="#fff" />}
           />
+          {paymentContext.razorpayOrderId ? (
+            <PrimaryButton
+              title="Pay Now"
+              onPress={() => completePayment(booking)}
+              variant="outline"
+              icon={<CreditCard size={scale(18)} color={colors.textHeader} />}
+            />
+          ) : null}
         </View>
       </ScrollView>
     </Screen>
@@ -976,6 +1315,96 @@ const styles = StyleSheet.create({
     lineHeight: scale(19),
     marginBottom: verticalScale(18),
   },
+  catalogSection: {
+    marginBottom: verticalScale(14),
+  },
+  catalogTitle: {
+    fontFamily: typography.fontFamily.semiBold,
+    fontSize: typography.fontSize.md,
+    color: colors.textHeader,
+    marginBottom: verticalScale(4),
+  },
+  catalogSubtitle: {
+    fontFamily: typography.fontFamily.regular,
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+    lineHeight: scale(18),
+    marginBottom: verticalScale(10),
+  },
+  inlineLoader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: verticalScale(10),
+  },
+  inlineLoaderText: {
+    marginLeft: scale(10),
+    fontFamily: typography.fontFamily.medium,
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+  },
+  inlineInfoCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    borderRadius: scale(16),
+    borderWidth: 1,
+    borderColor: '#F2D3A5',
+    backgroundColor: '#FFF8ED',
+    padding: scale(12),
+    gap: scale(8),
+  },
+  inlineInfoText: {
+    flex: 1,
+    fontFamily: typography.fontFamily.regular,
+    fontSize: typography.fontSize.sm,
+    color: '#8A5A11',
+    lineHeight: scale(18),
+  },
+  choiceGrid: {
+    gap: verticalScale(10),
+  },
+  choiceCard: {
+    borderRadius: scale(18),
+    borderWidth: 1,
+    borderColor: '#E2EAF2',
+    backgroundColor: '#F8FBFE',
+    padding: scale(14),
+  },
+  choiceCardActive: {
+    borderColor: colors.primaryBlue,
+    backgroundColor: '#EEF6FD',
+  },
+  choiceCardTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: scale(10),
+  },
+  choiceCardTitle: {
+    flex: 1,
+    fontFamily: typography.fontFamily.semiBold,
+    fontSize: typography.fontSize.md,
+    color: colors.textHeader,
+  },
+  choiceCheck: {
+    width: scale(22),
+    height: scale(22),
+    borderRadius: scale(11),
+    backgroundColor: colors.primaryBlue,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  choiceCardMeta: {
+    marginTop: verticalScale(6),
+    fontFamily: typography.fontFamily.regular,
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+  },
+  choiceCardPrice: {
+    marginTop: verticalScale(8),
+    fontFamily: typography.fontFamily.bold,
+    fontSize: typography.fontSize.lg,
+    color: colors.primaryBlue,
+  },
   fieldWrap: {
     marginBottom: verticalScale(14),
   },
@@ -1009,6 +1438,31 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily.regular,
     fontSize: typography.fontSize.sm,
     color: colors.error,
+  },
+  slotGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: scale(10),
+  },
+  slotOption: {
+    borderRadius: scale(999),
+    borderWidth: 1,
+    borderColor: '#D9E3EE',
+    backgroundColor: '#F8FBFE',
+    paddingHorizontal: scale(14),
+    paddingVertical: verticalScale(10),
+  },
+  slotOptionActive: {
+    borderColor: colors.primaryBlue,
+    backgroundColor: '#EEF6FD',
+  },
+  slotOptionText: {
+    fontFamily: typography.fontFamily.medium,
+    fontSize: typography.fontSize.sm,
+    color: colors.textHeader,
+  },
+  slotOptionTextActive: {
+    color: colors.primaryBlue,
   },
   detailsGrid: {
     flexDirection: 'row',

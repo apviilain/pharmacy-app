@@ -112,6 +112,8 @@ type PharmacyScreenRouteParams = {
   section?: PharmacySection;
   lockedSection?: boolean;
 };
+type MedicineShelfTab = 'all' | 'tablets' | 'syrups' | 'wellness' | 'devices';
+type MedicineBrowseTab = 'all' | 'otc' | 'rx' | 'top';
 type MedicineFormMode = 'create' | 'edit';
 type InventoryActionMode = 'reserve' | 'release';
 type OrderActionMode = 'update' | 'status' | 'cancel' | 'markPaid';
@@ -432,10 +434,38 @@ const DEFAULT_PAYMENT_VERIFICATION_FORM: PaymentVerificationForm = {
 const getEntityId = (entity: { id?: string; _id?: string }) =>
   entity.id || entity._id || '';
 
+const getMedicineRefId = (
+  medicine:
+    | string
+    | { id?: string; _id?: string; name?: string; genericName?: string }
+    | null
+    | undefined
+) => {
+  if (!medicine) return '';
+  if (typeof medicine === 'string') return medicine;
+  return medicine.id || medicine._id || '';
+};
+
+const getMedicineRefLabel = (
+  medicine:
+    | string
+    | { id?: string; _id?: string; name?: string; brandName?: string; genericName?: string }
+    | null
+    | undefined,
+  fallback = 'Inventory item'
+) => {
+  if (!medicine) return fallback;
+  if (typeof medicine === 'string') return medicine;
+  return medicine.name || medicine.brandName || medicine.genericName || fallback;
+};
+
 const getInventoryItemKey = (item: PharmyxInventoryItem, index: number) =>
   getEntityId(item) ||
   [
-    item.medicineId || item.medicine?.id || item.medicine?._id || 'medicine',
+    getMedicineRefId(item.medicineId as any) ||
+      item.medicine?.id ||
+      item.medicine?._id ||
+      'medicine',
     item.batchNumber || 'batch',
     item.rackLocation || 'rack',
     index,
@@ -447,7 +477,10 @@ const getInventoryAdjustmentKey = (
 ) =>
   getEntityId(item) ||
   [
-    item.medicineId || item.medicine?.id || item.medicine?._id || 'medicine',
+    getMedicineRefId(item.medicineId as any) ||
+      item.medicine?.id ||
+      item.medicine?._id ||
+      'medicine',
     item.type || 'adjustment',
     item.createdAt || 'created-at',
     index,
@@ -697,6 +730,10 @@ export function PharmacyScreen() {
   const [activeSection, setActiveSection] =
     useState<PharmacySection>('medicines');
   const [medicineSearchInput, setMedicineSearchInput] = useState('');
+  const [medicineShelfTab, setMedicineShelfTab] =
+    useState<MedicineShelfTab>('all');
+  const [medicineBrowseTab, setMedicineBrowseTab] =
+    useState<MedicineBrowseTab>('all');
   const [debouncedMedicineSearch, setDebouncedMedicineSearch] = useState('');
   const [medicinePage, setMedicinePage] = useState(1);
   const [selectedMedicineId, setSelectedMedicineId] = useState('');
@@ -873,21 +910,130 @@ export function PharmacyScreen() {
   });
 
   const medicines = medicinesQuery.data || [];
+  const medicineStats = useMemo(
+    () => ({
+      total: medicines.length,
+      otc: medicines.filter((item) => !item.prescriptionRequired).length,
+      rx: medicines.filter((item) => !!item.prescriptionRequired).length,
+      categories: Array.from(
+        new Set(
+          medicines
+            .map((item) => String(item.category || '').trim())
+            .filter(Boolean)
+        )
+      ).length,
+    }),
+    [medicines]
+  );
+  const shelfFilteredMedicines = useMemo(() => {
+    if (medicineShelfTab === 'all') {
+      return medicines;
+    }
+
+    return medicines.filter((item) => {
+      const dosageForm = String(item.dosageForm || '').toLowerCase();
+      const category = String(item.category || '').toLowerCase();
+      const manufacturer = String(item.manufacturer || '').toLowerCase();
+
+      if (medicineShelfTab === 'tablets') {
+        return (
+          dosageForm.includes('tablet') ||
+          dosageForm.includes('capsule') ||
+          category.includes('tablet')
+        );
+      }
+
+      if (medicineShelfTab === 'syrups') {
+        return (
+          dosageForm.includes('syrup') ||
+          dosageForm.includes('liquid') ||
+          dosageForm.includes('suspension')
+        );
+      }
+
+      if (medicineShelfTab === 'wellness') {
+        return (
+          category.includes('vitamin') ||
+          category.includes('wellness') ||
+          category.includes('supplement')
+        );
+      }
+
+      if (medicineShelfTab === 'devices') {
+        return (
+          category.includes('device') ||
+          category.includes('equipment') ||
+          manufacturer.includes('device')
+        );
+      }
+
+      return true;
+    });
+  }, [medicineShelfTab, medicines]);
+  const filteredMedicines = useMemo(() => {
+    if (medicineBrowseTab === 'otc') {
+      return shelfFilteredMedicines.filter((item) => !item.prescriptionRequired);
+    }
+
+    if (medicineBrowseTab === 'rx') {
+      return shelfFilteredMedicines.filter((item) => !!item.prescriptionRequired);
+    }
+
+    if (medicineBrowseTab === 'top') {
+      return [...shelfFilteredMedicines].sort((left, right) => {
+        const leftScore = Number(!!left.prescriptionRequired) * 2;
+        const rightScore = Number(!!right.prescriptionRequired) * 2;
+        return rightScore - leftScore;
+      });
+    }
+
+    return shelfFilteredMedicines;
+  }, [medicineBrowseTab, shelfFilteredMedicines]);
+  const medicineShelfTabs = useMemo(
+    () => [
+      { key: 'all' as const, label: 'All' },
+      { key: 'tablets' as const, label: 'Tablets' },
+      { key: 'syrups' as const, label: 'Syrups' },
+      { key: 'wellness' as const, label: 'Wellness' },
+      { key: 'devices' as const, label: 'Devices' },
+    ],
+    []
+  );
+  const medicineBrowseTabs = useMemo(
+    () => [
+      { key: 'all' as const, label: 'All Items', count: shelfFilteredMedicines.length },
+      { key: 'top' as const, label: 'Top Picks', count: shelfFilteredMedicines.length },
+      {
+        key: 'otc' as const,
+        label: 'OTC',
+        count: shelfFilteredMedicines.filter((item) => !item.prescriptionRequired)
+          .length,
+      },
+      {
+        key: 'rx' as const,
+        label: 'Prescription',
+        count: shelfFilteredMedicines.filter((item) => !!item.prescriptionRequired)
+          .length,
+      },
+    ],
+    [shelfFilteredMedicines]
+  );
+  const featuredMedicine = filteredMedicines[0] || medicines[0] || null;
 
   useEffect(() => {
-    if (!medicines.length) {
+    if (!filteredMedicines.length) {
       setSelectedMedicineId('');
       return;
     }
 
-    const selectedStillVisible = medicines.some(
+    const selectedStillVisible = filteredMedicines.some(
       (item) => getEntityId(item) === selectedMedicineId
     );
 
     if (!selectedMedicineId || !selectedStillVisible) {
-      setSelectedMedicineId(getEntityId(medicines[0]));
+      setSelectedMedicineId(getEntityId(filteredMedicines[0]));
     }
-  }, [medicines, selectedMedicineId]);
+  }, [filteredMedicines, selectedMedicineId]);
 
   const selectedMedicineSummary = medicines.find(
     (item) => getEntityId(item) === selectedMedicineId
@@ -2497,9 +2643,10 @@ export function PharmacyScreen() {
     setInventoryActionMode(mode);
     setInventoryActionForm({
       ...DEFAULT_INVENTORY_ACTION_FORM,
-      medicineId: String(
-        selectedInventory?.medicineId || selectedMedicineId || ''
-      ).trim(),
+      medicineId:
+        getMedicineRefId(selectedInventory?.medicineId as any) ||
+        selectedMedicineId ||
+        '',
       reason: mode === 'reserve' ? 'internal_hold' : 'release_hold',
     });
     setInventoryActionErrors({});
@@ -3417,69 +3564,87 @@ export function PharmacyScreen() {
       );
     }
 
-    if (!medicines.length) {
+    if (!filteredMedicines.length) {
       return (
         <EmptyState
           title="No medicines found"
-          subtitle="Add your first medicine or adjust the search term."
+          subtitle="Try another shelf tab or adjust the search term."
         />
       );
     }
 
-    return medicines.map((item) => {
-      const entityId = getEntityId(item);
-      const isSelected = entityId === selectedMedicineId;
+    return (
+      <View style={styles.medicineGrid}>
+        {filteredMedicines.map((item, index) => {
+          const entityId = getEntityId(item);
+          const isSelected = entityId === selectedMedicineId;
+          const chipLabel = item.strength || item.dosageForm || 'In stock';
 
-      return (
-        <TouchableOpacity
-          key={entityId}
-          activeOpacity={0.88}
-          onPress={() => setSelectedMedicineId(entityId)}
-          style={[styles.listCard, isSelected && styles.listCardSelected]}
-        >
-          <View style={styles.listCardTop}>
-            <View style={styles.listTitleWrap}>
-              <Text style={styles.listTitle}>
-                {item.name || 'Unnamed medicine'}
-              </Text>
-              <Text style={styles.listSubtitle}>
-                {item.genericName || item.category || 'No category'}
-              </Text>
-            </View>
-            <View
+          return (
+            <TouchableOpacity
+              key={entityId}
+              activeOpacity={0.88}
+              onPress={() => setSelectedMedicineId(entityId)}
               style={[
-                styles.badge,
-                item.prescriptionRequired
-                  ? styles.badgeWarning
-                  : styles.badgeSuccess,
+                styles.medicineGridCard,
+                isSelected && styles.medicineGridCardSelected,
               ]}
             >
-              <Text
+              <View
                 style={[
-                  styles.badgeText,
+                  styles.medicineGridArtwork,
                   item.prescriptionRequired
-                    ? styles.badgeTextWarning
-                    : styles.badgeTextSuccess,
+                    ? styles.medicineGridArtworkRx
+                    : styles.medicineGridArtworkOtc,
                 ]}
               >
-                {item.prescriptionRequired ? 'Rx Required' : 'OTC'}
-              </Text>
-            </View>
-          </View>
+                {index === 0 ? (
+                  <View style={styles.medicineBestSellerBadge}>
+                    <Text style={styles.medicineBestSellerBadgeText}>
+                      Top pick
+                    </Text>
+                  </View>
+                ) : null}
 
-          <View style={styles.medicineMetaRow}>
-            <Text style={styles.metaLabel}>Strength</Text>
-            <Text style={styles.metaValue}>{item.strength || 'Not set'}</Text>
-          </View>
-          <View style={styles.medicineMetaRow}>
-            <Text style={styles.metaLabel}>Manufacturer</Text>
-            <Text style={styles.metaValue}>
-              {item.manufacturer || 'Not set'}
-            </Text>
-          </View>
-        </TouchableOpacity>
-      );
-    });
+                <View style={styles.medicineGridPillIcon}>
+                  <Pill
+                    size={scale(22)}
+                    color={item.prescriptionRequired ? '#1572B7' : '#D97706'}
+                  />
+                </View>
+
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => setSelectedMedicineId(entityId)}
+                  style={styles.medicineGridAddButton}
+                >
+                  <Plus size={scale(16)} color={colors.primaryBlue} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.medicinePriceRow}>
+                <View style={styles.medicinePriceChip}>
+                  <Text style={styles.medicinePriceChipText}>{chipLabel}</Text>
+                </View>
+                <Text style={styles.medicineStrikeText}>
+                  {item.prescriptionRequired ? 'Rx' : 'OTC'}
+                </Text>
+              </View>
+
+              <Text style={styles.medicineGridTitle} numberOfLines={2}>
+                {item.name || 'Unnamed medicine'}
+              </Text>
+              <Text style={styles.medicineGridSubtitle} numberOfLines={2}>
+                {item.genericName || item.manufacturer || 'Pharmacy medicine'}
+              </Text>
+              <Text style={styles.medicineGridMeta} numberOfLines={1}>
+                {item.category || item.dosageForm || '1 unit'}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    );
   };
 
   const renderMedicineDetails = () => {
@@ -3894,7 +4059,7 @@ export function PharmacyScreen() {
         item.medicine?.name ||
         item.medicine?.brandName ||
         selectedMedicine?.name ||
-        item.medicineId ||
+        getMedicineRefLabel(item.medicineId as any) ||
         'Inventory item';
 
       return (
@@ -3995,7 +4160,7 @@ export function PharmacyScreen() {
             <Text style={styles.detailTitle}>
               {selectedInventory.medicine?.name ||
                 selectedInventory.medicine?.brandName ||
-                selectedInventory.medicineId ||
+                getMedicineRefLabel(selectedInventory.medicineId as any) ||
                 'Inventory item'}
             </Text>
             <Text style={styles.detailSubtitle}>
@@ -4096,7 +4261,8 @@ export function PharmacyScreen() {
         <View style={styles.listCardTop}>
           <View style={styles.listTitleWrap}>
             <Text style={styles.listTitle}>
-              {item.medicine?.name || item.medicineId || 'Inventory change'}
+              {item.medicine?.name ||
+                getMedicineRefLabel(item.medicineId as any, 'Inventory change')}
             </Text>
             <Text style={styles.listSubtitle}>
               {item.reason || item.type || 'Adjustment'}
@@ -5608,157 +5774,92 @@ export function PharmacyScreen() {
 
           {activeSection === 'medicines' ? (
             <View style={[styles.sectionCard, styles.sectionCardMedicines]}>
-              <View style={styles.medicinesControlDeck}>
-                <View style={styles.medicinesControlGlow} />
-                <View style={styles.medicinesSearchHero}>
-                  <View style={styles.medicinesSearchBadge}>
-                    <Search size={scale(18)} color={colors.primaryBlue} />
-                  </View>
-                  <View style={styles.medicinesSearchTextWrap}>
+              <View style={styles.medicinesStorefrontTop}>
+                <View style={styles.medicinesStorefrontSearchRow}>
+                  <View style={styles.medicinesStorefrontSearchBar}>
+                    <Search size={scale(18)} color="#1F2937" />
                     <TextInput
                       value={medicineSearchInput}
                       onChangeText={setMedicineSearchInput}
-                      placeholder="Search medicines or generic name"
-                      placeholderTextColor={colors.textLight}
-                      style={styles.medicinesSearchInput}
+                      placeholder='Search for "dolo & more"'
+                      placeholderTextColor="#6B7280"
+                      style={styles.medicinesStorefrontSearchInput}
                     />
                   </View>
                 </View>
 
-                <View
-                  style={[
-                    styles.medicinesActionRow,
-                    isTablet && styles.medicinesActionRowTablet,
-                  ]}
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.medicineShelfTabsScroll}
+                  contentContainerStyle={styles.medicineShelfTabsContent}
                 >
-                  <PrimaryButton
-                    title="Add Medicine"
-                    onPress={openCreateMedicineModal}
-                    icon={<Plus size={scale(18)} color="#fff" />}
-                    style={
-                      isTablet
-                        ? {
-                            ...styles.medicinesPrimaryAction,
-                            ...styles.toolbarButtonTablet,
-                          }
-                        : styles.medicinesPrimaryAction
-                    }
-                  />
-                </View>
+                  {medicineShelfTabs.map((tab) => {
+                    const isActive = tab.key === medicineShelfTab;
+                    return (
+                      <TouchableOpacity
+                        key={tab.key}
+                        activeOpacity={0.85}
+                        onPress={() => setMedicineShelfTab(tab.key)}
+                        style={styles.medicineShelfTabPill}
+                      >
+                        <Text
+                          style={[
+                            styles.medicineShelfTabPillText,
+                            isActive && styles.medicineShelfTabPillTextActive,
+                          ]}
+                        >
+                          {tab.label}
+                        </Text>
+                        {isActive ? (
+                          <View style={styles.medicineShelfTabUnderline} />
+                        ) : null}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
               </View>
 
-              <View
-                style={[
-                  styles.panelLayout,
-                  styles.medicinesShowcase,
-                  isTablet && styles.panelLayoutTablet,
-                ]}
-              >
-                <View
-                  style={[
-                    styles.panel,
-                    styles.medicinesListPanel,
-                    isTablet && styles.medicineListPanelTablet,
-                  ]}
-                >
-                  <View
-                    style={[styles.panelHeader, styles.medicinesPanelHeader]}
-                  >
-                    <Text style={styles.panelTitle}>Medicine Inventory</Text>
-                    <Text
-                      style={[
-                        styles.panelSubtitle,
-                        styles.medicinesPanelSubtitle,
-                      ]}
-                    >
-                      Page {medicinePage} · {medicines.length} result
-                      {medicines.length === 1 ? '' : 's'}
-                    </Text>
-                  </View>
-                  {renderMedicineList()}
-                  <View style={styles.paginationRow}>
-                    <TouchableOpacity
-                      activeOpacity={0.85}
-                      disabled={medicinePage === 1}
-                      onPress={() =>
-                        setMedicinePage((current) => Math.max(1, current - 1))
-                      }
-                      style={[
-                        styles.paginationButton,
-                        medicinePage === 1 && styles.paginationButtonDisabled,
-                      ]}
-                    >
-                      <ChevronLeft
-                        size={scale(16)}
-                        color={
-                          medicinePage === 1
-                            ? colors.textLight
-                            : colors.primaryBlue
-                        }
-                      />
-                      <Text
-                        style={[
-                          styles.paginationText,
-                          medicinePage === 1 && styles.paginationTextDisabled,
-                        ]}
-                      >
-                        Previous
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      activeOpacity={0.85}
-                      disabled={medicines.length < 20}
-                      onPress={() => setMedicinePage((current) => current + 1)}
-                      style={[
-                        styles.paginationButton,
-                        medicines.length < 20 &&
-                          styles.paginationButtonDisabled,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.paginationText,
-                          medicines.length < 20 &&
-                            styles.paginationTextDisabled,
-                        ]}
-                      >
-                        Next
-                      </Text>
-                      <ChevronRight
-                        size={scale(16)}
-                        color={
-                          medicines.length < 20
-                            ? colors.textLight
-                            : colors.primaryBlue
-                        }
-                      />
-                    </TouchableOpacity>
-                  </View>
+              <View style={styles.medicinesListPanel}>
+                <View style={styles.medicinesStorefrontHeader}>
+                  <Text style={styles.medicinesStorefrontHeading}>Buy Again</Text>
+                  <Text style={styles.medicinesStorefrontDivider}>
+                    Page {medicinePage} · {filteredMedicines.length} items
+                  </Text>
                 </View>
 
-                <View
-                  style={[
-                    styles.panel,
-                    styles.medicinesDetailPanel,
-                    isTablet && styles.medicineDetailPanelTablet,
-                  ]}
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.medicineBrowseTabs}
+                  style={styles.medicineBrowseTabsScroll}
                 >
-                  <View
-                    style={[styles.panelHeader, styles.medicinesPanelHeader]}
-                  >
-                    <Text style={styles.panelTitle}>Medicine Details</Text>
-                    <Text
-                      style={[
-                        styles.panelSubtitle,
-                        styles.medicinesPanelSubtitle,
-                      ]}
-                    >
-                      Selected medicine
-                    </Text>
-                  </View>
-                  {renderMedicineDetails()}
-                </View>
+                  {medicineBrowseTabs.map((tab) => {
+                    const isActive = tab.key === medicineBrowseTab;
+                    return (
+                      <TouchableOpacity
+                        key={tab.key}
+                        activeOpacity={0.85}
+                        onPress={() => setMedicineBrowseTab(tab.key)}
+                        style={[
+                          styles.medicineBrowseTab,
+                          isActive && styles.medicineBrowseTabActive,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.medicineBrowseTabText,
+                            isActive && styles.medicineBrowseTabTextActive,
+                          ]}
+                        >
+                          {tab.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+
+                {renderMedicineList()}
               </View>
             </View>
           ) : activeSection === 'inventory' ? (
@@ -5844,7 +5945,7 @@ export function PharmacyScreen() {
                   style={styles.inventoryActionButton}
                 />
                 <PrimaryButton
-                  title="Reserve"
+                  title="Reserve Stock"
                   onPress={() => openInventoryActionModal('reserve')}
                   variant="outline"
                   icon={
@@ -5853,7 +5954,7 @@ export function PharmacyScreen() {
                   style={styles.inventoryActionButton}
                 />
                 <PrimaryButton
-                  title="Release"
+                  title="Release Stock"
                   onPress={() => openInventoryActionModal('release')}
                   variant="outline"
                   icon={
@@ -6355,12 +6456,12 @@ export function PharmacyScreen() {
                     isTablet && styles.toolbarActionsTabletWide,
                   ]}
                 >
-                  <PrimaryButton
-                    title="New Subscription"
-                    onPress={openSubscriptionCreateModal}
-                    icon={<Plus size={scale(18)} color="#fff" />}
-                    style={styles.inventoryActionButton}
-                  />
+                <PrimaryButton
+                  title="New Subscription"
+                  onPress={openSubscriptionCreateModal}
+                  icon={<Plus size={scale(18)} color="#fff" />}
+                  style={styles.inventoryActionButton}
+                />
                 </View>
               </View>
 
@@ -6389,21 +6490,21 @@ export function PharmacyScreen() {
 
               <View style={styles.inventoryActionRow}>
                 <PrimaryButton
-                  title="Update"
+                  title="Update Plan"
                   onPress={() => openSubscriptionActionModal('update')}
                   variant="outline"
                   icon={<Pencil size={scale(16)} color={colors.primaryBlue} />}
                   style={styles.inventoryActionButton}
                 />
                 <PrimaryButton
-                  title="Pause"
+                  title="Pause Plan"
                   onPress={() => openSubscriptionActionModal('pause')}
                   variant="outline"
                   icon={<Pause size={scale(16)} color={colors.primaryBlue} />}
                   style={styles.inventoryActionButton}
                 />
                 <PrimaryButton
-                  title="Delete"
+                  title="Delete Plan"
                   onPress={() => openSubscriptionActionModal('delete')}
                   variant="outline"
                   icon={<Trash2 size={scale(16)} color="#B45309" />}
@@ -6829,7 +6930,7 @@ export function PharmacyScreen() {
                   style={styles.inventoryActionButton}
                 />
                 <PrimaryButton
-                  title="Cancel"
+                  title="Cancel Booking"
                   onPress={() => openDiagnosticsActionModal('cancel')}
                   variant="outline"
                   icon={<CircleAlert size={scale(16)} color="#B45309" />}
@@ -9076,81 +9177,101 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   sectionCardMedicines: {
-    backgroundColor: '#F7FBFF',
-    borderColor: '#D7EAFB',
-  },
-  medicinesControlDeck: {
-    position: 'relative',
-    borderRadius: scale(18),
-    borderWidth: 1,
-    borderColor: '#D8EAF8',
     backgroundColor: '#FFFFFF',
-    padding: scale(14),
-    marginBottom: verticalScale(10),
+    borderColor: '#E8EDF3',
+    padding: 0,
     overflow: 'hidden',
-    shadowColor: '#84BFEA',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
-    elevation: 4,
   },
-  medicinesControlGlow: {
-    position: 'absolute',
-    width: scale(170),
-    height: scale(170),
-    borderRadius: scale(85),
-    backgroundColor: 'rgba(77, 177, 255, 0.12)',
-    top: -scale(70),
-    right: -scale(50),
+  medicinesStorefrontTop: {
+    paddingHorizontal: scale(14),
+    paddingTop: verticalScale(12),
+    paddingBottom: verticalScale(8),
+    backgroundColor: '#FFFFFF',
   },
-  medicinesSearchHero: {
+  medicinesStorefrontSearchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F4FAFF',
-    borderRadius: scale(14),
-    paddingHorizontal: scale(10),
-    paddingVertical: verticalScale(6),
-    borderWidth: 1,
-    borderColor: '#DCECF9',
-    marginBottom: verticalScale(8),
+    marginBottom: verticalScale(10),
   },
-  medicinesSearchBadge: {
-    width: scale(38),
-    height: scale(38),
-    borderRadius: scale(12),
-    backgroundColor: '#E0F0FD',
+  medicinesStorefrontSearchBar: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: scale(16),
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    minHeight: verticalScale(48),
+    paddingHorizontal: scale(14),
+  },
+  medicinesStorefrontSearchInput: {
+    flex: 1,
+    marginLeft: scale(12),
+    minHeight: verticalScale(40),
+    color: colors.textHeader,
+    fontFamily: typography.fontFamily.medium,
+    fontSize: typography.fontSize.sm,
+  },
+  medicineShelfTabsScroll: {
+    marginHorizontal: -scale(2),
+  },
+  medicineShelfTabsContent: {
+    paddingRight: scale(4),
+  },
+  medicineShelfTabPill: {
+    paddingHorizontal: scale(12),
+    paddingBottom: verticalScale(8),
+    paddingTop: verticalScale(2),
+    marginRight: scale(14),
+    alignItems: 'center',
+  },
+  medicineShelfTabPillText: {
+    fontFamily: typography.fontFamily.semiBold,
+    fontSize: typography.fontSize.sm,
+    color: '#111827',
+  },
+  medicineShelfTabPillTextActive: {
+    color: colors.primaryBlue,
+  },
+  medicineShelfTabUnderline: {
+    marginTop: verticalScale(8),
+    width: scale(54),
+    height: verticalScale(4),
+    borderRadius: scale(999),
+    backgroundColor: colors.primaryBlue,
+  },
+  medicineBrowseTabsScroll: {
+    marginBottom: verticalScale(14),
+  },
+  medicineBrowseTabs: {
+    paddingRight: scale(4),
+  },
+  medicineBrowseTab: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: scale(12),
+    borderTopLeftRadius: scale(16),
+    borderTopRightRadius: scale(16),
+    borderBottomLeftRadius: scale(6),
+    borderBottomRightRadius: scale(6),
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#BFD8EE',
+    borderBottomWidth: 2,
+    borderBottomColor: colors.primaryBlue,
+    paddingHorizontal: scale(14),
+    paddingVertical: verticalScale(10),
+    marginRight: scale(10),
   },
-  medicinesSearchTextWrap: {
-    flex: 1,
+  medicineBrowseTabActive: {
+    backgroundColor: '#EEF6FF',
   },
-  medicinesSearchInput: {
-    fontFamily: typography.fontFamily.medium,
-    fontSize: moderateScale(16, 0.2),
-    color: colors.textHeader,
-    minHeight: verticalScale(36),
-    paddingVertical: 0,
+  medicineBrowseTabText: {
+    fontFamily: typography.fontFamily.semiBold,
+    fontSize: typography.fontSize.sm,
+    color: '#374151',
   },
-  medicinesActionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: scale(12),
-  },
-  medicinesActionRowTablet: {
-    justifyContent: 'space-between',
-  },
-  medicinesPrimaryAction: {
-    flex: 1,
-    borderRadius: scale(12),
-    minHeight: verticalScale(44),
-    marginVertical: 0,
-    shadowColor: '#0E71B9',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.18,
-    shadowRadius: 20,
-    elevation: 4,
+  medicineBrowseTabTextActive: {
+    color: colors.primaryBlue,
   },
   sectionCardInventory: {
     backgroundColor: '#FFFCF5',
@@ -9278,7 +9399,7 @@ const styles = StyleSheet.create({
     gap: verticalScale(16),
   },
   medicinesShowcase: {
-    gap: verticalScale(18),
+    gap: verticalScale(16),
   },
   panelLayoutTablet: {
     flexDirection: 'row',
@@ -9289,23 +9410,17 @@ const styles = StyleSheet.create({
   },
   medicinesListPanel: {
     backgroundColor: '#FFFFFF',
-    borderRadius: scale(24),
-    borderWidth: 1,
-    borderColor: '#DCECF9',
-    padding: scale(16),
-    shadowColor: '#8BBFE5',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
-    shadowRadius: 22,
-    elevation: 3,
+    paddingHorizontal: scale(14),
+    paddingTop: verticalScale(8),
+    paddingBottom: verticalScale(16),
   },
   medicinesDetailPanel: {
-    backgroundColor: '#F8FCFF',
+    backgroundColor: '#FFF9F7',
     borderRadius: scale(24),
     borderWidth: 1,
-    borderColor: '#DCECF9',
+    borderColor: '#F1E4DD',
     padding: scale(16),
-    shadowColor: '#8BBFE5',
+    shadowColor: '#D8BCB1',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.06,
     shadowRadius: 22,
@@ -9320,10 +9435,24 @@ const styles = StyleSheet.create({
   panelHeader: {
     marginBottom: verticalScale(16),
   },
+  medicinesStorefrontHeader: {
+    marginBottom: verticalScale(12),
+  },
+  medicinesStorefrontHeading: {
+    fontFamily: typography.fontFamily.bold,
+    fontSize: typography.fontSize.xl,
+    color: '#111827',
+    marginBottom: verticalScale(4),
+  },
+  medicinesStorefrontDivider: {
+    fontFamily: typography.fontFamily.medium,
+    fontSize: scale(12),
+    color: '#C7CED8',
+  },
   medicinesPanelHeader: {
     paddingBottom: verticalScale(12),
     borderBottomWidth: 1,
-    borderBottomColor: '#E8F2FA',
+    borderBottomColor: '#F3E7DF',
   },
   panelTitle: {
     fontFamily: typography.fontFamily.bold,
@@ -9332,7 +9461,7 @@ const styles = StyleSheet.create({
     marginBottom: verticalScale(4),
   },
   medicinesPanelSubtitle: {
-    color: '#6C8AA3',
+    color: '#8B6F63',
   },
   panelSubtitle: {
     fontFamily: typography.fontFamily.regular,
@@ -9342,8 +9471,8 @@ const styles = StyleSheet.create({
   },
   listCard: {
     borderWidth: 1,
-    borderColor: '#E5EDF5',
-    borderRadius: scale(18),
+    borderColor: '#F3E7DF',
+    borderRadius: scale(22),
     padding: scale(16),
     marginBottom: verticalScale(12),
     backgroundColor: '#FFFFFF',
@@ -9354,10 +9483,43 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   listCardSelected: {
-    borderColor: colors.primaryBlue,
-    backgroundColor: '#EEF7FF',
-    shadowColor: '#6EB2E2',
+    borderColor: '#BFD8EE',
+    backgroundColor: '#EEF6FF',
+    shadowColor: colors.primaryBlue,
     shadowOpacity: 0.12,
+  },
+  medicineCardTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: verticalScale(14),
+  },
+  medicineCardImageStub: {
+    width: scale(60),
+    height: scale(60),
+    borderRadius: scale(16),
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 2,
+  },
+  medicineCardAction: {
+    width: scale(42),
+    height: scale(42),
+    borderRadius: scale(14),
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#8EBCE1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  medicineCardActionSelected: {
+    backgroundColor: colors.primaryBlue,
+    borderColor: colors.primaryBlue,
   },
   listCardTop: {
     flexDirection: 'row',
@@ -9378,6 +9540,30 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily.regular,
     fontSize: typography.fontSize.sm,
     color: colors.textSecondary,
+  },
+  medicineShelfTagRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: verticalScale(10),
+  },
+  medicineShelfTag: {
+    borderRadius: scale(999),
+    backgroundColor: '#FFF1D8',
+    paddingHorizontal: scale(10),
+    paddingVertical: verticalScale(5),
+    marginRight: scale(8),
+    marginBottom: verticalScale(6),
+  },
+  medicineShelfTagSoft: {
+    backgroundColor: '#EEF6FF',
+  },
+  medicineShelfTagText: {
+    fontFamily: typography.fontFamily.semiBold,
+    fontSize: scale(11),
+    color: '#B77400',
+  },
+  medicineShelfTagTextSoft: {
+    color: colors.primaryBlue,
   },
   badge: {
     borderRadius: scale(999),
@@ -9425,12 +9611,126 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     color: colors.textHeader,
   },
+  medicineCardFooter: {
+    marginTop: verticalScale(6),
+    paddingTop: verticalScale(12),
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(139,111,99,0.14)',
+  },
+  medicineCardFooterText: {
+    fontFamily: typography.fontFamily.medium,
+    fontSize: scale(12),
+    color: colors.primaryBlue,
+  },
+  medicineGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  medicineGridCard: {
+    width: '31.4%',
+    marginBottom: verticalScale(16),
+  },
+  medicineGridCardSelected: {
+    opacity: 0.92,
+  },
+  medicineGridArtwork: {
+    borderRadius: scale(16),
+    paddingHorizontal: scale(8),
+    paddingTop: verticalScale(8),
+    paddingBottom: verticalScale(10),
+    minHeight: verticalScale(120),
+    justifyContent: 'space-between',
+    marginBottom: verticalScale(8),
+    overflow: 'hidden',
+  },
+  medicineGridArtworkOtc: {
+    backgroundColor: '#FFF7E8',
+  },
+  medicineGridArtworkRx: {
+    backgroundColor: '#EEF6FF',
+  },
+  medicineBestSellerBadge: {
+    alignSelf: 'flex-start',
+    borderRadius: scale(8),
+    backgroundColor: '#FFE7A6',
+    paddingHorizontal: scale(6),
+    paddingVertical: verticalScale(3),
+  },
+  medicineBestSellerBadgeText: {
+    fontFamily: typography.fontFamily.semiBold,
+    fontSize: scale(9),
+    color: '#A16207',
+  },
+  medicineGridPillIcon: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  medicineGridAddButton: {
+    alignSelf: 'flex-end',
+    width: scale(34),
+    height: scale(34),
+    borderRadius: scale(12),
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#8EBCE1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primaryBlue,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 2,
+  },
+  medicinePriceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: verticalScale(6),
+  },
+  medicinePriceChip: {
+    borderRadius: scale(10),
+    backgroundColor: '#198A3A',
+    paddingHorizontal: scale(8),
+    paddingVertical: verticalScale(4),
+    marginRight: scale(6),
+  },
+  medicinePriceChipText: {
+    fontFamily: typography.fontFamily.bold,
+    fontSize: scale(10),
+    color: '#FFFFFF',
+  },
+  medicineStrikeText: {
+    fontFamily: typography.fontFamily.semiBold,
+    fontSize: scale(10),
+    color: '#6B7280',
+    textDecorationLine: 'line-through',
+  },
+  medicineGridTitle: {
+    fontFamily: typography.fontFamily.semiBold,
+    fontSize: scale(12),
+    lineHeight: scale(16),
+    color: '#111827',
+    marginBottom: verticalScale(4),
+  },
+  medicineGridSubtitle: {
+    fontFamily: typography.fontFamily.medium,
+    fontSize: scale(10),
+    lineHeight: scale(13),
+    color: '#4B5563',
+    marginBottom: verticalScale(4),
+  },
+  medicineGridMeta: {
+    fontFamily: typography.fontFamily.medium,
+    fontSize: scale(10),
+    color: '#7C8592',
+  },
   detailCard: {
     borderWidth: 1,
-    borderColor: '#E5EDF5',
-    borderRadius: scale(20),
+    borderColor: '#F1E4DD',
+    borderRadius: scale(24),
     padding: scale(18),
-    backgroundColor: '#FBFDFF',
+    backgroundColor: '#FFFFFF',
     minHeight: verticalScale(300),
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 8 },

@@ -1,82 +1,95 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   Image,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
-  ActivityIndicator,
-  ScrollView,
 } from 'react-native';
-import { Search, Star, Stethoscope } from 'lucide-react-native';
+import { Stethoscope } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { colors } from '../../theme/colors';
-import { typography } from '../../theme/typography';
-import { env } from '../../config/env';
-import { scale, verticalScale } from '../../theme/responsive';
-import { PrimaryButton } from '../../components/PrimaryButton';
+
 import { telehealthService, Specialist } from '../../api/telehealthService';
-import type { RootStackParamList } from '../../navigation/types';
-import { Screen } from '../../components/Screen';
 import { ListSkeleton } from '../../components/ListSkeleton';
+import { ModuleScreen } from '../../components/ui/ModuleScreen';
+import { PremiumCard } from '../../components/ui/PremiumCard';
+import { PremiumSearchField } from '../../components/ui/PremiumSearchField';
+import { SectionState } from '../../components/ui/SectionState';
+import type { RootStackParamList } from '../../navigation/types';
+import { env } from '../../config/env';
+import { colors } from '../../theme/colors';
+import { scale, verticalScale } from '../../theme/responsive';
+import { typography } from '../../theme/typography';
+import {
+  premiumTheme,
+  premiumTypography,
+  radii,
+  spacing,
+} from '../../theme/tokens';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FindDoctor'>;
 
 export const FindDoctorScreen: React.FC<Props> = ({ navigation }) => {
   const [query, setQuery] = useState('');
-  const [activeCat, setActiveCat] = useState('all');
+  const [activeCategory, setActiveCategory] = useState('all');
   const [doctors, setDoctors] = useState<Specialist[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     const fetchDoctors = async () => {
       try {
+        setHasError(false);
         const data = await telehealthService.getSpecialists();
         setDoctors(data);
-      } catch (error) {
-        console.error('Failed to fetch specialists', error);
+      } catch {
+        setHasError(true);
       } finally {
         setLoading(false);
       }
     };
+
     fetchDoctors();
   }, []);
 
   const dynamicCategories = useMemo(() => {
     const specs = doctors
-      .map(d => d.specialization || d.specialty)
+      .map(doctor => doctor.specialization || doctor.specialty)
       .filter(Boolean) as string[];
     const unique = Array.from(new Set(specs));
-    return [
-      { id: 'all', label: 'All' },
-      ...unique.map(s => ({ id: s.toLowerCase(), label: s })),
-    ];
+
+    return [{ id: 'all', label: 'All' }].concat(
+      unique.map(spec => ({
+        id: spec.toLowerCase(),
+        label: spec,
+      })),
+    );
   }, [doctors]);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return doctors.filter(d => {
-      const docName = d.name || '';
-      const docSpecialty = d.specialization || d.specialty || '';
-      const docDegree = d.degree || '';
+  const filteredDoctors = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return doctors.filter(doctor => {
+      const name = doctor.name || '';
+      const specialty = doctor.specialization || doctor.specialty || '';
+      const degree = doctor.degree || '';
+
       const matchesQuery =
-        !q ||
-        docName.toLowerCase().includes(q) ||
-        docSpecialty.toLowerCase().includes(q) ||
-        docDegree.toLowerCase().includes(q);
-      const matchesCat =
-        activeCat === 'all' ||
-        docSpecialty.toLowerCase() === activeCat.toLowerCase();
-      return matchesQuery && matchesCat;
+        !normalizedQuery ||
+        name.toLowerCase().includes(normalizedQuery) ||
+        specialty.toLowerCase().includes(normalizedQuery) ||
+        degree.toLowerCase().includes(normalizedQuery);
+
+      const matchesCategory =
+        activeCategory === 'all' ||
+        specialty.toLowerCase() === activeCategory.toLowerCase();
+
+      return matchesQuery && matchesCategory;
     });
-  }, [query, activeCat, doctors]);
+  }, [activeCategory, doctors, query]);
 
   const renderDoctor = ({ item }: { item: Specialist }) => {
-    console.log('item', item);
-
-    // Map backend response fields to UI (handling missing fields with fallbacks)
     const id = item._id || item.id || Math.random().toString();
     const avatarUri = item.profilePictureUrl
       ? `${env.BASE_URL}${item.profilePictureUrl}`
@@ -86,269 +99,240 @@ export const FindDoctorScreen: React.FC<Props> = ({ navigation }) => {
       item.experienceYears !== undefined
         ? item.experienceYears
         : item.experience || 5;
-    const patientsCount = item.patients || '1k+';
     const specialty = item.specialization || item.specialty || 'General';
 
     return (
       <TouchableOpacity
-        activeOpacity={0.85}
-        style={styles.card}
+        activeOpacity={0.86}
+        style={styles.cardWrap}
         onPress={() => navigation.navigate('DoctorDetails', { doctorId: id })}
       >
-        <View style={styles.cardTopRow}>
-          {avatarUri ? (
-            <Image source={{ uri: avatarUri }} style={styles.avatar} />
-          ) : (
-            <View
-              style={[
-                styles.avatar,
-                {
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  backgroundColor: '#EAF2FB',
-                },
-              ]}
-            >
-              <Stethoscope size={scale(24)} color={colors.primaryBlue} />
-            </View>
-          )}
-          <View style={styles.docMeta}>
-            <Text style={styles.docName} numberOfLines={1}>
-              {/^(dr\.?|doctor)\b/i.test(item.name.trim())
-                ? item.name
-                : `Dr. ${item.name}`}
-            </Text>
-            <Text style={styles.docSub} numberOfLines={1}>
-              {specialty} {item.degree ? `· ${item.degree}` : ''}
-            </Text>
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text style={styles.statEmoji}>⭐</Text>
-                <Text style={styles.statText}>{rating.toFixed(1)}</Text>
+        <PremiumCard style={styles.card}>
+          <View style={styles.cardTopRow}>
+            {avatarUri ? (
+              <Image source={{ uri: avatarUri }} style={styles.avatar} />
+            ) : (
+              <View style={styles.avatarFallback}>
+                <Stethoscope size={scale(24)} color={colors.primaryBlue} />
               </View>
-              <View style={[styles.statItem, { marginLeft: scale(12) }]}>
-                <Text style={styles.statEmoji}>💼</Text>
-                <Text style={styles.statText}>{expYears}y</Text>
-              </View>
-              <View style={[styles.statItem, { marginLeft: scale(12) }]}>
-                <Text style={styles.statEmoji}>👥</Text>
-                <Text style={styles.statText}>{patientsCount}</Text>
+            )}
+
+            <View style={styles.docMeta}>
+              <Text style={styles.docName} numberOfLines={1}>
+                {/^(dr\.?|doctor)\b/i.test((item.name || '').trim())
+                  ? item.name
+                  : `Dr. ${item.name || 'Specialist'}`}
+              </Text>
+              <Text style={styles.docSub} numberOfLines={1}>
+                {specialty} {item.degree ? `· ${item.degree}` : ''}
+              </Text>
+
+              <View style={styles.statsRow}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>⭐ {rating.toFixed(1)}</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>💼 {expYears}y</Text>
+                </View>
               </View>
             </View>
           </View>
-        </View>
 
-        <View style={styles.cardBottomRow}>
-          <Text style={styles.feeText}>
-            {item.consultationFee ? `₹${item.consultationFee}` : 'Free'}
-          </Text>
-          <PrimaryButton
-            title="Book Now"
-            onPress={() =>
-              navigation.navigate('DoctorDetails', { doctorId: id })
-            }
-            style={styles.bookBtn}
-            textStyle={styles.bookBtnText}
-          />
-        </View>
+          <View style={styles.cardBottomRow}>
+            <View>
+              <Text style={styles.feeLabel}>Consultation fee</Text>
+              <Text style={styles.feeText}>
+                {item.consultationFee ? `₹${item.consultationFee}` : 'Free'}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.bookButton}
+              onPress={() => navigation.navigate('DoctorDetails', { doctorId: id })}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.bookButtonText}>Book now</Text>
+            </TouchableOpacity>
+          </View>
+        </PremiumCard>
       </TouchableOpacity>
     );
   };
 
   return (
-    <Screen style={styles.container}>
+    <ModuleScreen
+      title="Doctor consultation"
+      subtitle="Find specialists, compare expertise, and continue to consultation booking."
+      scroll={false}
+      contentContainerStyle={styles.moduleContent}
+    >
+      <PremiumSearchField
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Search doctor, specialty, or degree"
+      />
 
-      <View style={styles.content}>
-        <View style={styles.searchBox}>
-          <Search size={scale(18)} color={colors.textLight} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Search"
-            placeholderTextColor={colors.textLight}
-            style={styles.searchInput}
-          />
-        </View>
-
-        <View style={{ flexGrow: 0, minHeight: verticalScale(44) }}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chipsRow}
-          >
-            {dynamicCategories.map(c => {
-              const active = c.id === activeCat;
-              return (
-                <TouchableOpacity
-                  key={c.id}
-                  activeOpacity={0.8}
-                  onPress={() => setActiveCat(c.id)}
-                  style={[styles.chip, active && styles.chipActive]}
-                >
-                  <Text
-                    style={[styles.chipText, active && styles.chipTextActive]}
-                    numberOfLines={1}
-                  >
-                    {c.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        {loading ? (
-          <ListSkeleton />
-        ) : (
-          <FlatList
-            data={filtered}
-            keyExtractor={d => d._id || d.id || Math.random().toString()}
-            renderItem={renderDoctor}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-            ListEmptyComponent={
-              <Text
-                style={{
-                  textAlign: 'center',
-                  marginTop: 20,
-                  color: colors.textSecondary,
-                }}
+      <View style={styles.chipsRow}>
+        <FlatList
+          data={dynamicCategories}
+          horizontal
+          keyExtractor={item => item.id}
+          showsHorizontalScrollIndicator={false}
+          renderItem={({ item }) => {
+            const active = item.id === activeCategory;
+            return (
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => setActiveCategory(item.id)}
+                style={[styles.chip, active && styles.chipActive]}
               >
-                No doctors found.
-              </Text>
-            }
-          />
-        )}
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          }}
+        />
       </View>
-    </Screen>
+
+      {loading ? (
+        <ListSkeleton />
+      ) : hasError ? (
+        <SectionState
+          title="Unable to load doctors"
+          subtitle="Please try again after a moment."
+          tone="error"
+        />
+      ) : (
+        <FlatList
+          data={filteredDoctors}
+          keyExtractor={doctor => doctor._id || doctor.id || Math.random().toString()}
+          renderItem={renderDoctor}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <SectionState
+              title="No doctors found"
+              subtitle="Try another specialty or a different search keyword."
+            />
+          }
+        />
+      )}
+    </ModuleScreen>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  content: {
+  moduleContent: {
     flex: 1,
-    paddingHorizontal: scale(16),
-    paddingTop: verticalScale(10),
-  },
-  searchBox: {
-    height: verticalScale(44),
-    borderRadius: scale(12),
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
-    backgroundColor: '#F6F8FB',
-    paddingHorizontal: scale(14),
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  searchInput: {
-    flex: 1,
-    marginLeft: scale(10),
-    fontFamily: typography.fontFamily.regular,
-    fontSize: typography.fontSize.md,
-    color: colors.textHeader,
-    paddingVertical: 0,
   },
   chipsRow: {
-    flexDirection: 'row',
-    marginTop: verticalScale(12),
-    marginBottom: verticalScale(20),
+    minHeight: verticalScale(44),
   },
   chip: {
-    paddingHorizontal: scale(14),
-    height: verticalScale(34),
-    borderRadius: scale(18),
+    marginRight: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.pill,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: scale(10),
-    maxWidth: scale(180),
+    borderColor: premiumTheme.cardBorder,
+    backgroundColor: '#FFFFFF',
   },
   chipActive: {
-    backgroundColor: 'rgba(21,114,183,0.08)',
-    borderColor: 'rgba(21,114,183,0.5)',
+    backgroundColor: premiumTheme.blueTint,
+    borderColor: '#B7D5F0',
   },
   chipText: {
     fontFamily: typography.fontFamily.medium,
     fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
+    color: premiumTheme.subtext,
   },
-  chipTextActive: { color: colors.primaryBlue },
-  listContent: { paddingBottom: verticalScale(20) },
+  chipTextActive: {
+    color: colors.primaryBlue,
+  },
+  listContent: {
+    paddingBottom: spacing.xl,
+  },
+  cardWrap: {
+    marginBottom: spacing.sm,
+  },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: scale(16),
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
-    padding: scale(14),
-    marginBottom: verticalScale(12),
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+    padding: spacing.md,
   },
-  cardTopRow: { flexDirection: 'row', alignItems: 'center' },
+  cardTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   avatar: {
-    width: scale(64),
-    height: scale(64),
-    borderRadius: scale(16),
-    backgroundColor: '#eee',
+    width: scale(66),
+    height: scale(66),
+    borderRadius: scale(20),
+    marginRight: spacing.sm,
+    backgroundColor: premiumTheme.cardMuted,
   },
-  docMeta: { flex: 1, marginLeft: scale(12) },
+  avatarFallback: {
+    width: scale(66),
+    height: scale(66),
+    borderRadius: scale(20),
+    marginRight: spacing.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: premiumTheme.blueTint,
+  },
+  docMeta: {
+    flex: 1,
+  },
   docName: {
-    fontFamily: typography.fontFamily.semiBold,
-    fontSize: typography.fontSize.lg,
-    color: colors.textHeader,
+    ...premiumTypography.title,
   },
   docSub: {
+    ...premiumTypography.body,
     marginTop: verticalScale(2),
-    fontFamily: typography.fontFamily.regular,
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
   },
   statsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: verticalScale(6),
+    gap: spacing.sm,
+    marginTop: spacing.sm,
   },
-  statItem: { flexDirection: 'row', alignItems: 'center' },
-  statEmoji: {
-    fontSize: scale(14),
+  statItem: {
+    backgroundColor: premiumTheme.cardMuted,
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
   },
-  statText: {
-    marginLeft: scale(4),
+  statLabel: {
     fontFamily: typography.fontFamily.medium,
-    fontSize: typography.fontSize.sm,
-    color: colors.textSecondary,
-  },
-  dot: {
-    width: scale(4),
-    height: scale(4),
-    borderRadius: scale(2),
-    backgroundColor: 'rgba(0,0,0,0.16)',
-    marginHorizontal: scale(10),
+    fontSize: typography.fontSize.xs,
+    color: premiumTheme.subtext,
   },
   cardBottomRow: {
+    marginTop: spacing.md,
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: verticalScale(12),
+    alignItems: 'center',
+  },
+  feeLabel: {
+    fontFamily: typography.fontFamily.medium,
+    fontSize: typography.fontSize.xs,
+    color: premiumTheme.caption,
   },
   feeText: {
+    marginTop: verticalScale(2),
+    fontFamily: typography.fontFamily.bold,
+    fontSize: typography.fontSize.lg,
+    color: colors.textHeader,
+  },
+  bookButton: {
+    minHeight: verticalScale(44),
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primaryBlue,
+  },
+  bookButtonText: {
     fontFamily: typography.fontFamily.semiBold,
-    fontSize: typography.fontSize.xl,
-    color: colors.primaryGreen,
+    fontSize: typography.fontSize.sm,
+    color: '#FFFFFF',
   },
-  bookBtn: {
-    width: scale(120),
-    height: verticalScale(40),
-    borderRadius: scale(10),
-    marginVertical: 0,
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  bookBtnText: { fontSize: typography.fontSize.md },
 });

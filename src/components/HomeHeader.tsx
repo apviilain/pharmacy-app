@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   View,
@@ -7,8 +7,8 @@ import {
   TextInput,
   StatusBar,
   Platform,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   MapPin,
   Bell,
@@ -17,18 +17,18 @@ import {
   SignalHigh,
   Wifi,
   BatteryFull,
-} from 'lucide-react-native';
-import LinearGradient from 'react-native-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
-import { pharmacyService } from '../api/pharmacyService';
-import { mapPharmacyProfileToUser } from '../api/pharmyx';
-import { useAuthStore } from '../state/authStore';
-import { shadows } from '../theme/shadows';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../navigation/types';
-import { useQuery } from '@tanstack/react-query';
-import { notificationApi } from '../api/notificationApi';
-import { pharmacyCartService } from '../api/pharmacyCartService';
+} from "lucide-react-native";
+import LinearGradient from "react-native-linear-gradient";
+import { useNavigation } from "@react-navigation/native";
+import { pharmacyService } from "../api/pharmacyService";
+import { mapPharmacyProfileToUser } from "../api/pharmyx";
+import { useAuthStore } from "../state/authStore";
+import { shadows } from "../theme/shadows";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { RootStackParamList } from "../navigation/types";
+import { useQuery } from "@tanstack/react-query";
+import { notificationApi } from "../api/notificationApi";
+import { pharmacyCartService } from "../api/pharmacyCartService";
 import Animated, {
   useAnimatedStyle,
   interpolate,
@@ -38,8 +38,8 @@ import Animated, {
   withSequence,
   withDelay,
   useSharedValue,
-} from 'react-native-reanimated';
-import { typography } from '../theme/typography';
+} from "react-native-reanimated";
+import { typography } from "../theme/typography";
 
 interface HomeHeaderProps {
   scrollY: SharedValue<number>;
@@ -48,37 +48,37 @@ interface HomeHeaderProps {
 export default function HomeHeader({ scrollY }: HomeHeaderProps) {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const userName = useAuthStore(state => state.user?.name) || 'User';
-  const locationCity = useAuthStore(state => state.user?.city) || 'Location';
-  const locationState = useAuthStore(state => state.user?.state) || 'Your';
-  const hasUser = useAuthStore(state => !!state.user);
-  const setUser = useAuthStore(state => state.setUser);
+  const userName = useAuthStore((state) => state.user?.name) || "User";
+  const locationCity = useAuthStore((state) => state.user?.city) || "Location";
+  const locationState = useAuthStore((state) => state.user?.state) || "Your";
+  const hasUser = useAuthStore((state) => !!state.user);
+  const setUser = useAuthStore((state) => state.setUser);
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
   const pOpacity = useSharedValue(1);
   const pTranslateY = useSharedValue(0);
 
   const PLACEHOLDERS = [
-    'Search doctors...',
-    'Search specializations...',
-    'Search features...',
-    'Search appointments...',
+    "Search doctors...",
+    "Search specializations...",
+    "Search features...",
+    "Search appointments...",
   ];
 
   // Dynamic Greeting
-  const [greeting, setGreeting] = useState('');
-  const [greetingSub, setGreetingSub] = useState('');
+  const [greeting, setGreeting] = useState("");
+  const [greetingSub, setGreetingSub] = useState("");
 
   useEffect(() => {
     const hour = new Date().getHours();
     if (hour < 12) {
-      setGreeting('Good morning');
-      setGreetingSub('Start your day with a healthy routine!');
+      setGreeting("Good morning");
+      setGreetingSub("Start your day with a healthy routine!");
     } else if (hour < 18) {
-      setGreeting('Good afternoon');
-      setGreetingSub('How are you feeling today?');
+      setGreeting("Good afternoon");
+      setGreetingSub("How are you feeling today?");
     } else {
-      setGreeting('Good evening');
-      setGreetingSub('Take care and rest well tonight.');
+      setGreeting("Good evening");
+      setGreetingSub("Take care and rest well tonight.");
     }
   }, []);
 
@@ -93,12 +93,13 @@ export default function HomeHeader({ scrollY }: HomeHeaderProps) {
           setUser({
             ...existingUser,
             ...data,
-            phone: data.phone || existingUser?.phone || '',
-            mobile: data.mobile || existingUser?.mobile || existingUser?.phone || '',
+            phone: data.phone || existingUser?.phone || "",
+            mobile:
+              data.mobile || existingUser?.mobile || existingUser?.phone || "",
           });
         }
       } catch (error) {
-        console.error('Failed to fetch user details', error);
+        console.error("Failed to fetch user details", error);
       }
     };
     fetchUser();
@@ -112,7 +113,7 @@ export default function HomeHeader({ scrollY }: HomeHeaderProps) {
 
       // Change text and animate in
       setTimeout(() => {
-        setPlaceholderIdx(prev => (prev + 1) % PLACEHOLDERS.length);
+        setPlaceholderIdx((prev) => (prev + 1) % PLACEHOLDERS.length);
         pTranslateY.value = 10;
         pOpacity.value = withTiming(1, { duration: 400 });
         pTranslateY.value = withTiming(0, { duration: 400 });
@@ -129,15 +130,15 @@ export default function HomeHeader({ scrollY }: HomeHeaderProps) {
     };
   });
 
-  const userId = useAuthStore(state => state.user?.id || state.user?._id);
+  const userId = useAuthStore((state) => state.user?.id || state.user?._id);
   const { data: unreadCount } = useQuery({
-    queryKey: ['unreadNotificationsCount', userId],
+    queryKey: ["unreadNotificationsCount", userId],
     queryFn: () => notificationApi.getUnreadCount(userId!),
     enabled: !!userId,
     refetchInterval: 30000, // Refetch every 30s
   });
   const { data: pharmacyCart } = useQuery({
-    queryKey: ['pharmacyCart'],
+    queryKey: ["pharmacyCart"],
     queryFn: () => pharmacyCartService.getCart(),
   });
   const cartCount = Number(
@@ -257,7 +258,7 @@ export default function HomeHeader({ scrollY }: HomeHeaderProps) {
       />
 
       <LinearGradient
-        colors={['#2A77B7', '#1F5F95']}
+        colors={["#2A77B7", "#1F5F95"]}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
@@ -286,18 +287,24 @@ export default function HomeHeader({ scrollY }: HomeHeaderProps) {
       </Animated.View>
 
       {/* Anchor Notification unconditionally independent so it retains clickability natively */}
-      <View style={[styles.absoluteRow, styles.locationRow, { right: 20, top: 20 + insets.top }]}>
+      <View
+        style={[
+          styles.absoluteRow,
+          styles.locationRow,
+          { right: 20, top: 20 + insets.top },
+        ]}
+      >
         <View style={styles.headerActionCluster}>
           <TouchableOpacity
             style={styles.notificationButton}
             activeOpacity={0.8}
-            onPress={() => navigation.navigate('PharmacyCart')}
+            onPress={() => navigation.navigate("PharmacyCart")}
           >
             <ShoppingCart color="#FFF" size={20} />
             {cartCount > 0 ? (
               <View style={styles.cartBadge}>
                 <Text style={styles.notificationBadgeText}>
-                  {cartCount > 99 ? '99+' : cartCount}
+                  {cartCount > 99 ? "99+" : cartCount}
                 </Text>
               </View>
             ) : null}
@@ -305,13 +312,13 @@ export default function HomeHeader({ scrollY }: HomeHeaderProps) {
           <TouchableOpacity
             style={styles.notificationButton}
             activeOpacity={0.8}
-            onPress={() => navigation.navigate('Notifications')}
+            onPress={() => navigation.navigate("Notifications")}
           >
             <Bell color="#FFF" size={20} fill="#FFF" />
             {unreadCount && unreadCount > 0 ? (
               <View style={styles.notificationBadge}>
                 <Text style={styles.notificationBadgeText}>
-                  {unreadCount > 99 ? '99+' : unreadCount}
+                  {unreadCount > 99 ? "99+" : unreadCount}
                 </Text>
               </View>
             ) : null}
@@ -334,19 +341,19 @@ export default function HomeHeader({ scrollY }: HomeHeaderProps) {
           style={[StyleSheet.absoluteFill, animatedLargeGreetingStyle]}
         >
           <Text style={styles.greetingLightText}>{greeting},</Text>
-          <Text style={styles.greetingBoldText}>{userName || ''}</Text>
+          <Text style={styles.greetingBoldText}>{userName || ""}</Text>
           <Text style={styles.greetingSubText}>{greetingSub}</Text>
         </Animated.View>
 
         {/* Scrolled Column Layout */}
         <Animated.View style={[animatedSmallGreetingStyle]}>
           <Text style={[styles.greetingLightText, { marginBottom: 0 }]}>
-            {greeting},{' '}
+            {greeting},{" "}
           </Text>
           <Text
             style={[styles.greetingBoldText, { fontSize: 22, marginBottom: 0 }]}
           >
-            {userName || ''}
+            {userName || ""}
           </Text>
         </Animated.View>
       </Animated.View>
@@ -362,7 +369,7 @@ export default function HomeHeader({ scrollY }: HomeHeaderProps) {
         <TouchableOpacity
           activeOpacity={0.8}
           style={styles.searchBarContainer}
-          onPress={() => navigation.navigate('GlobalSearch')}
+          onPress={() => navigation.navigate("GlobalSearch")}
         >
           <Search
             color="#888"
@@ -371,13 +378,13 @@ export default function HomeHeader({ scrollY }: HomeHeaderProps) {
             strokeWidth={2.5}
           />
           <View
-            style={{ flex: 1, height: '100%', justifyContent: 'center' }}
+            style={{ flex: 1, height: "100%", justifyContent: "center" }}
             pointerEvents="none"
           >
             <Animated.Text
               style={[
                 styles.searchInput,
-                { color: '#888', position: 'absolute' },
+                { color: "#888", position: "absolute" },
                 animatedPlaceholderStyle,
               ]}
             >
@@ -397,139 +404,137 @@ export default function HomeHeader({ scrollY }: HomeHeaderProps) {
 
 const styles = StyleSheet.create({
   headerContainer: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     zIndex: 100,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
-    overflow: 'hidden',
+    overflow: "hidden",
     ...shadows.strong,
   },
   absoluteRow: {
-    position: 'absolute',
+    position: "absolute",
     left: 20,
     right: 20,
   },
   statusBarRow: {
     top: 20, // Adjust absolute position since we requested padding top ~50 total
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   timeText: {
     fontSize: 16,
-    color: '#FFF',
-    fontWeight: '500',
+    color: "#FFF",
+    fontWeight: "500",
   },
   statusIconsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   locationRow: {
     top: 20, // Relative to safe area
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   locationLeftRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   headerActionCluster: {
     flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
     gap: 10,
   },
   iconSquareBox: {
     width: 40,
     height: 40,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: "rgba(255,255,255,0.15)",
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   locationTextColumn: {
     marginLeft: 12,
   },
   deliverToText: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
+    color: "rgba(255,255,255,0.7)",
     letterSpacing: 1,
     marginBottom: 4,
   },
   locationValueText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#FFF',
+    fontWeight: "600",
+    color: "#FFF",
   },
   notificationButton: {
     width: 48,
     height: 48,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: "rgba(255,255,255,0.15)",
     borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   notificationBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: 6,
     right: 6,
     minWidth: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: '#FF4444',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#FF4444",
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 4,
     borderWidth: 1.5,
-    borderColor: '#2169A5',
+    borderColor: "#2169A5",
   },
   cartBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: 6,
     right: 6,
     minWidth: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: '#F59E0B',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#F59E0B",
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 4,
     borderWidth: 1.5,
-    borderColor: '#2169A5',
+    borderColor: "#2169A5",
   },
   notificationBadgeText: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: 10,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontWeight: "bold",
+    textAlign: "center",
     fontFamily: typography.fontFamily.bold,
   },
   greetingRow: {
     top: 85, // Relative to safe area
     height: 90,
-    justifyContent: 'flex-start',
+    justifyContent: "flex-start",
   },
   greetingLightText: {
-    fontSize: 18,
-    color: 'rgba(255,255,255,0.8)',
-    marginBottom: 4,
+    fontSize: 14,
+    color: "rgba(255,255,255,0.8)",
     fontFamily: typography.fontFamily.regular,
   },
   greetingBoldText: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFF',
-    marginBottom: 8, // Reduced from 16 to decrease top space for sub greeting
+    fontWeight: "bold",
+    color: "#FFF",
     fontFamily: typography.fontFamily.bold,
   },
   greetingSubText: {
     fontSize: 16,
-    color: 'rgba(255,255,255,0.7)',
+    color: "rgba(255,255,255,0.7)",
     fontFamily: typography.fontFamily.regular,
     marginBottom: 12, // Added bottom space
   },
@@ -537,19 +542,19 @@ const styles = StyleSheet.create({
     top: 195, // Relative to safe area
   },
   searchBarContainer: {
-    width: '100%',
+    width: "100%",
     height: 56,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 20,
     paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     ...shadows.small,
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#333',
+    color: "#333",
     padding: 0,
   },
 });

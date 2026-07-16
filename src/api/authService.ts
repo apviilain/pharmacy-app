@@ -9,6 +9,25 @@ import {
 import { pharmacyService } from './pharmacyService';
 import { useAuthStore } from '../state/authStore';
 
+const extractAuthProfile = (response: any) => {
+  if (!response || typeof response !== 'object') return null;
+
+  if (response.user && typeof response.user === 'object') {
+    return response.user;
+  }
+
+  if (
+    response.data &&
+    typeof response.data === 'object' &&
+    response.data.user &&
+    typeof response.data.user === 'object'
+  ) {
+    return response.data.user;
+  }
+
+  return response;
+};
+
 const assertNonEmptyString = (value: unknown, name: string) => {
   if (typeof value !== 'string' || value.trim().length === 0) {
     throw new Error(`${name} is required`);
@@ -74,7 +93,7 @@ export const authService = {
   getAuthProfile: async (): Promise<any> => {
     try {
       const response = await apiClient.get(endpoints.auth.profile);
-      return response;
+      return extractAuthProfile(response);
     } catch (error) {
       if (error instanceof Error && (error as any).httpStatus === 404) return null;
       throw error;
@@ -84,7 +103,7 @@ export const authService = {
   syncProfileAndCompletion: async (fallbackPhone?: string) => {
     const authProfile = await authService.getAuthProfile().catch(() => null);
     const profile =
-      (await pharmacyService.getMyProfile().catch(() => null)) || authProfile;
+      authProfile || (await pharmacyService.getMyProfile().catch(() => null));
     const existingUser = useAuthStore.getState().user;
     const mappedUser = mapPharmacyProfileToUser(profile);
     const isProfileComplete = hasCompletedPharmacyProfile(profile);

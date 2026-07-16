@@ -604,6 +604,41 @@ export type DiagnosticsBookingRequest = {
   useWalletBalance?: boolean;
 };
 
+export type DiagnosticsPackage = {
+  id?: string;
+  _id?: string;
+  packageId?: string;
+  code?: string;
+  name?: string;
+  packageName?: string;
+  displayName?: string;
+  testCount?: number;
+  testsCount?: number;
+  amount?: number;
+  price?: number;
+  discountedPrice?: number;
+  description?: string;
+  category?: string;
+  isActive?: boolean;
+  [key: string]: unknown;
+};
+
+export type DiagnosticsSlot = {
+  id?: string;
+  _id?: string;
+  slotId?: string;
+  startTime?: string;
+  endTime?: string;
+  bookingTime?: string;
+  label?: string;
+  date?: string;
+  bookingDate?: string;
+  isAvailable?: boolean;
+  isActive?: boolean;
+  packageIds?: string[];
+  [key: string]: unknown;
+};
+
 export type DiagnosticsBooking = {
   id?: string;
   _id?: string;
@@ -669,7 +704,7 @@ export const hasCompletedPharmacyProfile = (
   profile: PharmyxPharmacyProfile | null | undefined,
 ): boolean => {
   if (!profile) return false;
-  return Boolean(profile.name?.trim() && profile.ownerName?.trim());
+  return Boolean(profile.ownerName?.trim());
 };
 
 export const mapPharmacyProfileToUser = (

@@ -74,6 +74,8 @@ export const endpoints = {
   },
   diagnosticsBookings: {
     create: '/api/v1/external-bookings/diagnostics/bookings',
+    packages: '/api/v1/external-bookings/diagnostics/packages',
+    slots: '/api/v1/external-bookings/diagnostics/slots',
     retryPayment: (id: string) =>
       `/api/v1/external-bookings/diagnostics/bookings/${id}/retry-payment`,
     cancel: (id: string) =>
@@ -87,6 +89,8 @@ export const endpoints = {
     verify: '/api/v1/payments/verify',
   },
   bookings: {
+    specialists: '/api/v1/bookings/specialists',
+    specialistSlots: (id: string) => `/api/v1/bookings/specialists/${id}/slots`,
     specialist: '/api/v1/bookings/specialist',
     retryPayment: (id: string) => `/api/v1/bookings/${id}/retry-payment`,
     paymentDetails: (id: string) => `/api/v1/bookings/${id}/payment-details`,

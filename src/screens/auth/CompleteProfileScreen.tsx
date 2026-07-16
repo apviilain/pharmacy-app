@@ -68,28 +68,55 @@ export const CompleteProfileScreen = () => {
   const setUser = useAuthStore((state) => state.setUser);
   const scrollViewRef = useRef<ScrollView>(null);
 
+  const getEmptyFormValues = (): CompleteProfileFormValues => ({
+    name: "",
+    nickname: "",
+    ownerName: "",
+    email: "",
+    address: "",
+    city: "",
+    state: "",
+    pincode: "",
+    latitude: "",
+    longitude: "",
+    gstNumber: "",
+    drugLicenseNumber: "",
+    gstCertificateUrl: "",
+    drugLicenseDocumentUrl: "",
+    ownerIdProofUrl: "",
+    shopFrontPhotoUrl: "",
+    pickupAvailable: true,
+    deliveryAvailable: true,
+  });
+
   const getFormValuesFromUser = (
     profileUser: typeof user,
-  ): CompleteProfileFormValues => ({
-    name: profileUser?.name || "",
-    nickname: profileUser?.nickname || "",
-    ownerName: profileUser?.ownerName || "",
-    email: profileUser?.email || "",
-    address: profileUser?.address || "",
-    city: profileUser?.city || "",
-    state: profileUser?.state || "",
-    pincode: profileUser?.pincode || "",
-    latitude: profileUser?.latitude ? String(profileUser.latitude) : "",
-    longitude: profileUser?.longitude ? String(profileUser.longitude) : "",
-    gstNumber: profileUser?.gstNumber || "",
-    drugLicenseNumber: profileUser?.drugLicenseNumber || "",
-    gstCertificateUrl: profileUser?.gstCertificateUrl || "",
-    drugLicenseDocumentUrl: profileUser?.drugLicenseDocumentUrl || "",
-    ownerIdProofUrl: profileUser?.ownerIdProofUrl || "",
-    shopFrontPhotoUrl: profileUser?.shopFrontPhotoUrl || "",
-    pickupAvailable: profileUser?.pickupAvailable ?? true,
-    deliveryAvailable: profileUser?.deliveryAvailable ?? true,
-  });
+  ): CompleteProfileFormValues => {
+    if (!hasCompletedPharmacyProfile(profileUser)) {
+      return getEmptyFormValues();
+    }
+
+    return {
+      name: profileUser?.name || "",
+      nickname: profileUser?.nickname || "",
+      ownerName: profileUser?.ownerName || "",
+      email: profileUser?.email || "",
+      address: profileUser?.address || "",
+      city: profileUser?.city || "",
+      state: profileUser?.state || "",
+      pincode: profileUser?.pincode || "",
+      latitude: profileUser?.latitude ? String(profileUser.latitude) : "",
+      longitude: profileUser?.longitude ? String(profileUser.longitude) : "",
+      gstNumber: profileUser?.gstNumber || "",
+      drugLicenseNumber: profileUser?.drugLicenseNumber || "",
+      gstCertificateUrl: profileUser?.gstCertificateUrl || "",
+      drugLicenseDocumentUrl: profileUser?.drugLicenseDocumentUrl || "",
+      ownerIdProofUrl: profileUser?.ownerIdProofUrl || "",
+      shopFrontPhotoUrl: profileUser?.shopFrontPhotoUrl || "",
+      pickupAvailable: profileUser?.pickupAvailable ?? true,
+      deliveryAvailable: profileUser?.deliveryAvailable ?? true,
+    };
+  };
 
   const [currentStep, setCurrentStep] = useState(0);
   const [openingHours, setOpeningHours] = useState<PharmyxOpeningHours>(
@@ -161,6 +188,12 @@ export const CompleteProfileScreen = () => {
   useEffect(() => {
     const loadDraft = async () => {
       try {
+        if (!hasCompletedPharmacyProfile(user)) {
+          await AsyncStorage.removeItem("draft_profile_cache");
+          hasDraftProfile.current = false;
+          return;
+        }
+
         const draft = await AsyncStorage.getItem("draft_profile_cache");
         if (draft) {
           hasDraftProfile.current = true;
@@ -179,19 +212,25 @@ export const CompleteProfileScreen = () => {
       }
     };
     loadDraft();
-  }, [setValues]);
+  }, [setValues, user]);
 
   useEffect(() => {
     if (!user || hasDraftProfile.current) return;
 
     setValues(getFormValuesFromUser(user));
-    setOpeningHours(user.openingHours || defaultOpeningHours);
+    setOpeningHours(
+      hasCompletedPharmacyProfile(user)
+        ? user.openingHours || defaultOpeningHours
+        : defaultOpeningHours,
+    );
     setProfilePicture(
-      user.profilePictureUrl ||
-        user.profileImage ||
-        user.profilePicture ||
-        user.avatar ||
-        "",
+      hasCompletedPharmacyProfile(user)
+        ? user.profilePictureUrl ||
+            user.profileImage ||
+            user.profilePicture ||
+            user.avatar ||
+            ""
+        : "",
     );
   }, [user, setValues]);
 
@@ -204,17 +243,23 @@ export const CompleteProfileScreen = () => {
         const mappedUser = mapPharmacyProfileToUser(profileResponse);
         if (!mappedUser) return;
 
-        setUser({
-          ...user,
-          ...mappedUser,
-          phone: mappedUser.phone || user?.phone || user?.mobile || "",
-          mobile: mappedUser.mobile || user?.mobile || user?.phone || "",
-        });
-
         if (hasCompletedPharmacyProfile(profileResponse)) {
+          setUser({
+            ...user,
+            ...mappedUser,
+            phone: mappedUser.phone || user?.phone || user?.mobile || "",
+            mobile: mappedUser.mobile || user?.mobile || user?.phone || "",
+          });
           await useAuthStore.getState().setProfileComplete(true);
           navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] });
+          return;
         }
+
+        await AsyncStorage.removeItem("draft_profile_cache");
+        hasDraftProfile.current = false;
+        setValues(getEmptyFormValues());
+        setOpeningHours(defaultOpeningHours);
+        setProfilePicture("");
       } catch (error) {
         console.error("Failed to hydrate complete profile", error);
       }
@@ -957,28 +1002,28 @@ export const CompleteProfileScreen = () => {
             {renderInput(
               "GST Certificate URL",
               "gstCertificateUrl",
-              "https://cdn.example.com/pharmacy/gst-certificate.pdf",
+              "Enter GST certificate URL",
               "default",
               150,
             )}
             {renderInput(
               "Drug License Document URL",
               "drugLicenseDocumentUrl",
-              "https://cdn.example.com/pharmacy/drug-license.pdf",
+              "Enter drug license document URL",
               "default",
               150,
             )}
             {renderInput(
               "Owner ID Proof URL",
               "ownerIdProofUrl",
-              "https://cdn.example.com/pharmacy/owner-id.pdf",
+              "Enter owner ID proof URL",
               "default",
               150,
             )}
             {renderInput(
               "Shop Front Photo URL",
               "shopFrontPhotoUrl",
-              "https://cdn.example.com/pharmacy/shop-front.jpg",
+              "Enter shop front photo URL",
               "default",
               150,
             )}
