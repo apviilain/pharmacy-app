@@ -20,6 +20,7 @@
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		7F79F256A57D4C129349A310 /* PlusJakartaSans-ExtraLight.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0B4078F951D84C6D97ECF3FB /* PlusJakartaSans-ExtraLight.ttf */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		88E2A9013E4F4019A11E9F01 /* SpeechRecognizerModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 88E2A9003E4F4019A11E9F01 /* SpeechRecognizerModule.m */; };
 		8E5886AD80D24D2CB4BEC271 /* PlusJakartaSans-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0EFDC533AC7040B985B13570 /* PlusJakartaSans-Light.ttf */; };
 		9945E9968E0B4991B782B7F7 /* PlusJakartaSans-SemiBoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 326895C754614ED39328A1A9 /* PlusJakartaSans-SemiBoldItalic.ttf */; };
 		9AE8AE108B334EB8B8733B7A /* PlusJakartaSans-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = CCDB1121D7C542D78AD077E4 /* PlusJakartaSans-Medium.ttf */; };
@@ -44,6 +45,8 @@
 		5DCACB8F33CDC322A6C60F78 /* libPods-AarogyaMedicos.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-AarogyaMedicos.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = AarogyaMedicos/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = AarogyaMedicos/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		88E2A8FF3E4F4019A11E9F01 /* SpeechRecognizerModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = SpeechRecognizerModule.h; path = AarogyaMedicos/SpeechRecognizerModule.h; sourceTree = "<group>"; };
+		88E2A9003E4F4019A11E9F01 /* SpeechRecognizerModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = SpeechRecognizerModule.m; path = AarogyaMedicos/SpeechRecognizerModule.m; sourceTree = "<group>"; };
 		9DC9F2E00A324F5F9A12A980 /* PlusJakartaSans-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "PlusJakartaSans-Regular.ttf"; path = "../src/assets/fonts/PlusJakartaSans-Regular.ttf"; sourceTree = "<group>"; };
 		A2C7DEE6275446559B9C96A8 /* PlusJakartaSans-ExtraBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "PlusJakartaSans-ExtraBold.ttf"; path = "../src/assets/fonts/PlusJakartaSans-ExtraBold.ttf"; sourceTree = "<group>"; };
 		BC2BB345FF0648F1B07F6C18 /* PlusJakartaSans-BoldItalic.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "PlusJakartaSans-BoldItalic.ttf"; path = "../src/assets/fonts/PlusJakartaSans-BoldItalic.ttf"; sourceTree = "<group>"; };
@@ -72,6 +75,8 @@
 			children = (
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
+				88E2A8FF3E4F4019A11E9F01 /* SpeechRecognizerModule.h */,
+				88E2A9003E4F4019A11E9F01 /* SpeechRecognizerModule.m */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
@@ -311,6 +316,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
+				88E2A9013E4F4019A11E9F01 /* SpeechRecognizerModule.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

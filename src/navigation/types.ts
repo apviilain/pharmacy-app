@@ -33,12 +33,20 @@ export type RootStackParamList = {
         lockedSection?: boolean;
       }
     | undefined;
+  PharmacyInventoryStock:
+    | {
+        lowStockOnly?: boolean;
+      }
+    | undefined;
+  PharmacyInventoryImports: undefined;
+  PharmacyInventoryAdjustments: undefined;
   PharmacyOrders:
     | {
         section?: 'orders';
         lockedSection?: boolean;
       }
     | undefined;
+  PharmacyOrdersList: undefined;
   PharmacySubscriptions:
     | {
         section?: 'subscriptions';
@@ -64,6 +72,7 @@ export type RootStackParamList = {
   MainTabs: undefined;
   Home: undefined;
   GlobalSearch: undefined;
+  SelectLocation: undefined;
   NearbyMedicines: undefined;
   PharmaciesDirectory: undefined;
   PharmacyDetails: { pharmacyId: string; title?: string };

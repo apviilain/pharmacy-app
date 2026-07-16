@@ -604,6 +604,27 @@ const StatCard = ({
   </View>
 );
 
+const ModuleShowcaseHeader = ({
+  eyebrow,
+  title,
+  subtitle,
+  icon,
+}: {
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+  icon: React.ReactNode;
+}) => (
+  <View style={styles.moduleShowcaseHeader}>
+    <View style={styles.moduleShowcaseCopy}>
+      <Text style={styles.moduleShowcaseEyebrow}>{eyebrow}</Text>
+      <Text style={styles.moduleShowcaseTitle}>{title}</Text>
+      <Text style={styles.moduleShowcaseSubtitle}>{subtitle}</Text>
+    </View>
+    <View style={styles.moduleShowcaseIconWrap}>{icon}</View>
+  </View>
+);
+
 const InlineError = ({
   message,
   onRetry,
@@ -9407,6 +9428,50 @@ const styles = StyleSheet.create({
   },
   panel: {
     flex: 1,
+  },
+  moduleShowcaseHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: scale(22),
+    borderWidth: 1,
+    borderColor: '#DDEAF6',
+    backgroundColor: '#F6FBFF',
+    paddingHorizontal: scale(16),
+    paddingVertical: verticalScale(16),
+    marginBottom: verticalScale(16),
+  },
+  moduleShowcaseCopy: {
+    flex: 1,
+    marginRight: scale(14),
+  },
+  moduleShowcaseEyebrow: {
+    fontFamily: typography.fontFamily.semiBold,
+    fontSize: scale(11),
+    color: colors.primaryBlue,
+    textTransform: 'uppercase',
+    letterSpacing: 0.7,
+    marginBottom: verticalScale(4),
+  },
+  moduleShowcaseTitle: {
+    fontFamily: typography.fontFamily.bold,
+    fontSize: typography.fontSize.xl,
+    color: colors.textHeader,
+    marginBottom: verticalScale(4),
+  },
+  moduleShowcaseSubtitle: {
+    fontFamily: typography.fontFamily.regular,
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+    lineHeight: scale(19),
+  },
+  moduleShowcaseIconWrap: {
+    width: scale(52),
+    height: scale(52),
+    borderRadius: scale(16),
+    backgroundColor: '#EAF4FC',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   medicinesListPanel: {
     backgroundColor: '#FFFFFF',

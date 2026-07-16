@@ -16,7 +16,7 @@ import Animated, {
   useSharedValue,
   useAnimatedScrollHandler,
 } from 'react-native-reanimated';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   Boxes,
@@ -43,6 +43,9 @@ import { scale, verticalScale, wp } from '../theme/responsive';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HomeSkeleton } from '../components/HomeSkeleton';
 import type { RootStackParamList } from '../navigation/types';
+import { locationService } from '../services/locationService';
+import { useAuthStore } from '../state/authStore';
+import { useLocationSelectionStore } from '../state/locationSelectionStore';
 
 type PharmacySection = Exclude<
   NonNullable<RootStackParamList['Pharmacy']>['section'],
@@ -179,6 +182,18 @@ export default function HomeScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [loading, setLoading] = React.useState(true);
+  const [requestingLocation, setRequestingLocation] = React.useState(false);
+  const profileCity = useAuthStore((state) => state.user?.city) || 'Saved';
+  const profileState = useAuthStore((state) => state.user?.state) || 'Location';
+  const setDeviceLocation = useLocationSelectionStore(
+    (state) => state.setDeviceLocation,
+  );
+  const setProfileLocation = useLocationSelectionStore(
+    (state) => state.setProfileLocation,
+  );
+  const setLocationStatus = useLocationSelectionStore(
+    (state) => state.setLocationStatus,
+  );
   const scrollY = useSharedValue(0);
 
   React.useEffect(() => {
@@ -187,6 +202,87 @@ export default function HomeScreen() {
     }, 1500);
     return () => clearTimeout(timer);
   }, []);
+
+  React.useEffect(() => {
+    setProfileLocation(profileState, profileCity);
+  }, [profileCity, profileState, setProfileLocation]);
+
+  const requestMandatoryLocation = React.useCallback(async () => {
+    if (requestingLocation) return;
+
+    setRequestingLocation(true);
+
+    try {
+      const result = await locationService.requestCurrentLocation();
+
+      if (result.status === 'granted' && result.coords) {
+        setDeviceLocation(result.coords);
+        setLocationStatus('granted', '');
+        return;
+      }
+
+      setLocationStatus(result.status, result.message || '');
+
+      if (result.status === 'unavailable') {
+        return;
+      }
+
+      Alert.alert(
+        'Location Permission Required',
+        result.message ||
+          'Location access is required to continue from the home screen.',
+        [
+          {
+            text: 'Retry',
+            onPress: () => {
+              requestMandatoryLocation().catch(() => {});
+            },
+          },
+          {
+            text: 'Open Settings',
+            onPress: () => {
+              locationService.openSettings().catch(() => {
+                Alert.alert(
+                  'Unable to open settings',
+                  'Please open app settings manually and allow location access.',
+                );
+              });
+            },
+          },
+        ],
+        { cancelable: false },
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Unable to request location permission.';
+      setLocationStatus('unavailable', message);
+
+      Alert.alert(
+        'Location Permission Required',
+        message,
+        [
+          {
+            text: 'Retry',
+            onPress: () => {
+              requestMandatoryLocation().catch(() => {});
+            },
+          },
+        ],
+        { cancelable: false },
+      );
+    } finally {
+      setRequestingLocation(false);
+    }
+  }, [requestingLocation, setDeviceLocation, setLocationStatus]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      requestMandatoryLocation().catch(() => {});
+      return undefined;
+    }, [requestMandatoryLocation]),
+  );
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: event => {

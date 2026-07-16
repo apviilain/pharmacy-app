@@ -12,6 +12,8 @@ import {
 import HomeScreen from '../screens/HomeScreen';
 import { PharmacyScreen } from '../screens/main/PharmacyScreen';
 import { ProfileScreen } from '../screens/main/ProfileScreen';
+import { PharmacyInventoryScreen } from '../screens/pharmacy/PharmacyInventoryScreen';
+import { PharmacyOrdersScreen } from '../screens/pharmacy/PharmacyOrdersScreen';
 
 import { typography } from '../theme/typography';
 import { scale, verticalScale } from '../theme/responsive';
@@ -98,8 +100,7 @@ export function MainTabs() {
       />
       <Tab.Screen
         name="Orders"
-        component={PharmacyScreen}
-        initialParams={{ section: 'orders', lockedSection: true }}
+        component={PharmacyOrdersScreen}
         options={{
           tabBarLabel: 'Orders',
           tabBarIcon: ({ color, focused }) => (
@@ -129,8 +130,7 @@ export function MainTabs() {
       />
       <Tab.Screen
         name="HealthVault"
-        component={PharmacyScreen}
-        initialParams={{ section: 'inventory', lockedSection: true }}
+        component={PharmacyInventoryScreen}
         options={{
           tabBarLabel: 'Inventory',
           tabBarIcon: ({ color, focused }) => (

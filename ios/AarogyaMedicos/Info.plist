@@ -39,8 +39,12 @@
 	<string>Pharmyx uses Face ID to quickly and securely unlock your app.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Pharmyx needs your location to check nearby medicine availability.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Pharmyx needs microphone access so you can search locations using your voice.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Pharmyx needs access to your photo library to choose a profile picture.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Pharmyx needs speech recognition access to convert your voice into location search text.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UIAppFonts</key>

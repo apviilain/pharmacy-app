@@ -12,6 +12,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ArrowRight, ShieldCheck } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PhoneInput } from '../../components/PhoneInput';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { colors } from '../../theme/colors';
@@ -26,10 +27,15 @@ type SignInNavigationProp = NativeStackNavigationProp<any, 'SignIn'>;
 
 export const SignInScreen = () => {
   const navigation = useNavigation<SignInNavigationProp>();
+  const insets = useSafeAreaInsets();
   const defaultPhone = useAuthStore.getState().user?.phone || '';
   const [phone, setPhone] = useState(defaultPhone);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const topSpacing = Math.max(
+    insets.top,
+    Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0,
+  );
 
   const sendOtpMutation = useMutation({
     mutationFn: async () => {
@@ -70,7 +76,10 @@ export const SignInScreen = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingTop: topSpacing + verticalScale(12) },
+          ]}
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.brandRow}>
@@ -168,7 +177,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: wp('6%'),
-    paddingTop: verticalScale(18),
     paddingBottom: verticalScale(24),
   },
   brandRow: {

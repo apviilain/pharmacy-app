@@ -10,6 +10,7 @@ import { navigationRef } from './navigationRef';
 // Screens
 import PathkindBookingScreen from '../screens/PathkindBookingScreen';
 import { GlobalSearchScreen } from '../screens/main/GlobalSearchScreen';
+import { SelectLocationScreen } from '../screens/main/SelectLocationScreen';
 import { NearbyMedicinesScreen } from '../screens/main/NearbyMedicinesScreen';
 import { PharmacyCartScreen } from '../screens/main/PharmacyCartScreen';
 import { AppointmentsScreen } from '../screens/main/AppointmentsScreen';
@@ -42,6 +43,12 @@ import {
   PharmacyMedicineEditScreen,
 } from '../screens/pharmacy/PharmacyMedicineFormScreen';
 import { PharmacyHubScreen } from '../screens/pharmacy/PharmacyHubScreen';
+import { PharmacyInventoryAdjustmentsScreen } from '../screens/pharmacy/PharmacyInventoryAdjustmentsScreen';
+import { PharmacyInventoryImportsScreen } from '../screens/pharmacy/PharmacyInventoryImportsScreen';
+import { PharmacyInventoryScreen } from '../screens/pharmacy/PharmacyInventoryScreen';
+import { PharmacyInventoryStockScreen } from '../screens/pharmacy/PharmacyInventoryStockScreen';
+import { PharmacyOrdersListScreen } from '../screens/pharmacy/PharmacyOrdersListScreen';
+import { PharmacyOrdersScreen } from '../screens/pharmacy/PharmacyOrdersScreen';
 import {
   PharmaciesDirectoryScreen,
   PharmacyDetailsScreen,
@@ -72,7 +79,11 @@ export function AppNavigator() {
             case 'PharmacyMedicineEdit': title = 'Edit Medicine'; break;
             case 'PharmacyCustomers': title = 'Pharmacy Customers'; break;
             case 'PharmacyInventory': title = 'Pharmacy Inventory'; break;
+            case 'PharmacyInventoryStock': title = 'Stock Control'; break;
+            case 'PharmacyInventoryImports': title = 'Import History'; break;
+            case 'PharmacyInventoryAdjustments': title = 'Inventory Adjustments'; break;
             case 'PharmacyOrders': title = 'Pharmacy Orders'; break;
+            case 'PharmacyOrdersList': title = 'Active Orders'; break;
             case 'PharmacySubscriptions': title = 'Pharmacy Subscriptions'; break;
             case 'PatientTracking': title = 'Patient Tracking'; break;
             case 'Diagnostics': title = 'Diagnostics'; break;
@@ -85,6 +96,7 @@ export function AppNavigator() {
             case 'HealthVault': title = 'Health Vault'; break;
             case 'Profile': title = 'My Profile'; break;
             case 'GlobalSearch': title = 'Search'; break;
+            case 'SelectLocation': title = 'Select Location'; break;
             case 'NearbyMedicines': title = 'Nearby Medicines'; break;
             case 'PharmaciesDirectory': title = 'Pharmacies'; break;
             case 'PharmacyDetails':
@@ -171,6 +183,7 @@ export function AppNavigator() {
         <Stack.Screen name="MyMembers" component={MyMembersScreen} />
         <Stack.Screen name="PathkindBooking" component={PathkindBookingScreen} />
         <Stack.Screen name="GlobalSearch" component={GlobalSearchScreen} options={{ animation: 'fade' }} />
+        <Stack.Screen name="SelectLocation" component={SelectLocationScreen} />
         <Stack.Screen name="NearbyMedicines" component={NearbyMedicinesScreen} />
         <Stack.Screen name="PharmaciesDirectory" component={PharmaciesDirectoryScreen} />
         <Stack.Screen name="PharmacyDetails" component={PharmacyDetailsScreen} />
@@ -222,13 +235,27 @@ export function AppNavigator() {
         />
         <Stack.Screen
           name="PharmacyInventory"
-          component={PharmacyScreen}
-          initialParams={{ section: 'inventory', lockedSection: true }}
+          component={PharmacyInventoryScreen}
+        />
+        <Stack.Screen
+          name="PharmacyInventoryStock"
+          component={PharmacyInventoryStockScreen}
+        />
+        <Stack.Screen
+          name="PharmacyInventoryImports"
+          component={PharmacyInventoryImportsScreen}
+        />
+        <Stack.Screen
+          name="PharmacyInventoryAdjustments"
+          component={PharmacyInventoryAdjustmentsScreen}
         />
         <Stack.Screen
           name="PharmacyOrders"
-          component={PharmacyScreen}
-          initialParams={{ section: 'orders', lockedSection: true }}
+          component={PharmacyOrdersScreen}
+        />
+        <Stack.Screen
+          name="PharmacyOrdersList"
+          component={PharmacyOrdersListScreen}
         />
         <Stack.Screen
           name="PharmacySubscriptions"

@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Linking, PermissionsAndroid, Platform } from 'react-native';
 
 export type DeviceCoordinates = {
@@ -18,6 +19,8 @@ type LocationOutcome = {
   message?: string;
   status: LocationAccessState;
 };
+
+const LAST_LOCATION_STORAGE_KEY = 'last_known_device_location';
 
 const getBrowserGeolocation = () => {
   const nav = (globalThis as any).navigator as
@@ -69,6 +72,33 @@ const getCurrentCoordinates = (): Promise<DeviceCoordinates> =>
     );
   });
 
+const getCachedCoordinates = async (): Promise<DeviceCoordinates | null> => {
+  try {
+    const raw = await AsyncStorage.getItem(LAST_LOCATION_STORAGE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as Partial<DeviceCoordinates>;
+    const latitude = Number(parsed.latitude);
+    const longitude = Number(parsed.longitude);
+
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      return null;
+    }
+
+    return { latitude, longitude };
+  } catch {
+    return null;
+  }
+};
+
+const cacheCoordinates = async (coords: DeviceCoordinates) => {
+  try {
+    await AsyncStorage.setItem(LAST_LOCATION_STORAGE_KEY, JSON.stringify(coords));
+  } catch {
+    // Ignore cache write failures and continue with runtime location data.
+  }
+};
+
 export const locationService = {
   openSettings: () => Linking.openSettings(),
 
@@ -104,12 +134,22 @@ export const locationService = {
 
     try {
       const coords = await getCurrentCoordinates();
+      void cacheCoordinates(coords);
       return { coords, status: 'granted' };
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
           : 'Unable to access your current location.';
+
+      const cachedCoords = await getCachedCoordinates();
+      if (cachedCoords) {
+        return {
+          coords: cachedCoords,
+          status: 'granted',
+          message: 'Using your last known location.',
+        };
+      }
 
       if (/denied|permission/i.test(message)) {
         return {

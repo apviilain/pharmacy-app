@@ -9,4 +9,5 @@ declare module '@env' {
   export const BASE_URL: string;
   export const API_TIMEOUT: string;
   export const AUTH_TOKEN_KEY: string;
+  export const GOOGLE_MAPS_API_KEY: string;
 }

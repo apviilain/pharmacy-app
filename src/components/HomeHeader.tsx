@@ -40,6 +40,7 @@ import Animated, {
   useSharedValue,
 } from "react-native-reanimated";
 import { typography } from "../theme/typography";
+import { useLocationSelectionStore } from "../state/locationSelectionStore";
 
 interface HomeHeaderProps {
   scrollY: SharedValue<number>;
@@ -49,11 +50,15 @@ export default function HomeHeader({ scrollY }: HomeHeaderProps) {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const userName = useAuthStore((state) => state.user?.name) || "User";
-  const locationCity = useAuthStore((state) => state.user?.city) || "Location";
-  const locationState = useAuthStore((state) => state.user?.state) || "Your";
   const hasUser = useAuthStore((state) => !!state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
+  const selectedLocationTitle = useLocationSelectionStore(
+    (state) => state.title,
+  );
+  const selectedLocationSubtitle = useLocationSelectionStore(
+    (state) => state.subtitle,
+  );
   const pOpacity = useSharedValue(1);
   const pTranslateY = useSharedValue(0);
 
@@ -271,19 +276,26 @@ export default function HomeHeader({ scrollY }: HomeHeaderProps) {
           { top: 20 + insets.top },
           animatedLocationStyle,
         ]}
-        pointerEvents="none"
       >
-        <View style={styles.locationLeftRow}>
-          <View style={styles.iconSquareBox}>
-            <MapPin color="#FFF" size={18} fill="#FFF" />
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={styles.locationTouchable}
+          onPress={() => navigation.navigate("SelectLocation")}
+        >
+          <View style={styles.locationLeftRow}>
+            <View style={styles.iconSquareBox}>
+              <MapPin color="#FFF" size={18} fill="#FFF" />
+            </View>
+            <View style={styles.locationTextColumn}>
+              <Text style={styles.deliverToText}>
+                {selectedLocationTitle.toUpperCase()}
+              </Text>
+              <Text style={styles.locationValueText}>
+                {selectedLocationSubtitle}
+              </Text>
+            </View>
           </View>
-          <View style={styles.locationTextColumn}>
-            <Text style={styles.deliverToText}>
-              {locationState.toUpperCase()}
-            </Text>
-            <Text style={styles.locationValueText}>{locationCity}</Text>
-          </View>
-        </View>
+        </TouchableOpacity>
       </Animated.View>
 
       {/* Anchor Notification unconditionally independent so it retains clickability natively */}
@@ -443,6 +455,9 @@ const styles = StyleSheet.create({
   locationLeftRow: {
     flexDirection: "row",
     alignItems: "center",
+  },
+  locationTouchable: {
+    alignSelf: "flex-start",
   },
   headerActionCluster: {
     flex: 1,

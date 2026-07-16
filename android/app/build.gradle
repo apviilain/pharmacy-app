@@ -58,6 +58,26 @@ react {
  * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
  */
 def enableProguardInReleaseBuilds = false
+def googleMapsApiKey = ""
+def envFile = rootProject.file("../.env")
+
+if (envFile.exists()) {
+    envFile.eachLine { rawLine ->
+        def line = rawLine?.trim()
+
+        if (!line || line.startsWith("#") || !line.contains("=")) {
+            return
+        }
+
+        def separatorIndex = line.indexOf("=")
+        def key = line.substring(0, separatorIndex).trim()
+        def value = line.substring(separatorIndex + 1).trim()
+
+        if (key == "GOOGLE_MAPS_API_KEY") {
+            googleMapsApiKey = value.replace("\"", "").replace("'", "")
+        }
+    }
+}
 
 /**
  * The preferred build flavor of JavaScriptCore (JSC)
@@ -95,6 +115,7 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        manifestPlaceholders = [GOOGLE_MAPS_API_KEY: googleMapsApiKey]
         ndk {
             abiFilters "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
         }
