@@ -109,8 +109,9 @@ export const useProfile = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const parseOptionalNumber = (value: string) => {
-    const trimmed = value.trim();
+  const parseOptionalNumber = (value?: string | number) => {
+    if (value === undefined || value === null) return undefined;
+    const trimmed = String(value).trim();
     if (!trimmed) return undefined;
     const parsed = Number(trimmed);
     return Number.isFinite(parsed) ? parsed : undefined;
@@ -120,32 +121,24 @@ export const useProfile = () => {
     try {
       setSaving(true);
       const payload = {
-        name: formData.name.trim() || 'My Pharmacy',
-        nickname:
-          formData.nickname.trim() ||
-          formData.name.trim().split(' ')[0] ||
-          'Pharmacy',
-        ownerName:
-          formData.ownerName.trim() ||
-          user?.ownerName ||
-          formData.name.trim() ||
-          'Owner',
-        phone: formData.phone.trim() || user?.phone || user?.mobile || undefined,
-        email: formData.email.trim() || undefined,
-        address: formData.address.trim() || undefined,
-        city: formData.city.trim() || undefined,
-        state: formData.state.trim() || undefined,
-        pincode: formData.pincode.trim() || undefined,
+        name: formData.name?.trim() || user?.name || 'My Pharmacy',
+        nickname: formData.nickname?.trim() || formData.name?.trim().split(' ')[0] || '',
+        ownerName: formData.ownerName?.trim() || '',
+        phone: formData.phone?.trim() || user?.phone || user?.mobile || '',
+        email: formData.email?.trim() || '',
+        address: formData.address?.trim() || '',
+        city: formData.city?.trim() || '',
+        state: formData.state?.trim() || '',
+        pincode: formData.pincode?.trim() || '',
         latitude: parseOptionalNumber(formData.latitude),
         longitude: parseOptionalNumber(formData.longitude),
-        gstNumber: formData.gstNumber.trim() || undefined,
-        drugLicenseNumber: formData.drugLicenseNumber.trim() || undefined,
-        gstCertificateUrl: formData.gstCertificateUrl.trim() || undefined,
-        drugLicenseDocumentUrl:
-          formData.drugLicenseDocumentUrl.trim() || undefined,
-        ownerIdProofUrl: formData.ownerIdProofUrl.trim() || undefined,
-        shopFrontPhotoUrl: formData.shopFrontPhotoUrl.trim() || undefined,
-        profilePictureUrl: formData.profilePictureUrl.trim() || undefined,
+        gstNumber: formData.gstNumber?.trim() || '',
+        drugLicenseNumber: formData.drugLicenseNumber?.trim() || '',
+        gstCertificateUrl: formData.gstCertificateUrl?.trim() || '',
+        drugLicenseDocumentUrl: formData.drugLicenseDocumentUrl?.trim() || '',
+        ownerIdProofUrl: formData.ownerIdProofUrl?.trim() || '',
+        shopFrontPhotoUrl: formData.shopFrontPhotoUrl?.trim() || '',
+        profilePictureUrl: formData.profilePictureUrl?.trim() || '',
         pickupAvailable: formData.pickupAvailable,
         deliveryAvailable: formData.deliveryAvailable,
         openingHours: user?.openingHours || defaultOpeningHours,

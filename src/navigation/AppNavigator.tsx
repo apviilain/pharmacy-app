@@ -13,7 +13,7 @@ import { GlobalSearchScreen } from '../screens/main/GlobalSearchScreen';
 import { SelectLocationScreen } from '../screens/main/SelectLocationScreen';
 import { NearbyMedicinesScreen } from '../screens/main/NearbyMedicinesScreen';
 import { PharmacyCartScreen } from '../screens/main/PharmacyCartScreen';
-import { AppointmentsScreen } from '../screens/main/AppointmentsScreen';
+// Removed AppointmentsScreen
 import { AppointmentDetailsScreen } from '../screens/main/AppointmentDetailsScreen';
 import { AmbulanceScreen } from '../screens/main/AmbulanceScreen';
 import { SettingsScreen } from '../screens/profile/SettingsScreen';
@@ -24,20 +24,20 @@ import { EditProfileScreen } from '../screens/profile/EditProfileScreen';
 import { MyMembersScreen } from '../screens/profile/MyMembersScreen';
 import { FindDoctorScreen } from '../screens/telehealth/FindDoctorScreen';
 import { DoctorDetailsScreen } from '../screens/telehealth/DoctorDetailsScreen';
-import { SelectMemberScreen } from '../screens/telehealth/SelectMemberScreen';
 import { AddMemberScreen } from '../screens/telehealth/AddMemberScreen';
-import { SlotSelectionScreen } from '../screens/telehealth/SlotSelectionScreen';
-import { BookingConfirmationScreen } from '../screens/telehealth/BookingConfirmationScreen';
+import { TelehealthBookingScreen } from '../screens/telehealth/TelehealthBookingScreen';
+import { TelehealthHistoryScreen } from '../screens/telehealth/TelehealthHistoryScreen';
 import { BookingSuccessScreen } from '../screens/telehealth/BookingSuccessScreen';
 import { ConsultationRoomScreen } from '../screens/telehealth/ConsultationRoomScreen';
 import { PharmacyScreen } from '../screens/main/PharmacyScreen';
 import {
-  DiagnosticsBookingDetailsScreen,
-  DiagnosticsCreateBookingScreen,
-  DiagnosticsPaymentScreen,
-  DiagnosticsRescheduleScreen,
-  DiagnosticsScreen,
-} from '../screens/diagnostics/DiagnosticsScreens';
+  DiagnosticsHomeScreen,
+} from '../screens/diagnostics/DiagnosticsHomeScreen';
+import { DiagnosticsCreateBookingScreen } from '../screens/diagnostics/DiagnosticsBookingScreen';
+import { DiagnosticsHistoryScreen } from '../screens/diagnostics/DiagnosticsHistoryScreen';
+import { DiagnosticsBookingDetailsScreen } from '../screens/diagnostics/DiagnosticsBookingDetailsScreen';
+import { DiagnosticsPaymentScreen } from '../screens/diagnostics/DiagnosticsPaymentScreen';
+import { DiagnosticsRescheduleScreen } from '../screens/diagnostics/DiagnosticsRescheduleScreen';
 import {
   PharmacyMedicineCreateScreen,
   PharmacyMedicineEditScreen,
@@ -49,6 +49,12 @@ import { PharmacyInventoryScreen } from '../screens/pharmacy/PharmacyInventorySc
 import { PharmacyInventoryStockScreen } from '../screens/pharmacy/PharmacyInventoryStockScreen';
 import { PharmacyOrdersListScreen } from '../screens/pharmacy/PharmacyOrdersListScreen';
 import { PharmacyOrdersScreen } from '../screens/pharmacy/PharmacyOrdersScreen';
+import { PharmacyCustomersScreen } from '../screens/pharmacy/PharmacyCustomersScreen';
+import { ManagePharmacyCustomerScreen } from '../screens/pharmacy/ManagePharmacyCustomerScreen';
+import { PatientTrackingScreen } from '../screens/pharmacy/PatientTrackingScreen';
+import { ManagePatientTrackingScreen } from '../screens/pharmacy/ManagePatientTrackingScreen';
+import { PharmacySubscriptionsScreen } from '../screens/pharmacy/PharmacySubscriptionsScreen';
+import { ManagePharmacySubscriptionScreen } from '../screens/pharmacy/ManagePharmacySubscriptionScreen';
 import {
   PharmaciesDirectoryScreen,
   PharmacyDetailsScreen,
@@ -85,8 +91,15 @@ export function AppNavigator() {
             case 'PharmacyOrders': title = 'Pharmacy Orders'; break;
             case 'PharmacyOrdersList': title = 'Active Orders'; break;
             case 'PharmacySubscriptions': title = 'Pharmacy Subscriptions'; break;
+            case 'ManagePharmacySubscription': 
+              title = (route.params as any)?.mode === 'CREATE' ? 'New Subscription' : 
+                      (route.params as any)?.mode === 'UPDATE' ? 'Update Subscription' : 'Pause Subscription'; 
+              break;
+            case 'ManagePharmacyCustomer': title = 'Manage Customer'; break;
             case 'PatientTracking': title = 'Patient Tracking'; break;
+            case 'ManagePatientTracking': title = 'Manage Tracking'; break;
             case 'Diagnostics': title = 'Diagnostics'; break;
+            case 'DiagnosticsHistory': title = 'My Bookings'; break;
             case 'DiagnosticsCreateBooking': title = 'Create Booking'; break;
             case 'DiagnosticsBookingDetails': title = 'Booking Details'; break;
             case 'DiagnosticsPayment': title = 'Payment'; break;
@@ -105,7 +118,7 @@ export function AppNavigator() {
                 'Pharmacy Details';
               break;
             case 'PharmacyCart': title = 'Cart'; break;
-            case 'ConsultationAppointments': title = 'My Appointments'; break;
+            case 'TelehealthHistory': title = 'My Consults'; break;
             case 'AppointmentDetails': title = 'Appointment Details'; break;
             case 'Ambulance': title = 'Ambulance Service'; break;
             case 'Wallet':
@@ -120,10 +133,8 @@ export function AppNavigator() {
             case 'MyMembers': title = 'My Members'; break;
             case 'FindDoctor': title = 'Find Doctor'; break;
             case 'DoctorDetails': title = 'Doctor Details'; break;
-            case 'SelectMember': title = 'Select Patient'; break;
             case 'AddMember': title = 'Add Patient'; break;
-            case 'SlotSelection': title = 'Select Slot'; break;
-            case 'BookingConfirmation': title = 'Confirm Booking'; break;
+            case 'TelehealthBooking': title = 'Book Consultation'; break;
             case 'BookingSuccess': title = 'Booking Successful'; break;
             case 'ConsultationRoom': title = 'Consultation'; break;
             case 'Pharmacy': title = 'Pharmacy'; break;
@@ -188,16 +199,14 @@ export function AppNavigator() {
         <Stack.Screen name="PharmaciesDirectory" component={PharmaciesDirectoryScreen} />
         <Stack.Screen name="PharmacyDetails" component={PharmacyDetailsScreen} />
         <Stack.Screen name="PharmacyCart" component={PharmacyCartScreen} />
-        <Stack.Screen name="ConsultationAppointments" component={AppointmentsScreen} />
+        <Stack.Screen name="TelehealthHistory" component={TelehealthHistoryScreen} />
         <Stack.Screen name="AppointmentDetails" component={AppointmentDetailsScreen} />
 
         {/* Telehealth Flow */}
         <Stack.Screen name="FindDoctor" component={FindDoctorScreen} />
         <Stack.Screen name="DoctorDetails" component={DoctorDetailsScreen} />
-        <Stack.Screen name="SelectMember" component={SelectMemberScreen} />
+        <Stack.Screen name="TelehealthBooking" component={TelehealthBookingScreen} />
         <Stack.Screen name="AddMember" component={AddMemberScreen} />
-        <Stack.Screen name="SlotSelection" component={SlotSelectionScreen} />
-        <Stack.Screen name="BookingConfirmation" component={BookingConfirmationScreen} />
         <Stack.Screen name="BookingSuccess" component={BookingSuccessScreen} />
         <Stack.Screen
           name="ConsultationRoom"
@@ -229,17 +238,36 @@ export function AppNavigator() {
           component={PharmacyMedicineEditScreen}
         />
         <Stack.Screen
-          name="PharmacyCustomers"
-          component={PharmacyScreen}
-          initialParams={{ section: 'customers', lockedSection: true }}
+          name="PharmacySubscriptions"
+          component={PharmacySubscriptionsScreen}
         />
         <Stack.Screen
-          name="PharmacyInventory"
-          component={PharmacyInventoryScreen}
+          name="ManagePharmacySubscription"
+          component={ManagePharmacySubscriptionScreen}
+        />
+        <Stack.Screen
+          name="PatientTracking"
+          component={PatientTrackingScreen}
+        />
+        <Stack.Screen
+          name="ManagePatientTracking"
+          component={ManagePatientTrackingScreen}
         />
         <Stack.Screen
           name="PharmacyInventoryStock"
           component={PharmacyInventoryStockScreen}
+        />
+        <Stack.Screen
+          name="PharmacyCustomers"
+          component={PharmacyCustomersScreen}
+        />
+        <Stack.Screen
+          name="ManagePharmacyCustomer"
+          component={ManagePharmacyCustomerScreen}
+        />
+        <Stack.Screen
+          name="PharmacyInventory"
+          component={PharmacyInventoryScreen}
         />
         <Stack.Screen
           name="PharmacyInventoryImports"
@@ -253,23 +281,14 @@ export function AppNavigator() {
           name="PharmacyOrders"
           component={PharmacyOrdersScreen}
         />
+
         <Stack.Screen
           name="PharmacyOrdersList"
           component={PharmacyOrdersListScreen}
         />
         <Stack.Screen
-          name="PharmacySubscriptions"
-          component={PharmacyScreen}
-          initialParams={{ section: 'subscriptions', lockedSection: true }}
-        />
-        <Stack.Screen
-          name="PatientTracking"
-          component={PharmacyScreen}
-          initialParams={{ section: 'tracking', lockedSection: true }}
-        />
-        <Stack.Screen
           name="Diagnostics"
-          component={DiagnosticsScreen}
+          component={DiagnosticsHomeScreen}
         />
         <Stack.Screen
           name="DiagnosticsCreateBooking"
@@ -286,6 +305,10 @@ export function AppNavigator() {
         <Stack.Screen
           name="DiagnosticsReschedule"
           component={DiagnosticsRescheduleScreen}
+        />
+        <Stack.Screen
+          name="DiagnosticsHistory"
+          component={DiagnosticsHistoryScreen}
         />
         <Stack.Screen name="Pharmacy" component={PharmacyScreen} />
       </Stack.Navigator>

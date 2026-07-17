@@ -23,7 +23,7 @@ import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { scale, verticalScale } from '../../theme/responsive';
 import { PrimaryButton } from '../../components/PrimaryButton';
-import { appointmentsTabs } from './mockMainData';
+import { appointmentsTabs } from '../main/mockMainData';
 import { appointmentService } from '../../api/appointmentService';
 import { walletApi } from '../../api/walletApi';
 import { couponService, Coupon } from '../../api/couponService';
@@ -191,7 +191,7 @@ const PaymentActions = ({
   );
 };
 
-export const AppointmentsScreen = () => {
+export const TelehealthHistoryScreen = () => {
   const [active, setActive] =
     useState<(typeof appointmentsTabs)[number]>('All');
 

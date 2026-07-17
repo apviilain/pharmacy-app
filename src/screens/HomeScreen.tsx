@@ -182,7 +182,7 @@ export default function HomeScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [loading, setLoading] = React.useState(true);
-  const [requestingLocation, setRequestingLocation] = React.useState(false);
+  const requestingLocationRef = React.useRef(false);
   const profileCity = useAuthStore((state) => state.user?.city) || 'Saved';
   const profileState = useAuthStore((state) => state.user?.state) || 'Location';
   const setDeviceLocation = useLocationSelectionStore(
@@ -208,16 +208,31 @@ export default function HomeScreen() {
   }, [profileCity, profileState, setProfileLocation]);
 
   const requestMandatoryLocation = React.useCallback(async () => {
-    if (requestingLocation) return;
+    if (requestingLocationRef.current) return;
 
-    setRequestingLocation(true);
+    requestingLocationRef.current = true;
 
     try {
       const result = await locationService.requestCurrentLocation();
 
       if (result.status === 'granted' && result.coords) {
-        setDeviceLocation(result.coords);
+        setDeviceLocation(result.coords, { subtitle: 'Locating...' });
         setLocationStatus('granted', '');
+        
+        try {
+          const resolvedAddress = await locationService.reverseGeocodeLocation(
+            result.coords.latitude,
+            result.coords.longitude
+          );
+          setDeviceLocation(result.coords, {
+            title: resolvedAddress.title,
+            subtitle: resolvedAddress.subtitle,
+          });
+        } catch {
+          setDeviceLocation(result.coords, {
+            subtitle: 'Location details not available',
+          });
+        }
         return;
       }
 
@@ -273,9 +288,9 @@ export default function HomeScreen() {
         { cancelable: false },
       );
     } finally {
-      setRequestingLocation(false);
+      requestingLocationRef.current = false;
     }
-  }, [requestingLocation, setDeviceLocation, setLocationStatus]);
+  }, [setDeviceLocation, setLocationStatus]);
 
   useFocusEffect(
     React.useCallback(() => {

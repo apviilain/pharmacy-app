@@ -222,19 +222,9 @@ export const GlobalSearchScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['left', 'right']}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      <View
-        style={[
-          styles.header,
-          {
-            paddingTop:
-              Platform.OS === 'android'
-                ? Math.max(insets.top, verticalScale(6))
-                : verticalScale(6),
-          },
-        ]}
-      >
+      <View style={[styles.header, { paddingTop: verticalScale(12) }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <ArrowLeft color={colors.textHeader} size={scale(24)} />
         </TouchableOpacity>

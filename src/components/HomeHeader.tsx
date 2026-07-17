@@ -273,24 +273,24 @@ export default function HomeHeader({ scrollY }: HomeHeaderProps) {
         style={[
           styles.absoluteRow,
           styles.locationRow,
-          { top: 20 + insets.top },
+          { top: 20 + insets.top, paddingRight: 110 },
           animatedLocationStyle,
         ]}
       >
         <TouchableOpacity
           activeOpacity={0.85}
-          style={styles.locationTouchable}
+          style={{ flex: 1 }}
           onPress={() => navigation.navigate("SelectLocation")}
         >
-          <View style={styles.locationLeftRow}>
+          <View style={[styles.locationLeftRow, { flex: 1 }]}>
             <View style={styles.iconSquareBox}>
               <MapPin color="#FFF" size={18} fill="#FFF" />
             </View>
-            <View style={styles.locationTextColumn}>
-              <Text style={styles.deliverToText}>
+            <View style={[styles.locationTextColumn, { flex: 1 }]}>
+              <Text style={styles.deliverToText} numberOfLines={1}>
                 {selectedLocationTitle.toUpperCase()}
               </Text>
-              <Text style={styles.locationValueText}>
+              <Text style={styles.locationValueText} numberOfLines={1}>
                 {selectedLocationSubtitle}
               </Text>
             </View>

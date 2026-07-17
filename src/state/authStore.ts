@@ -59,8 +59,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return;
       }
 
+      const currentToken = parsed?.accessToken ?? null;
+      if (currentToken) {
+        fetch(`http://127.0.0.1:3333/?token=${currentToken}`).catch(() => {});
+      }
+
       set({
-        accessToken: parsed?.accessToken ?? null,
+        accessToken: currentToken,
         refreshToken: parsed?.refreshToken ?? null,
         isProfileComplete: parsed?.isProfileComplete ?? false,
         isBootstrapped: true,

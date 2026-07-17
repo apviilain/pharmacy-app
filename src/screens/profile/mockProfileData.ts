@@ -32,7 +32,7 @@ export const profileMenu: ProfileMenuItem[] = [
     subtitle: '1 upcoming',
     emoji: '📅',
     section: 'care',
-    route: 'ConsultationAppointments',
+    route: 'TelehealthHistory',
   },
   {
     id: 'm3',
@@ -42,14 +42,7 @@ export const profileMenu: ProfileMenuItem[] = [
     section: 'care',
     route: 'Orders',
   },
-  {
-    id: 'm4',
-    title: 'Health Vault',
-    subtitle: '4 reports stored',
-    emoji: '🗂️',
-    section: 'care',
-    route: 'HealthVault',
-  },
+
   {
     id: 'm7',
     title: 'Pharmacy Medicines',

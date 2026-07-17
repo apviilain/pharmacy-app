@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Linking, PermissionsAndroid, Platform } from 'react-native';
+import Geolocation from '@react-native-community/geolocation';
 
 export type DeviceCoordinates = {
   latitude: number;
@@ -22,37 +23,9 @@ type LocationOutcome = {
 
 const LAST_LOCATION_STORAGE_KEY = 'last_known_device_location';
 
-const getBrowserGeolocation = () => {
-  const nav = (globalThis as any).navigator as
-    | (Navigator & {
-        geolocation?: {
-          getCurrentPosition: (
-            success: (position: {
-              coords: { latitude: number; longitude: number };
-            }) => void,
-            error?: (error: { code?: number; message?: string }) => void,
-            options?: {
-              enableHighAccuracy?: boolean;
-              timeout?: number;
-              maximumAge?: number;
-            },
-          ) => void;
-        };
-      })
-    | undefined;
-
-  return nav?.geolocation;
-};
-
 const getCurrentCoordinates = (): Promise<DeviceCoordinates> =>
   new Promise((resolve, reject) => {
-    const geolocation = getBrowserGeolocation();
-    if (!geolocation) {
-      reject(new Error('Location services are unavailable on this device.'));
-      return;
-    }
-
-    geolocation.getCurrentPosition(
+    Geolocation.getCurrentPosition(
       position => {
         resolve({
           latitude: position.coords.latitude,
@@ -65,7 +38,7 @@ const getCurrentCoordinates = (): Promise<DeviceCoordinates> =>
         );
       },
       {
-        enableHighAccuracy: true,
+        enableHighAccuracy: Platform.OS === 'ios',
         timeout: 15000,
         maximumAge: 30000,
       },
@@ -102,20 +75,52 @@ const cacheCoordinates = async (coords: DeviceCoordinates) => {
 export const locationService = {
   openSettings: () => Linking.openSettings(),
 
+  reverseGeocodeLocation: async (latitude: number, longitude: number) => {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&email=admin@freenace.com`,
+      {
+        headers: {
+          Accept: "application/json",
+          "Accept-Language": "en-IN",
+          "User-Agent": "PharmacyApp/1.0 (admin@freenace.com)",
+        },
+      },
+    );
+    if (!response.ok) {
+      throw new Error("Geocoding failed");
+    }
+    const payload = (await response.json()) as {
+      display_name?: string;
+      address?: Record<string, string>;
+    };
+    const addressParts = payload.display_name?.split(",") || [];
+    return {
+      title:
+        payload.address?.city ||
+        payload.address?.town ||
+        payload.address?.suburb ||
+        addressParts[0] ||
+        "Selected location",
+      subtitle: payload.display_name || "Location details not available",
+    };
+  },
+
   requestCurrentLocation: async (): Promise<LocationOutcome> => {
     if (Platform.OS === 'android') {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        {
-          title: 'Location permission required',
-          message:
-            'Medicine availability needs your current location to find nearby pharmacies.',
-          buttonPositive: 'Allow',
-          buttonNegative: 'Cancel',
-        },
+      const granted = await PermissionsAndroid.requestMultiple(
+        [
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+        ]
       );
 
-      if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
+      const fineGranted = granted[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED;
+      const coarseGranted = granted[PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED;
+      
+      const fineNeverAskAgain = granted[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN;
+      const coarseNeverAskAgain = granted[PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION] === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN;
+
+      if (fineNeverAskAgain && coarseNeverAskAgain) {
         return {
           status: 'blocked',
           message:
@@ -123,7 +128,7 @@ export const locationService = {
         };
       }
 
-      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+      if (!fineGranted && !coarseGranted) {
         return {
           status: 'denied',
           message:

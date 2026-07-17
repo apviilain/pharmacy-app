@@ -21,7 +21,7 @@ const extractProfile = (response: any): PharmyxPharmacyProfile | null => {
 export const pharmacyService = {
   getMyProfile: async (): Promise<PharmyxPharmacyProfile | null> => {
     try {
-      const response: any = await apiClient.get(endpoints.pharmacies.meProfile);
+      const response: any = await apiClient.get(endpoints.auth.profile);
       return extractProfile(response);
     } catch (error) {
       if (error instanceof ApiError && error.httpStatus === 404) return null;

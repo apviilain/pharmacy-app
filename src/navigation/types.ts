@@ -21,12 +21,7 @@ export type RootStackParamList = {
     | undefined;
   PharmacyMedicineCreate: undefined;
   PharmacyMedicineEdit: { medicineId: string };
-  PharmacyCustomers:
-    | {
-        section?: 'customers';
-        lockedSection?: boolean;
-      }
-    | undefined;
+  PharmacyCustomers: undefined;
   PharmacyInventory:
     | {
         section?: 'inventory';
@@ -47,25 +42,20 @@ export type RootStackParamList = {
       }
     | undefined;
   PharmacyOrdersList: undefined;
-  PharmacySubscriptions:
-    | {
-        section?: 'subscriptions';
-        lockedSection?: boolean;
-      }
-    | undefined;
-  PatientTracking:
-    | {
-        section?: 'tracking';
-        lockedSection?: boolean;
-      }
-    | undefined;
+  PharmacySubscriptions: undefined;
+
+  PatientTracking: undefined;
+  ManagePatientTracking: { customerId: string };
+  ManagePharmacyCustomer: undefined;
   Diagnostics:
     | {
         section?: 'diagnostics';
         lockedSection?: boolean;
       }
     | undefined;
-  DiagnosticsCreateBooking: undefined;
+  DiagnosticsPackage: { packageId: string };
+  DiagnosticsCreateBooking: { selectedPackageIds?: string[] } | undefined;
+  DiagnosticsHistory: undefined;
   DiagnosticsBookingDetails: { bookingId: string };
   DiagnosticsPayment: { bookingId: string };
   DiagnosticsReschedule: { bookingId: string };
@@ -77,7 +67,7 @@ export type RootStackParamList = {
   PharmaciesDirectory: undefined;
   PharmacyDetails: { pharmacyId: string; title?: string };
   PharmacyCart: undefined;
-  ConsultationAppointments: undefined;
+  TelehealthHistory: undefined;
   PathkindBooking: undefined;
   Appointments: undefined;
   AppointmentDetails: { appointmentId: string; appointment?: any; fromNotification?: boolean };
@@ -100,6 +90,7 @@ export type RootStackParamList = {
   DoctorDetails: { doctorId: string };
   SelectMember: { doctorId: string };
   AddMember: { doctorId?: string; member?: any };
+  TelehealthBooking: { doctorId: string };
   SlotSelection: {
     doctorId: string;
     member: {
@@ -182,6 +173,7 @@ export type RootStackParamList = {
         lockedSection?: boolean;
       }
     | undefined;
+  ManagePharmacySubscription: { mode: 'CREATE' | 'UPDATE' | 'PAUSE'; subscriptionId?: string; subscription?: any };
   Splash: undefined;
   SignIn: undefined;
   SignUp: undefined;

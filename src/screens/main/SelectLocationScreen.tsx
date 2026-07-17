@@ -44,42 +44,18 @@ const { SpeechRecognizerModule } = NativeModules as {
   };
 };
 
-const reverseGeocodeLocation = async (latitude: number, longitude: number) => {
-  const response = await fetch(
-    `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`,
-    {
-      headers: {
-        Accept: "application/json",
-        "Accept-Language": "en-IN",
-      },
-    },
-  );
-  const payload = (await response.json()) as {
-    display_name?: string;
-    address?: Record<string, string>;
-  };
-  const addressParts = payload.display_name?.split(",") || [];
-  return {
-    title:
-      payload.address?.city ||
-      payload.address?.town ||
-      payload.address?.suburb ||
-      addressParts[0] ||
-      "Selected location",
-    subtitle:
-      payload.display_name || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
-  };
-};
+
 
 const searchLocationByQuery = async (query: string) => {
   const response = await fetch(
-    `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(
+    `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&q=${encodeURIComponent(
       query,
     )}`,
     {
       headers: {
         Accept: "application/json",
         "Accept-Language": "en-IN",
+        "User-Agent": "PharmacyApp/1.0 (admin@freenace.com)",
       },
     },
   );
@@ -89,20 +65,15 @@ const searchLocationByQuery = async (query: string) => {
     display_name?: string;
     name?: string;
   }>;
-  const firstResult = payload[0];
 
-  if (!firstResult?.lat || !firstResult?.lon) {
-    throw new Error(`No location found for "${query}".`);
-  }
-
-  return {
+  return payload.map((result) => ({
     coords: {
-      latitude: Number(firstResult.lat),
-      longitude: Number(firstResult.lon),
+      latitude: Number(result.lat),
+      longitude: Number(result.lon),
     },
-    title: firstResult.name || query,
-    subtitle: firstResult.display_name || query,
-  };
+    title: result.name || query,
+    subtitle: result.display_name || query,
+  }));
 };
 
 export const SelectLocationScreen = () => {
@@ -124,6 +95,13 @@ export const SelectLocationScreen = () => {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [searchQuery, setSearchQuery] = React.useState("");
+  const [searchResults, setSearchResults] = React.useState<
+    Array<{
+      coords: { latitude: number; longitude: number };
+      title: string;
+      subtitle: string;
+    }>
+  >([]);
   const [isListening, setIsListening] = React.useState(false);
   const [isResolvingSearch, setIsResolvingSearch] = React.useState(false);
   const [coords, setCoords] = React.useState(initialLocationSelection.coords);
@@ -203,7 +181,7 @@ export const SelectLocationScreen = () => {
       setMessage(nextMessage);
 
       try {
-        const resolvedAddress = await reverseGeocodeLocation(
+        const resolvedAddress = await locationService.reverseGeocodeLocation(
           nextLatitude,
           nextLongitude,
         );
@@ -211,7 +189,7 @@ export const SelectLocationScreen = () => {
         setSubtitle(resolvedAddress.subtitle);
       } catch {
         setTitle("Selected location");
-        setSubtitle(`${nextLatitude.toFixed(4)}, ${nextLongitude.toFixed(4)}`);
+        setSubtitle("Location details not available");
       }
     },
     [],
@@ -444,27 +422,42 @@ export const SelectLocationScreen = () => {
     }
   }, [isListening]);
 
-  const submitLocationSearch = React.useCallback(async () => {
-    const trimmedQuery = searchQuery.trim();
-    if (trimmedQuery.length < 3) {
-      return;
-    }
-
-    try {
-      setIsResolvingSearch(true);
-      const result = await searchLocationByQuery(trimmedQuery);
+  const handleSelectSearchResult = React.useCallback(
+    (result: {
+      coords: { latitude: number; longitude: number };
+      title: string;
+      subtitle: string;
+    }) => {
       animateToCoords(result.coords.latitude, result.coords.longitude);
       setCoords(result.coords);
       setTitle(result.title);
       setSubtitle(result.subtitle);
       setStatus("granted");
       setMessage("Search result selected.");
+      setSearchResults([]);
+      setSearchQuery(result.title);
+    },
+    [animateToCoords],
+  );
+
+  const submitLocationSearch = React.useCallback(async () => {
+    const trimmedQuery = searchQuery.trim();
+    if (trimmedQuery.length < 3) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      setIsResolvingSearch(true);
+      const results = await searchLocationByQuery(trimmedQuery);
+      setSearchResults(results);
     } catch (error) {
       const nextMessage =
         error instanceof Error
           ? error.message
           : "Unable to search this location right now.";
       Alert.alert("Location Search", nextMessage);
+      setSearchResults([]);
     } finally {
       setIsResolvingSearch(false);
     }
@@ -472,7 +465,10 @@ export const SelectLocationScreen = () => {
 
   React.useEffect(() => {
     const trimmedQuery = searchQuery.trim();
-    if (trimmedQuery.length < 3) return;
+    if (trimmedQuery.length < 3) {
+      setSearchResults([]);
+      return;
+    }
 
     const timeoutId = setTimeout(() => {
       submitLocationSearch().catch(() => {});
@@ -483,6 +479,7 @@ export const SelectLocationScreen = () => {
 
   const clearSearchText = React.useCallback(() => {
     setSearchQuery("");
+    setSearchResults([]);
   }, []);
 
   const handleMapSelection = React.useCallback(
@@ -623,6 +620,30 @@ export const SelectLocationScreen = () => {
               />
             </TouchableOpacity>
           </View>
+
+          {searchResults.length > 0 ? (
+            <View style={styles.searchResultsContainer}>
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                style={styles.searchResultsList}
+              >
+                {searchResults.map((result, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.searchResultItem}
+                    onPress={() => handleSelectSearchResult(result)}
+                  >
+                    <Text style={styles.searchResultTitle} numberOfLines={1}>
+                      {result.title}
+                    </Text>
+                    <Text style={styles.searchResultSubtitle} numberOfLines={2}>
+                      {result.subtitle}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          ) : null}
 
           {isListening ? (
             <View style={styles.listeningBadge} pointerEvents="none">
@@ -799,6 +820,42 @@ const styles = StyleSheet.create({
     width: scale(24),
     alignItems: "center",
     justifyContent: "center",
+  },
+  searchResultsContainer: {
+    position: "absolute",
+    top: verticalScale(80),
+    left: scale(16),
+    right: scale(16),
+    maxHeight: verticalScale(200),
+    backgroundColor: "#FFFFFF",
+    borderRadius: scale(16),
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 5,
+    zIndex: 10,
+    overflow: "hidden",
+  },
+  searchResultsList: {
+    flexGrow: 0,
+  },
+  searchResultItem: {
+    paddingHorizontal: scale(16),
+    paddingVertical: verticalScale(12),
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+  searchResultTitle: {
+    fontFamily: typography.fontFamily.medium,
+    fontSize: scale(14),
+    color: colors.textHeader,
+    marginBottom: verticalScale(2),
+  },
+  searchResultSubtitle: {
+    fontFamily: typography.fontFamily.regular,
+    fontSize: scale(12),
+    color: colors.textSecondary,
   },
   voiceButton: {
     overflow: "visible",
