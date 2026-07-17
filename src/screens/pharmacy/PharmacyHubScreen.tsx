@@ -1,12 +1,13 @@
-import React from 'react';
+import React from "react";
 import {
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+} from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
   Activity,
   ArrowRightLeft,
@@ -18,31 +19,31 @@ import {
   CreditCard,
   Pill,
   Users,
-} from 'lucide-react-native';
+} from "lucide-react-native";
 import Svg, {
   Defs,
   LinearGradient as SvgLinearGradient,
   Rect,
   Stop,
-} from 'react-native-svg';
+} from "react-native-svg";
 
-import type { RootStackParamList } from '../../navigation/types';
-import { colors } from '../../theme/colors';
-import { scale, verticalScale } from '../../theme/responsive';
-import { shadows } from '../../theme/shadows';
-import { typography } from '../../theme/typography';
-import { ModuleScreen } from '../../components/ui/ModuleScreen';
+import type { RootStackParamList } from "../../navigation/types";
+import { colors } from "../../theme/colors";
+import { scale, verticalScale } from "../../theme/responsive";
+import { shadows } from "../../theme/shadows";
+import { typography } from "../../theme/typography";
+import { spacing } from "../../theme/tokens";
 
 type PharmacyRouteName =
-  | 'PharmacyMedicines'
-  | 'PharmacyInventory'
-  | 'PharmacyOrders'
-  | 'PharmacyCustomers'
-  | 'PharmacySubscriptions'
-  | 'PatientTracking'
-  | 'Wallet'
-  | 'Diagnostics'
-  | 'FindDoctor';
+  | "PharmacyMedicines"
+  | "PharmacyInventory"
+  | "PharmacyOrders"
+  | "PharmacyCustomers"
+  | "PharmacySubscriptions"
+  | "PatientTracking"
+  | "Wallet"
+  | "Diagnostics"
+  | "FindDoctor";
 
 type HubCard = {
   id: string;
@@ -56,85 +57,85 @@ type HubCard = {
 
 const HUB_CARDS: HubCard[] = [
   {
-    id: 'medicines',
-    title: 'Medicines',
-    subtitle: 'Catalog & availability',
-    route: 'PharmacyMedicines',
+    id: "medicines",
+    title: "Medicines",
+    subtitle: "Catalog & availability",
+    route: "PharmacyMedicines",
     icon: Pill,
-    gradient: ['#1687D4', '#0E6FAE'],
-    shadowColor: '#0E6FAE',
+    gradient: ["#1687D4", "#0E6FAE"],
+    shadowColor: "#0E6FAE",
   },
   {
-    id: 'inventory',
-    title: 'Inventory',
-    subtitle: 'Stock & batches',
-    route: 'PharmacyInventory',
+    id: "inventory",
+    title: "Inventory",
+    subtitle: "Stock & batches",
+    route: "PharmacyInventory",
     icon: Boxes,
-    gradient: ['#20A86B', '#148452'],
-    shadowColor: '#148452',
+    gradient: ["#20A86B", "#148452"],
+    shadowColor: "#148452",
   },
   {
-    id: 'orders',
-    title: 'Orders',
-    subtitle: 'Track fulfilment',
-    route: 'PharmacyOrders',
+    id: "orders",
+    title: "Orders",
+    subtitle: "Track fulfilment",
+    route: "PharmacyOrders",
     icon: ClipboardList,
-    gradient: ['#F5A623', '#D9820B'],
-    shadowColor: '#D9820B',
+    gradient: ["#F5A623", "#D9820B"],
+    shadowColor: "#D9820B",
   },
   {
-    id: 'customers',
-    title: 'Customers',
-    subtitle: 'Profiles & refills',
-    route: 'PharmacyCustomers',
+    id: "customers",
+    title: "Customers",
+    subtitle: "Profiles & refills",
+    route: "PharmacyCustomers",
     icon: Users,
-    gradient: ['#FF5A6A', '#F03E64'],
-    shadowColor: '#E6496A',
+    gradient: ["#FF5A6A", "#F03E64"],
+    shadowColor: "#E6496A",
   },
   {
-    id: 'subscriptions',
-    title: 'Subscriptions',
-    subtitle: 'Auto refill plans',
-    route: 'PharmacySubscriptions',
+    id: "subscriptions",
+    title: "Subscriptions",
+    subtitle: "Auto refill plans",
+    route: "PharmacySubscriptions",
     icon: Clock3,
-    gradient: ['#9B6DFF', '#7A4AE8'],
-    shadowColor: '#7A4AE8',
+    gradient: ["#9B6DFF", "#7A4AE8"],
+    shadowColor: "#7A4AE8",
   },
   {
-    id: 'tracking',
-    title: 'Tracking',
-    subtitle: 'Patient follow-ups',
-    route: 'PatientTracking',
+    id: "tracking",
+    title: "Tracking",
+    subtitle: "Patient follow-ups",
+    route: "PatientTracking",
     icon: ArrowRightLeft,
-    gradient: ['#14B8A6', '#0F8B81'],
-    shadowColor: '#0F8B81',
+    gradient: ["#14B8A6", "#0F8B81"],
+    shadowColor: "#0F8B81",
   },
   {
-    id: 'wallet',
-    title: 'Wallet',
-    subtitle: 'Payments & balance',
-    route: 'Wallet',
+    id: "wallet",
+    title: "Wallet",
+    subtitle: "Payments & balance",
+    route: "Wallet",
     icon: CreditCard,
-    gradient: ['#0EA5E9', '#0369A1'],
-    shadowColor: '#0369A1',
+    gradient: ["#0EA5E9", "#0369A1"],
+    shadowColor: "#0369A1",
   },
   {
-    id: 'doctor-consultation',
-    title: 'Doctor Consultation',
-    subtitle: 'Book specialist visits',
-    route: 'FindDoctor',
+    id: "doctor-consultation",
+    title: "Doctor Consultation",
+    subtitle: "Book specialist visits",
+    route: "FindDoctor",
     icon: BriefcaseMedical,
-    gradient: ['#2563EB', '#1D4ED8'],
-    shadowColor: '#1D4ED8',
+    gradient: ["#2563EB", "#1D4ED8"],
+    shadowColor: "#1D4ED8",
   },
   {
-    id: 'diagnostics',
-    title: 'Diagnostics',
-    subtitle: 'Tests & bookings',
-    route: 'Diagnostics',
+    id: "diagnostics",
+    title: "Diagnostics",
+    subtitle: "Tests & bookings",
+    route: "Diagnostics",
     icon: Activity,
-    gradient: ['#F97316', '#EA580C'],
-    shadowColor: '#EA580C',
+    gradient: ["#F97316", "#EA580C"],
+    shadowColor: "#EA580C",
   },
 ];
 
@@ -169,7 +170,11 @@ const HubServiceCard = ({
               y2="100%"
             >
               <Stop offset="0%" stopColor={item.gradient[0]} stopOpacity="1" />
-              <Stop offset="100%" stopColor={item.gradient[1]} stopOpacity="1" />
+              <Stop
+                offset="100%"
+                stopColor={item.gradient[1]}
+                stopOpacity="1"
+              />
             </SvgLinearGradient>
           </Defs>
           <Rect
@@ -201,10 +206,10 @@ export const PharmacyHubScreen = () => {
 
   const handleCardPress = React.useCallback(
     (route: PharmacyRouteName) => {
-      if (route === 'Wallet') {
-        navigation.navigate('Wallet', {
-          mode: 'pharmacy',
-          title: 'Pharmacy Wallet',
+      if (route === "Wallet") {
+        navigation.navigate("Wallet", {
+          mode: "pharmacy",
+          title: "Pharmacy Wallet",
         });
         return;
       }
@@ -215,35 +220,32 @@ export const PharmacyHubScreen = () => {
   );
 
   return (
-    <ModuleScreen
-      title="Pharmacy workspace"
-      subtitle="Open medicines, stock, orders, customers, consultations, diagnostics, and payments from dedicated flows."
+    <ScrollView
       contentContainerStyle={styles.contentContainer}
+      showsVerticalScrollIndicator={false}
     >
       <View style={styles.grid}>
-        {HUB_CARDS.map(item => (
-          <HubServiceCard
-            key={item.id}
-            item={item}
-            onPress={handleCardPress}
-          />
+        {HUB_CARDS.map((item) => (
+          <HubServiceCard key={item.id} item={item} onPress={handleCardPress} />
         ))}
       </View>
-    </ModuleScreen>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   contentContainer: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
     paddingBottom: verticalScale(28),
   },
   grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
   },
   cardWrap: {
-    width: '48%',
+    width: "48%",
     height: verticalScale(150),
     borderRadius: scale(22),
     marginBottom: verticalScale(16),
@@ -252,36 +254,36 @@ const styles = StyleSheet.create({
   card: {
     flex: 1,
     borderRadius: scale(22),
-    overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
+    overflow: "hidden",
+    backgroundColor: "#FFFFFF",
   },
   cardOrb: {
-    position: 'absolute',
+    position: "absolute",
     width: scale(96),
     height: scale(96),
     borderRadius: scale(48),
     right: scale(-14),
     top: verticalScale(-18),
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: "rgba(255,255,255,0.10)",
   },
   cardIcon: {
-    position: 'absolute',
+    position: "absolute",
     top: verticalScale(18),
     left: scale(16),
     width: scale(50),
     height: scale(50),
     borderRadius: scale(16),
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(255,255,255,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   cardArrow: {
-    position: 'absolute',
+    position: "absolute",
     top: verticalScale(18),
     right: scale(16),
   },
   cardTextBlock: {
-    position: 'absolute',
+    position: "absolute",
     left: scale(16),
     right: scale(12),
     bottom: verticalScale(18),
@@ -289,12 +291,12 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontFamily: typography.fontFamily.bold,
     fontSize: typography.fontSize.lg,
-    color: '#FFFFFF',
+    color: "#FFFFFF",
   },
   cardSubtitle: {
     marginTop: verticalScale(4),
     fontFamily: typography.fontFamily.regular,
     fontSize: typography.fontSize.xs,
-    color: 'rgba(255,255,255,0.85)',
+    color: "rgba(255,255,255,0.85)",
   },
 });

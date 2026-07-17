@@ -144,11 +144,7 @@ Download now and enjoy the benefits 🚀`;
   const handleAddMoney = async () => {
     const amountNum = parseInt(rechargeAmt, 10);
     if (!amountNum || amountNum < 10) {
-      Toast.show({
-        type: 'error',
-        text1: 'Invalid Amount',
-        text2: 'Please enter an amount of at least ₹10',
-      });
+      Alert.alert('Invalid Amount', 'Please enter an amount of at least ₹10');
       return;
     }
 
@@ -244,26 +240,14 @@ Download now and enjoy the benefits 🚀`;
               queryKey: ['walletTransactions', userId],
             });
           } catch (verifyErr: any) {
-            Toast.show({
-              type: 'error',
-              text1: 'Payment Verification Failed',
-              text2: verifyErr.message,
-            });
+            Alert.alert('Payment Verification Failed', verifyErr.message);
           }
         })
-        .catch((error: any) => {
-          Toast.show({
-            type: 'error',
-            text1: 'Payment Failed/Cancelled',
-            text2: error.description || '',
-          });
+        .catch((err: any) => {
+          Alert.alert('Payment Failed', err.message || 'Payment was cancelled or failed.');
         });
-    } catch (error: any) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: error?.message || 'Failed to initiate recharge',
-      });
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Something went wrong');
     } finally {
       setIsProcessing(false);
     }
@@ -421,7 +405,12 @@ Download now and enjoy the benefits 🚀`;
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.modalOverlay}
         >
-          <View style={styles.whiteModalContent}>
+          <ScrollView 
+            style={styles.whiteModalContent}
+            contentContainerStyle={{ flexGrow: 1 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
             {/* Header */}
             <View style={styles.dmHeader}>
               <TouchableOpacity
@@ -528,7 +517,7 @@ Download now and enjoy the benefits 🚀`;
                 )}
               </TouchableOpacity>
             </View>
-          </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
     </View>

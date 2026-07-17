@@ -1,18 +1,24 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   View,
   Text,
   TextInput,
   StyleSheet,
   TouchableOpacity,
+  Alert,
   FlatList,
   Platform,
+  ScrollView,
   StatusBar,
-} from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Voice from "@react-native-voice/voice";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
   ArrowLeft,
   User,
@@ -27,21 +33,21 @@ import {
   UserRound,
   Clock3,
   Trash2,
-} from 'lucide-react-native';
-import type { RootStackParamList } from '../../navigation/types';
-import { colors } from '../../theme/colors';
-import { typography } from '../../theme/typography';
-import { scale, verticalScale } from '../../theme/responsive';
-import { ModuleScreen } from '../../components/ui/ModuleScreen';
-import { PremiumCard } from '../../components/ui/PremiumCard';
-import { PremiumSearchField } from '../../components/ui/PremiumSearchField';
-import { SectionState } from '../../components/ui/SectionState';
+} from "lucide-react-native";
+import type { RootStackParamList } from "../../navigation/types";
+import { colors } from "../../theme/colors";
+import { typography } from "../../theme/typography";
+import { scale, verticalScale } from "../../theme/responsive";
+
+import { PremiumCard } from "../../components/ui/PremiumCard";
+import { PremiumSearchField } from "../../components/ui/PremiumSearchField";
+import { SectionState } from "../../components/ui/SectionState";
 import {
   premiumTheme,
   premiumTypography,
   radii,
   spacing,
-} from '../../theme/tokens';
+} from "../../theme/tokens";
 
 interface AppFeature {
   id: string;
@@ -57,30 +63,164 @@ type SearchHistoryEntry = {
   visitedAt: number;
 };
 
-const SEARCH_HISTORY_KEY = '@pharmyx_global_search_history';
+const SEARCH_HISTORY_KEY = "@pharmyx_global_search_history";
 
 const APP_FEATURES: AppFeature[] = [
-  { id: '1', title: 'Pharmacy Medicines', screen: 'Pharmacy', icon: Pill, keywords: ['medicine', 'tablet', 'drug', 'catalog', 'pharmacy'], params: { section: 'medicines', lockedSection: true } },
-  { id: '1_1', title: 'Find Nearby Medicines', screen: 'NearbyMedicines', icon: Pill, keywords: ['nearby', 'local', 'medicine', 'find', 'search', 'pharmacy near me'] },
-  { id: '1_2', title: 'Browse Pharmacies', screen: 'PharmaciesDirectory', icon: BriefcaseMedical, keywords: ['pharmacy list', 'browse pharmacy', 'verified pharmacies', 'medical store'] },
-  { id: '2', title: 'Pharmacy Inventory', screen: 'PharmacyInventory', icon: Boxes, keywords: ['inventory', 'stock', 'batch', 'rack', 'low stock'] },
-  { id: '3', title: 'Pharmacy Orders', screen: 'PharmacyOrders', icon: RefreshCw, keywords: ['orders', 'delivery', 'pending order', 'paid order'] },
-  { id: '4', title: 'Pharmacy Customers', screen: 'Pharmacy', icon: UserRound, keywords: ['customer', 'patient', 'member', 'buyer'], params: { section: 'customers', lockedSection: true } },
-  { id: '5', title: 'Pharmacy Subscriptions', screen: 'Pharmacy', icon: Clock3, keywords: ['subscription', 'refill', 'repeat medicine', 'reminder'], params: { section: 'subscriptions', lockedSection: true } },
-  { id: '6', title: 'Health Vault (Records)', screen: 'HealthVault', icon: FileText, keywords: ['health', 'vault', 'files', 'records', 'medical', 'reports', 'prescriptions'] },
-  { id: '7', title: 'Wallet & Payments', screen: 'Wallet', icon: Wallet, keywords: ['wallet', 'money', 'payment', 'balance', 'add money', 'recharge'] },
-  { id: '8', title: 'Pathkind Lab Tests', screen: 'PathkindBooking', icon: BriefcaseMedical, keywords: ['lab', 'test', 'pathology', 'pathkind', 'blood test', 'diagnostic'] },
-  { id: '10', title: 'Refer & Earn', screen: 'ReferEarn', icon: Award, keywords: ['refer', 'earn', 'invite', 'friends', 'bonus', 'coupon'] },
-  { id: '11', title: 'Settings', screen: 'Settings', icon: Settings, keywords: ['settings', 'preferences', 'account', 'password', 'logout'] },
-  { id: '12', title: 'My Profile', screen: 'Profile', icon: User, keywords: ['profile', 'me', 'details', 'edit profile', 'account'] },
+  {
+    id: "1",
+    title: "Pharmacy Medicines",
+    screen: "Pharmacy",
+    icon: Pill,
+    keywords: ["medicine", "tablet", "drug", "catalog", "pharmacy"],
+    params: { section: "medicines", lockedSection: true },
+  },
+  {
+    id: "1_1",
+    title: "Find Nearby Medicines",
+    screen: "NearbyMedicines",
+    icon: Pill,
+    keywords: [
+      "nearby",
+      "local",
+      "medicine",
+      "find",
+      "search",
+      "pharmacy near me",
+    ],
+  },
+  {
+    id: "1_2",
+    title: "Browse Pharmacies",
+    screen: "PharmaciesDirectory",
+    icon: BriefcaseMedical,
+    keywords: [
+      "pharmacy list",
+      "browse pharmacy",
+      "verified pharmacies",
+      "medical store",
+    ],
+  },
+  {
+    id: "2",
+    title: "Pharmacy Inventory",
+    screen: "PharmacyInventory",
+    icon: Boxes,
+    keywords: ["inventory", "stock", "batch", "rack", "low stock"],
+  },
+  {
+    id: "3",
+    title: "Pharmacy Orders",
+    screen: "PharmacyOrders",
+    icon: RefreshCw,
+    keywords: ["orders", "delivery", "pending order", "paid order"],
+  },
+  {
+    id: "4",
+    title: "Pharmacy Customers",
+    screen: "Pharmacy",
+    icon: UserRound,
+    keywords: ["customer", "patient", "member", "buyer"],
+    params: { section: "customers", lockedSection: true },
+  },
+  {
+    id: "5",
+    title: "Pharmacy Subscriptions",
+    screen: "Pharmacy",
+    icon: Clock3,
+    keywords: ["subscription", "refill", "repeat medicine", "reminder"],
+    params: { section: "subscriptions", lockedSection: true },
+  },
+  {
+    id: "6",
+    title: "Health Vault (Records)",
+    screen: "HealthVault",
+    icon: FileText,
+    keywords: [
+      "health",
+      "vault",
+      "files",
+      "records",
+      "medical",
+      "reports",
+      "prescriptions",
+    ],
+  },
+  {
+    id: "7",
+    title: "Wallet & Payments",
+    screen: "Wallet",
+    icon: Wallet,
+    keywords: [
+      "wallet",
+      "money",
+      "payment",
+      "balance",
+      "add money",
+      "recharge",
+    ],
+  },
+  {
+    id: "8",
+    title: "Pathkind Lab Tests",
+    screen: "PathkindBooking",
+    icon: BriefcaseMedical,
+    keywords: [
+      "lab",
+      "test",
+      "pathology",
+      "pathkind",
+      "blood test",
+      "diagnostic",
+    ],
+  },
+  {
+    id: "10",
+    title: "Refer & Earn",
+    screen: "ReferEarn",
+    icon: Award,
+    keywords: ["refer", "earn", "invite", "friends", "bonus", "coupon"],
+  },
+  {
+    id: "11",
+    title: "Settings",
+    screen: "Settings",
+    icon: Settings,
+    keywords: ["settings", "preferences", "account", "password", "logout"],
+  },
+  {
+    id: "12",
+    title: "My Profile",
+    screen: "Profile",
+    icon: User,
+    keywords: ["profile", "me", "details", "edit profile", "account"],
+  },
 ];
 
 export const GlobalSearchScreen = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
   const [recentHistory, setRecentHistory] = useState<SearchHistoryEntry[]>([]);
   const inputRef = useRef<TextInput>(null);
+  const [isListening, setIsListening] = useState(false);
+
+  useEffect(() => {
+    Voice.onSpeechStart = () => setIsListening(true);
+    Voice.onSpeechEnd = () => setIsListening(false);
+    Voice.onSpeechResults = (e: any) => {
+      if (e.value && e.value.length > 0) {
+        setQuery(e.value[0]);
+      }
+    };
+    Voice.onSpeechError = (e: any) => {
+      setIsListening(false);
+    };
+
+    return () => {
+      Voice.destroy().then(Voice.removeAllListeners);
+    };
+  }, []);
 
   useEffect(() => {
     const focusTimer = setTimeout(() => {
@@ -98,13 +238,13 @@ export const GlobalSearchScreen = () => {
             parsed.filter(
               (entry): entry is SearchHistoryEntry =>
                 !!entry &&
-                typeof entry.featureId === 'string' &&
-                typeof entry.visitedAt === 'number',
+                typeof entry.featureId === "string" &&
+                typeof entry.visitedAt === "number",
             ),
           );
         }
       } catch (error) {
-        console.warn('Failed to load search history:', error);
+        console.warn("Failed to load search history:", error);
       }
     };
 
@@ -113,18 +253,20 @@ export const GlobalSearchScreen = () => {
     return () => clearTimeout(focusTimer);
   }, []);
 
-  type SearchResultItem = { type: 'feature'; item: AppFeature };
+  type SearchResultItem = { type: "feature"; item: AppFeature };
 
   const searchResults = useMemo(() => {
     if (!query.trim()) return [];
-    
+
     const loweredQuery = query.toLowerCase().trim();
     const results: SearchResultItem[] = [];
-    
-    APP_FEATURES.forEach(feature => {
-      if (feature.title.toLowerCase().includes(loweredQuery) || 
-          feature.keywords.some(kw => kw.toLowerCase().includes(loweredQuery))) {
-        results.push({ type: 'feature', item: feature });
+
+    APP_FEATURES.forEach((feature) => {
+      if (
+        feature.title.toLowerCase().includes(loweredQuery) ||
+        feature.keywords.some((kw) => kw.toLowerCase().includes(loweredQuery))
+      ) {
+        results.push({ type: "feature", item: feature });
       }
     });
 
@@ -134,8 +276,8 @@ export const GlobalSearchScreen = () => {
   const recentFeatures = useMemo(
     () =>
       recentHistory
-        .map(entry =>
-          APP_FEATURES.find(feature => feature.id === entry.featureId),
+        .map((entry) =>
+          APP_FEATURES.find((feature) => feature.id === entry.featureId),
         )
         .filter((feature): feature is AppFeature => !!feature),
     [recentHistory],
@@ -148,14 +290,14 @@ export const GlobalSearchScreen = () => {
         JSON.stringify(nextHistory),
       );
     } catch (error) {
-      console.warn('Failed to save search history:', error);
+      console.warn("Failed to save search history:", error);
     }
   };
 
   const pushRecentHistory = async (featureId: string) => {
     const nextHistory = [
       { featureId, visitedAt: Date.now() },
-      ...recentHistory.filter(entry => entry.featureId !== featureId),
+      ...recentHistory.filter((entry) => entry.featureId !== featureId),
     ].slice(0, 6);
 
     setRecentHistory(nextHistory);
@@ -167,7 +309,7 @@ export const GlobalSearchScreen = () => {
     try {
       await AsyncStorage.removeItem(SEARCH_HISTORY_KEY);
     } catch (error) {
-      console.warn('Failed to clear search history:', error);
+      console.warn("Failed to clear search history:", error);
     }
   };
 
@@ -180,10 +322,10 @@ export const GlobalSearchScreen = () => {
       await pushRecentHistory(featureId);
     }
 
-    if (screenName === 'Wallet') {
-      (navigation as any).navigate('Wallet', {
-        mode: 'pharmacy',
-        title: 'Pharmacy Wallet',
+    if (screenName === "Wallet") {
+      (navigation as any).navigate("Wallet", {
+        mode: "pharmacy",
+        title: "Pharmacy Wallet",
       });
       return;
     }
@@ -196,8 +338,21 @@ export const GlobalSearchScreen = () => {
     (navigation as any).navigate(screenName);
   };
 
+  const handleVoiceSearch = async () => {
+    try {
+      if (isListening) {
+        await Voice.stop();
+      } else {
+        await Voice.start('en-IN');
+      }
+    } catch (e: any) {
+      console.warn('Voice Error:', e);
+      Alert.alert('Voice Search Error', e?.message || 'Could not start voice search. Please check microphone permissions.');
+    }
+  };
+
   const renderItem = ({ item }: { item: SearchResultItem }) => {
-    if (item.type === 'feature') {
+    if (item.type === "feature") {
       const feature = item.item;
       const Icon = feature.icon;
       return (
@@ -222,35 +377,43 @@ export const GlobalSearchScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+    <SafeAreaView
+      style={styles.container}
+      edges={["top", "left", "right", "bottom"]}
+    >
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor="transparent"
+        translucent
+      />
       <View style={[styles.header, { paddingTop: verticalScale(12) }]}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <ArrowLeft color={colors.textHeader} size={scale(24)} />
-        </TouchableOpacity>
         <PremiumSearchField
           ref={inputRef}
           containerStyle={styles.searchBar}
-          placeholder="Search medicines, inventory, orders..."
+          placeholder={
+            isListening
+              ? "Listening..."
+              : "Search medicines, inventory, orders..."
+          }
           value={query}
           onChangeText={setQuery}
           autoCapitalize="none"
           autoCorrect={false}
           returnKeyType="search"
+          onVoiceSearch={handleVoiceSearch}
         />
       </View>
 
-      <ModuleScreen
-        title="Search workspace"
-        subtitle="Jump into medicines, inventory, pharmacies, payments, and patient tools."
-        scroll={false}
-        contentContainerStyle={styles.moduleContent}
-      >
-        {query.trim() === '' ? (
-          <View style={styles.emptyStateContainer}>
+      <View style={styles.moduleContent}>
+        {query.trim() === "" ? (
+          <ScrollView
+            style={styles.emptyStateContainer}
+            contentContainerStyle={{ paddingBottom: verticalScale(60) }}
+            showsVerticalScrollIndicator={false}
+          >
             <Text style={styles.sectionTitle}>Quick Suggestions</Text>
             <View style={styles.suggestionsWrapper}>
-              {APP_FEATURES.slice(0, 5).map(feat => (
+              {APP_FEATURES.slice(0, 5).map((feat) => (
                 <TouchableOpacity
                   key={feat.id}
                   style={styles.suggestionPill}
@@ -278,7 +441,7 @@ export const GlobalSearchScreen = () => {
                 </View>
 
                 <View style={styles.recentList}>
-                  {recentFeatures.map(feature => {
+                  {recentFeatures.map((feature) => {
                     const Icon = feature.icon;
                     return (
                       <PremiumCard
@@ -299,7 +462,9 @@ export const GlobalSearchScreen = () => {
                           <View style={styles.recentIconContainer}>
                             <Icon color={colors.primaryBlue} size={scale(16)} />
                           </View>
-                          <Text style={styles.recentItemText}>{feature.title}</Text>
+                          <Text style={styles.recentItemText}>
+                            {feature.title}
+                          </Text>
                         </TouchableOpacity>
                       </PremiumCard>
                     );
@@ -307,14 +472,12 @@ export const GlobalSearchScreen = () => {
                 </View>
               </View>
             ) : null}
-          </View>
+          </ScrollView>
         ) : searchResults.length > 0 ? (
           <FlatList
             data={searchResults}
-            keyExtractor={(item, index) => 
-              item.type === 'feature' 
-                ? `f_${item.item.id}` 
-                : `result_${index}`
+            keyExtractor={(item, index) =>
+              item.type === "feature" ? `f_${item.item.id}` : `result_${index}`
             }
             renderItem={renderItem}
             contentContainerStyle={styles.listContent}
@@ -328,7 +491,7 @@ export const GlobalSearchScreen = () => {
             />
           </View>
         )}
-      </ModuleScreen>
+      </View>
     </SafeAreaView>
   );
 };
@@ -339,14 +502,14 @@ const styles = StyleSheet.create({
     backgroundColor: premiumTheme.screen,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.sm,
     backgroundColor: premiumTheme.screen,
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 3,
@@ -365,14 +528,16 @@ const styles = StyleSheet.create({
   },
   moduleContent: {
     flex: 1,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
   },
   listContent: {
     paddingBottom: spacing.xl,
     gap: spacing.sm,
   },
   resultItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: premiumTheme.card,
     padding: spacing.md,
     marginBottom: verticalScale(10),
@@ -385,8 +550,8 @@ const styles = StyleSheet.create({
     height: scale(40),
     borderRadius: scale(20),
     backgroundColor: premiumTheme.blueTint,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: scale(14),
   },
   resultTextContainer: {
@@ -404,16 +569,17 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   recentHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   sectionTitle: {
     ...premiumTypography.title,
+    paddingBottom: scale(15),
   },
   clearHistoryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: scale(6),
     marginBottom: verticalScale(16),
   },
@@ -426,11 +592,11 @@ const styles = StyleSheet.create({
     gap: verticalScale(10),
   },
   recentItemCard: {
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   recentItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: scale(14),
     paddingVertical: verticalScale(12),
   },
@@ -439,8 +605,8 @@ const styles = StyleSheet.create({
     height: scale(32),
     borderRadius: scale(16),
     backgroundColor: premiumTheme.blueTint,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: scale(12),
   },
   recentItemText: {
@@ -450,12 +616,12 @@ const styles = StyleSheet.create({
     color: colors.textHeader,
   },
   suggestionsWrapper: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: scale(10),
   },
   suggestionPill: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     paddingHorizontal: scale(16),
     paddingVertical: verticalScale(10),
     borderRadius: scale(20),
@@ -469,6 +635,6 @@ const styles = StyleSheet.create({
   },
   noResultsContainer: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
 });

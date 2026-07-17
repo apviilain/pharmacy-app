@@ -17,7 +17,7 @@ import { useQuery } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 
 import { pharmacyMedicineService } from '../../api/pharmacyMedicineService';
-import { ModuleScreen } from '../../components/ui/ModuleScreen';
+
 import { PremiumCard } from '../../components/ui/PremiumCard';
 import { PremiumSearchField } from '../../components/ui/PremiumSearchField';
 import { SectionState } from '../../components/ui/SectionState';
@@ -198,12 +198,7 @@ export const NearbyMedicinesScreen = () => {
         />
       </View>
 
-      <ModuleScreen
-        title="Nearby medicines"
-        subtitle="Discover stocked medicines around your current location and open the matching pharmacy."
-        scroll={false}
-        contentContainerStyle={styles.moduleContent}
-      >
+      <View style={styles.moduleContent}>
         {locationLoading ? (
           <View style={styles.centerContainer}>
             <ActivityIndicator size="large" color={colors.primaryBlue} />
@@ -249,7 +244,7 @@ export const NearbyMedicinesScreen = () => {
             subtitle="Try another keyword or broaden the nearby radius."
           />
         )}
-      </ModuleScreen>
+      </View>
     </SafeAreaView>
   );
 };
@@ -275,6 +270,8 @@ const styles = StyleSheet.create({
   },
   moduleContent: {
     flex: 1,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
   },
   centerContainer: {
     flex: 1,

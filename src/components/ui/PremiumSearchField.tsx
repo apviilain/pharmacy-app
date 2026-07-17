@@ -1,13 +1,15 @@
 import React from 'react';
 import {
+  Platform,
   StyleProp,
   StyleSheet,
   TextInput,
   TextInputProps,
+  TouchableOpacity,
   View,
   ViewStyle,
 } from 'react-native';
-import { Search } from 'lucide-react-native';
+import { Mic, Search } from 'lucide-react-native';
 
 import { colors } from '../../theme/colors';
 import { scale, verticalScale } from '../../theme/responsive';
@@ -16,6 +18,7 @@ import { premiumTheme, radii, spacing } from '../../theme/tokens';
 
 type Props = TextInputProps & {
   containerStyle?: StyleProp<ViewStyle>;
+  onVoiceSearch?: () => void;
 };
 
 export const PremiumSearchField = React.forwardRef<TextInput, Props>(
@@ -29,6 +32,15 @@ export const PremiumSearchField = React.forwardRef<TextInput, Props>(
           style={styles.input}
           {...props}
         />
+        {props.onVoiceSearch && (
+          <TouchableOpacity 
+            onPress={props.onVoiceSearch} 
+            style={styles.voiceButton}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <Mic size={scale(18)} color={colors.primaryBlue} />
+          </TouchableOpacity>
+        )}
       </View>
     );
   },
@@ -53,6 +65,11 @@ const styles = StyleSheet.create({
     color: colors.textHeader,
     fontFamily: typography.fontFamily.medium,
     fontSize: typography.fontSize.md,
-    paddingVertical: 0,
+    paddingTop: Platform.OS === 'ios' ? scale(4) : 0,
+    paddingBottom: 0,
+    textAlignVertical: 'center',
+  },
+  voiceButton: {
+    padding: scale(4),
   },
 });

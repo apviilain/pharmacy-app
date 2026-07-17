@@ -19,7 +19,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { pharmacyService } from '../../api/pharmacyService';
 import type { PharmyxPharmacyProfile } from '../../api/pharmyx';
-import { ModuleScreen } from '../../components/ui/ModuleScreen';
+
 import { PremiumCard } from '../../components/ui/PremiumCard';
 import { PremiumSearchField } from '../../components/ui/PremiumSearchField';
 import { SectionState } from '../../components/ui/SectionState';
@@ -128,12 +128,7 @@ export const PharmaciesDirectoryScreen: React.FC<DirectoryProps> = ({
   };
 
   return (
-    <ModuleScreen
-      title="Verified pharmacies"
-      subtitle="Browse trusted pharmacies, compare availability, and open detailed store information."
-      scroll={false}
-      contentContainerStyle={styles.moduleContent}
-    >
+    <View style={styles.moduleContent}>
       <PremiumSearchField
         value={search}
         onChangeText={setSearch}
@@ -168,7 +163,7 @@ export const PharmaciesDirectoryScreen: React.FC<DirectoryProps> = ({
           }
         />
       )}
-    </ModuleScreen>
+    </View>
   );
 };
 
@@ -182,12 +177,7 @@ export const PharmacyDetailsScreen: React.FC<DetailsProps> = ({ route }) => {
   const profile = detailsQuery.data;
 
   return (
-    <ModuleScreen
-      title={route.params.title || 'Pharmacy details'}
-      subtitle="Store profile, delivery options, and contact details in one place."
-      scroll={false}
-      contentContainerStyle={styles.moduleContent}
-    >
+    <View style={styles.moduleContent}>
       {detailsQuery.isLoading ? (
         <View style={styles.centerState}>
           <ActivityIndicator color={colors.primaryBlue} />
@@ -262,13 +252,15 @@ export const PharmacyDetailsScreen: React.FC<DetailsProps> = ({ route }) => {
           </View>
         </PremiumCard>
       )}
-    </ModuleScreen>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   moduleContent: {
     flex: 1,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
   },
   centerState: {
     flex: 1,

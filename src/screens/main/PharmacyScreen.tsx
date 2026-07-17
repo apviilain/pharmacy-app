@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View,
   useWindowDimensions,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -20,6 +21,7 @@ import * as DocumentPicker from '@react-native-documents/picker';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import {
+  ArrowLeft,
   ArrowRight,
   ChevronLeft,
   ChevronRight,
@@ -8859,6 +8861,33 @@ export function PharmacyScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {!isTablet && !!selectedMedicineId && (
+        <Modal
+          visible={!!selectedMedicineId}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setSelectedMedicineId('')}
+        >
+          <View style={{ flex: 1, backgroundColor: '#F4F8FC' }}>
+            <View style={[styles.toolbar, { paddingHorizontal: 16, paddingTop: Platform.OS === 'ios' ? 40 : 16 }]}>
+              <TouchableOpacity
+                onPress={() => setSelectedMedicineId('')}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                style={{ flexDirection: 'row', alignItems: 'center' }}
+              >
+                <ArrowLeft size={scale(20)} color={colors.textHeader} style={{ marginRight: 8 }} />
+                <Text style={{ fontFamily: typography.fontFamily.semiBold, fontSize: scale(16), color: colors.textHeader }}>
+                  Back
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ flex: 1, padding: 16 }}>
+              {renderMedicineDetails()}
+            </View>
+          </View>
+        </Modal>
+      )}
     </>
   );
 }
